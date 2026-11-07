@@ -104,6 +104,7 @@ describe('formulario de tarea', () => {
     assignees: [{ id: 'c1', name: 'Carlos' }],
     predecessorIds: [],
     successorCount: 0,
+    commentCount: 0,
     waitingOn: [],
     warnings: [],
   } as Task;

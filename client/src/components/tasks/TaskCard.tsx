@@ -1,28 +1,52 @@
 import { LABELS, type Priority, type TaskStatus } from '@pm/shared';
+import { Calendar, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { Task } from '../../api/types';
-import { Badge, type Tone } from '../ui';
+import { shortDate } from '../../lib/display';
+import { AvatarStack, Badge, ProgressBar, type Tone } from '../ui';
 
 export const STATUS_TONE: Record<TaskStatus, Tone> = { TODO: 'neutral', IN_PROGRESS: 'info', BLOCKED: 'danger', DONE: 'success' };
-export const PRIORITY_TONE: Record<Priority, Tone> = { LOW: 'neutral', MEDIUM: 'info', HIGH: 'warning' };
+export const PRIORITY_TONE: Record<Priority, Tone> = { LOW: 'neutral', MEDIUM: 'warning', HIGH: 'danger' };
+
+export const taskPath = (task: { id: string; projectId: string }) => `/proyectos/${task.projectId}/tareas/${task.id}`;
 
 export function WaitingNote({ task }: { task: Task }) {
   if (task.waitingOn.length === 0) return null;
-  return <p className="mt-1 text-xs text-amber-800">En espera de: {task.waitingOn.map((t) => t.title).join(', ')}</p>;
+  return <p className="mt-1 text-xs text-warn-fg">En espera de: {task.waitingOn.map((t) => t.title).join(', ')}</p>;
 }
 
-export function TaskCardBody({ task, onOpen }: { task: Task; onOpen: () => void }) {
+export function TaskCardBody({ task }: { task: Task }) {
+  const comments = task.commentCount;
   return (
-    <div className="min-w-0 flex-1">
-      <button type="button" onClick={onOpen} className="block w-full cursor-pointer text-left text-sm font-medium text-slate-900 hover:text-indigo-700 hover:underline">
-        {task.title}
-      </button>
-      <WaitingNote task={task} />
-      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+    <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <span>
         <Badge tone={PRIORITY_TONE[task.priority]}>{LABELS.priority[task.priority]}</Badge>
-        {task.dueDate && <span>Vence {task.dueDate}</span>}
-        <span>{task.progress} %</span>
+      </span>
+      <Link to={taskPath(task)} className="font-semibold text-ink hover:underline">
+        {task.title}
+      </Link>
+      <WaitingNote task={task} />
+      {task.progress > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <ProgressBar value={task.progress} label={`Avance de ${task.title}`} />
+          </div>
+          <span className="text-xs text-ink-soft">{task.progress} %</span>
+        </div>
+      )}
+      <div className="flex items-center gap-3 text-xs text-ink-soft">
+        {task.dueDate && (
+          <span className="flex items-center gap-1">
+            <Calendar size={13} aria-hidden="true" />
+            <span>{shortDate(task.dueDate)}</span>
+          </span>
+        )}
+        <span className="flex items-center gap-1" aria-label={`${comments} ${comments === 1 ? 'comentario' : 'comentarios'}`}>
+          <MessageSquare size={13} aria-hidden="true" />
+          {comments}
+        </span>
+        <span className="ml-auto">{task.assignees.length > 0 && <AvatarStack people={task.assignees} />}</span>
       </div>
-      {task.assignees.length > 0 && <p className="mt-1 truncate text-xs text-slate-500">{task.assignees.map((a) => a.name).join(', ')}</p>}
     </div>
   );
 }

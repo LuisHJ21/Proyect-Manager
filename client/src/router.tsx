@@ -11,6 +11,7 @@ import { ProjectLayout, ProjectPmOnly } from './pages/project/ProjectLayout';
 import { ProjectListPage } from './pages/project/ProjectList';
 import { AttachmentsPage, BudgetPage, RisksPage, StakeholdersPage } from './pages/project/Registers';
 import { SummaryPage } from './pages/project/Summary';
+import { TaskDetailPage } from './pages/project/TaskDetail';
 import { TasksPage } from './pages/project/Tasks';
 
 export function AppRoutes() {
@@ -28,6 +29,7 @@ export function AppRoutes() {
             <Route path="resumen" element={<SummaryPage />} />
             <Route path="acta" element={<CharterPage />} />
             <Route path="tareas" element={<TasksPage />} />
+            <Route path="tareas/:taskId" element={<TaskDetailPage />} />
             <Route path="anexos" element={<AttachmentsPage />} />
             <Route element={<ProjectPmOnly />}>
               <Route path="interesados" element={<StakeholdersPage />} />

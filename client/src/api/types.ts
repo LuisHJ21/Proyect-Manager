@@ -113,6 +113,7 @@ export type Task = {
   assignees: PersonRef[];
   predecessorIds: string[];
   successorCount: number;
+  commentCount: number;
   waitingOn: { id: string; title: string }[];
   warnings: TaskWarning[];
   projectName?: string;

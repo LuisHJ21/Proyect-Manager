@@ -1,11 +1,15 @@
 import { LABELS } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom';
 import { api, ApiError, errorMessage, isBlockingError } from '../../api/client';
-import type { Project } from '../../api/types';
+import type { Member, Project } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { ErrorState, Loading } from '../../components/ErrorState';
-import { Badge } from '../../components/ui';
+import { membersKey } from '../../components/project/MembersPanel';
+import { TaskForm } from '../../components/tasks/TaskForm';
+import { AvatarStack, Badge, Button } from '../../components/ui';
 
 type ProjectContext = { project: Project; isPm: boolean };
 
@@ -27,6 +31,9 @@ export function ProjectLayout() {
   const { id = '' } = useParams();
   const { isPm } = useAuth();
   const project = useQuery({ queryKey: projectKey(id), queryFn: () => api<Project>(`/api/projects/${id}`) });
+  const members = useQuery({ queryKey: membersKey(id), queryFn: () => api<Member[]>(`/api/projects/${id}/members`) });
+  const [creatingTask, setCreatingTask] = useState(false);
+  const team = members.data?.map((m) => ({ id: m.userId, name: m.name })) ?? [];
 
   if (project.isPending) return <Loading />;
   if (isBlockingError(project)) {
@@ -43,20 +50,32 @@ export function ProjectLayout() {
 
   return (
     <>
-      <Link to="/proyectos" className="text-sm text-slate-500 hover:underline">
-        ← Proyectos
-      </Link>
+      <p className="text-[13px] text-ink-soft">
+        <Link to="/proyectos" className="hover:text-ink hover:underline">
+          Proyectos
+        </Link>{' '}
+        / {current.name}
+      </p>
       <div className="mt-1 mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">{current.name}</h1>
+        <h1 className="text-[26px] font-semibold text-ink">{current.name}</h1>
         <Badge>{LABELS.projectStatus[current.status]}</Badge>
+        <div className="ml-auto flex items-center gap-3">
+          <AvatarStack people={team} max={4} />
+          {isPm && (
+            <Button onClick={() => setCreatingTask(true)}>
+              <Plus size={16} aria-hidden="true" />
+              Nueva tarea
+            </Button>
+          )}
+        </div>
       </div>
-      <nav aria-label="Secciones del proyecto" className="mb-6 flex flex-wrap gap-1 border-b border-slate-200">
+      <nav aria-label="Secciones del proyecto" className="mb-6 flex flex-wrap gap-1 border-b border-line">
         {TABS.filter((tab) => isPm || !tab.pmOnly).map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
-              `-mb-px border-b-2 px-3 py-2 text-sm font-medium ${isActive ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`
+              `-mb-px flex min-h-11 items-center border-b-2 px-3.5 text-sm font-medium transition-colors duration-150 ${isActive ? 'border-link font-semibold text-link' : 'border-transparent text-ink-soft hover:text-ink'}`
             }
           >
             {tab.label}
@@ -64,6 +83,7 @@ export function ProjectLayout() {
         ))}
       </nav>
       <Outlet context={{ project: current, isPm } satisfies ProjectContext} />
+      {creatingTask && <TaskForm projectId={current.id} onClose={() => setCreatingTask(false)} />}
     </>
   );
 }

@@ -181,7 +181,7 @@ describe('detalle de la persona', () => {
     });
     await user.click(main.getByRole('button', { name: 'Ver detalle de Carlos Vega' }));
     const dialog = within(await screen.findByRole('dialog'));
-    expect(dialog.getByRole('link', { name: /Portal/ })).toHaveAttribute('href', '/proyectos/p1/resumen');
+    expect(dialog.getByRole('link', { name: 'Portal' })).toHaveAttribute('href', '/proyectos/p1/resumen');
     expect(dialog.getByText(/Diseño/)).toBeInTheDocument();
     expect(await dialog.findByRole('link', { name: /Permisos de obra/ })).toHaveAttribute('href', '/proyectos/p1/tareas/t1');
   });

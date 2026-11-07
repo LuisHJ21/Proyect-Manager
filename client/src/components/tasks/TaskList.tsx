@@ -1,43 +1,45 @@
 import { LABELS } from '@pm/shared';
+import { Link } from 'react-router-dom';
 import type { Task } from '../../api/types';
-import { Badge, EmptyState } from '../ui';
-import { PRIORITY_TONE, STATUS_TONE, WaitingNote } from './TaskCard';
+import { shortDate } from '../../lib/display';
+import { AvatarStack, Badge, EmptyState } from '../ui';
+import { PRIORITY_TONE, STATUS_TONE, taskPath, WaitingNote } from './TaskCard';
 
-export function TaskList({ tasks, onOpen, showProject, emptyText }: { tasks: Task[]; onOpen: (task: Task) => void; showProject?: boolean; emptyText: string }) {
+export function TaskList({ tasks, emptyText }: { tasks: Task[]; emptyText: string }) {
   if (tasks.length === 0) return <EmptyState>{emptyText}</EmptyState>;
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+    <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+      <table className="w-full min-w-[46rem] border-collapse text-left">
+        <thead className="text-xs font-semibold tracking-wide text-ink-soft uppercase">
           <tr>
-            <th className="px-4 py-2 font-medium">Tarea</th>
-            {showProject && <th className="px-4 py-2 font-medium">Proyecto</th>}
-            <th className="px-4 py-2 font-medium">Asignados</th>
-            <th className="px-4 py-2 font-medium">Estado</th>
-            <th className="px-4 py-2 font-medium">Prioridad</th>
-            <th className="px-4 py-2 font-medium">Vence</th>
-            <th className="px-4 py-2 font-medium">Avance</th>
+            <th scope="col" className="px-5 py-3 font-semibold">Tarea</th>
+            <th scope="col" className="px-3 py-3 font-semibold">Asignados</th>
+            <th scope="col" className="px-3 py-3 font-semibold">Estado</th>
+            <th scope="col" className="px-3 py-3 font-semibold">Prioridad</th>
+            <th scope="col" className="px-3 py-3 font-semibold">Vence</th>
+            <th scope="col" className="px-5 py-3 font-semibold">Avance</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody>
           {tasks.map((task) => (
-            <tr key={task.id}>
-              <td className="px-4 py-2 align-top">
-                <button type="button" onClick={() => onOpen(task)} className="cursor-pointer text-left font-medium text-slate-900 hover:text-indigo-700 hover:underline">
+            <tr key={task.id} className="border-t border-line transition-colors duration-150 hover:bg-raised">
+              <td className="px-5 py-3 align-top">
+                <Link to={taskPath(task)} className="font-semibold text-ink hover:underline">
                   {task.title}
-                </button>
+                </Link>
                 <WaitingNote task={task} />
               </td>
-              {showProject && <td className="px-4 py-2 align-top text-slate-600">{task.projectName}</td>}
-              <td className="px-4 py-2 align-top text-slate-600">{task.assignees.map((a) => a.name).join(', ') || '—'}</td>
-              <td className="px-4 py-2 align-top">
+              <td className="px-3 py-3 align-top">
+                <AvatarStack people={task.assignees} />
+              </td>
+              <td className="px-3 py-3 align-top">
                 <Badge tone={STATUS_TONE[task.status]}>{LABELS.taskStatus[task.status]}</Badge>
               </td>
-              <td className="px-4 py-2 align-top">
+              <td className="px-3 py-3 align-top">
                 <Badge tone={PRIORITY_TONE[task.priority]}>{LABELS.priority[task.priority]}</Badge>
               </td>
-              <td className="px-4 py-2 align-top whitespace-nowrap text-slate-600">{task.dueDate ?? '—'}</td>
-              <td className="px-4 py-2 align-top text-slate-600">{task.progress} %</td>
+              <td className="px-3 py-3 align-top whitespace-nowrap text-ink-nav">{shortDate(task.dueDate)}</td>
+              <td className="px-5 py-3 align-top text-ink-nav">{task.progress} %</td>
             </tr>
           ))}
         </tbody>

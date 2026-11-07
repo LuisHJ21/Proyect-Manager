@@ -28,8 +28,8 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
-  // Un inactivo solo aparece si ya estaba asignado, para poder conservarlo o quitarlo.
-  const selectable = members.data?.filter((m) => m.active !== false || task?.assignees.some((a) => a.id === m.userId)) ?? [];
+  // Solo se asigna a colaboradores. Un inactivo solo aparece si ya estaba asignado, para poder conservarlo o quitarlo.
+  const selectable = members.data?.filter((m) => m.role === 'COLLABORATOR' && (m.active !== false || task?.assignees.some((a) => a.id === m.userId))) ?? [];
 
   const toggleAssignee = (userId: string) =>
     setAssigneeIds((current) => (current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]));
@@ -97,7 +97,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
         </FormField>
         <fieldset className="sm:col-span-2">
           <legend className="mb-1 text-sm font-medium text-slate-700">Asignados</legend>
-          {members.data?.length === 0 && <p className="text-sm text-slate-500">Añade miembros al proyecto desde la pestaña Resumen.</p>}
+          {selectable.length === 0 && <p className="text-sm text-ink-soft">Añade colaboradores al proyecto desde la pestaña Resumen.</p>}
           <div className="flex flex-wrap gap-3">
             {selectable.map((member) => (
               <label key={member.userId} className="flex items-center gap-2 text-sm text-slate-700">

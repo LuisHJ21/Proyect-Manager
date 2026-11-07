@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, it } from 'vitest';
 import type { Task } from '../src/api/types';
 import { KanbanBoard, useMoveTask } from '../src/components/tasks/KanbanBoard';
 import { ToastProvider } from '../src/components/Toast';
@@ -20,6 +21,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   assignees: [{ id: 'c1', name: 'Carlos' }],
   predecessorIds: [],
   successorCount: 0,
+  commentCount: 0,
   waitingOn: [],
   warnings: [],
   ...over,
@@ -31,13 +33,15 @@ function setup(tasks: Task[], canMove: (t: Task) => boolean = () => true) {
   let move: ReturnType<typeof useMoveTask> | null = null;
   function Harness() {
     move = useMoveTask('p1');
-    return <KanbanBoard tasks={client.getQueryData<Task[]>(['project', 'p1', 'tasks']) ?? []} canMove={canMove} onMove={move} onOpen={vi.fn()} />;
+    return <KanbanBoard tasks={client.getQueryData<Task[]>(['project', 'p1', 'tasks']) ?? []} canMove={canMove} onMove={move} />;
   }
   render(
     <QueryClientProvider client={client}>
-      <ToastProvider>
-        <Harness />
-      </ToastProvider>
+      <MemoryRouter>
+        <ToastProvider>
+          <Harness />
+        </ToastProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return { client, move: () => move! };
@@ -51,7 +55,7 @@ describe('Kanban', () => {
     for (const name of ['Por hacer', 'En curso', 'Bloqueada', 'Hecha']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument();
     }
-    expect(screen.getByRole('button', { name: 'Construcción' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Construcción' })).toBeInTheDocument();
   });
 
   it('actualiza de inmediato y conserva el cambio si el servidor acepta', async () => {

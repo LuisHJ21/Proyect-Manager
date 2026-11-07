@@ -1,10 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { Task, TaskDetail } from '../src/api/types';
-import { TaskDrawer } from '../src/components/tasks/TaskDrawer';
 import { AttachmentList } from '../src/components/attachments/AttachmentList';
-import { apiError, collaborator, mockApi, pmUser, signedInAs, wrap } from './helpers';
+import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs, wrap } from './helpers';
 
 const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   id: 't1',
@@ -20,6 +19,7 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   assignees: [{ id: 'c1', name: 'Carlos' }],
   predecessorIds: [],
   successorCount: 0,
+  commentCount: 0,
   waitingOn: [],
   warnings: [],
   comments: [],
@@ -27,8 +27,13 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
 });
 const other: Task = { ...detail({ id: 't2', title: 'Diseño' }) };
 
+const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'AGILE', startDate: null, endDate: null };
+
 const routes = (task: TaskDetail, user: object = pmUser) => ({
   ...signedInAs(user),
+  'GET /api/projects': [],
+  'GET /api/me/tasks': [],
+  'GET /api/projects/p1': project,
   'GET /api/tasks/t1': task,
   'GET /api/tasks/t1/attachments': [],
   'GET /api/projects/p1/tasks': [task, other],
@@ -36,7 +41,7 @@ const routes = (task: TaskDetail, user: object = pmUser) => ({
   'GET /api/projects/p1/milestones': [],
 });
 
-const open = (onClose = vi.fn()) => wrap(<TaskDrawer projectId="p1" taskId="t1" onClose={onClose} />);
+const open = () => renderApp('/proyectos/p1/tareas/t1');
 
 describe('detalle de tarea', () => {
   it('muestra las advertencias de dependencias', async () => {
@@ -53,23 +58,22 @@ describe('detalle de tarea', () => {
     });
     open();
     const user = userEvent.setup();
-    await user.selectOptions(await screen.findByLabelText('Añadir predecesora'), 't2');
+    await screen.findByRole('option', { name: 'Diseño' });
+    await user.selectOptions(screen.getByLabelText('Añadir predecesora'), 't2');
     await user.click(screen.getByRole('button', { name: 'Añadir dependencia' }));
     expect(await screen.findByText(/Diseño → Construcción → Diseño/)).toBeInTheDocument();
   });
 
   it('avisa antes de eliminar una tarea de la que dependen otras', async () => {
-    const onClose = vi.fn();
     const api = mockApi({ ...routes(detail({ successorCount: 2 })), 'DELETE /api/tasks/t1': { ok: true } });
-    open(onClose);
+    open();
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Eliminar tarea' }));
-    const dialogs = await screen.findAllByRole('dialog');
-    const confirm = within(dialogs[dialogs.length - 1]!);
+    const confirm = within(await screen.findByRole('dialog'));
     expect(confirm.getByText(/2 tarea\(s\) dependen de esta/)).toBeInTheDocument();
     await user.click(confirm.getByRole('button', { name: 'Eliminar' }));
     await waitFor(() => expect(api.calls.some((c) => c.key === 'DELETE /api/tasks/t1')).toBe(true));
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(await screen.findByRole('group', { name: 'Vista de tareas' })).toBeInTheDocument();
   });
 
   it('el colaborador asignado actualiza avance y no ve controles de PM', async () => {
@@ -105,6 +109,38 @@ describe('detalle de tarea', () => {
     await user.click(screen.getByRole('button', { name: 'Comentar' }));
     expect(await screen.findByText('Falló')).toBeInTheDocument();
     expect(box).toHaveValue('Hola');
+  });
+});
+
+describe('página de detalle', () => {
+  it('tiene ruta de vuelta a las tareas', async () => {
+    mockApi(routes(detail()));
+    open();
+    expect(await screen.findByRole('link', { name: /Tareas del proyecto/ })).toHaveAttribute('href', '/proyectos/p1/tareas');
+  });
+
+  it('una tarea inexistente muestra "no encontrado" con enlace a las tareas', async () => {
+    mockApi({ ...routes(detail()), 'GET /api/tasks/t1': apiError(404, 'not_found', { message: 'Tarea no encontrada' }) });
+    open();
+    expect(await screen.findByText('Tarea no encontrada')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Tareas del proyecto/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+  });
+
+  it('el formulario lista solo colaboradores como asignables', async () => {
+    mockApi({
+      ...routes(detail()),
+      'GET /api/projects/p1/members': [
+        { userId: 'c1', name: 'Carlos', email: '', role: 'COLLABORATOR', projectRole: '', active: true },
+        { userId: 'pm2', name: 'Pedro', email: '', role: 'PM', projectRole: '', active: true },
+      ],
+    });
+    open();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Editar tarea' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(await dialog.findByLabelText('Carlos')).toBeInTheDocument();
+    expect(dialog.queryByLabelText('Pedro')).not.toBeInTheDocument();
   });
 });
 

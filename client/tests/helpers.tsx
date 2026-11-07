@@ -25,7 +25,7 @@ export function mockApi(routes: Record<string, Handler>) {
     const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
     calls.push({ key, body });
     const handler = routes[key];
-    const result = typeof handler === 'function' ? (handler as (b: unknown) => unknown)(body) : handler;
+    const result = await (typeof handler === 'function' ? (handler as (b: unknown) => unknown)(body) : handler);
     if (result === undefined) {
       return new Response(JSON.stringify({ error: { code: 'not_found', message: `Sin simular: ${key}` } }), { status: 404 });
     }

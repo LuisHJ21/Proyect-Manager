@@ -9,5 +9,5 @@ export function resolveDataDir(env: NodeJS.ProcessEnv, rootDir: string): string 
 }
 
 export function resolvePort(env: NodeJS.ProcessEnv): number {
-  return Number(env.PORT ?? 3000);
+  return Number(env.PORT ?? 3080);
 }

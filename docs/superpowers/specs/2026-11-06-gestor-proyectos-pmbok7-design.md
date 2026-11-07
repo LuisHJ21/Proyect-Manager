@@ -32,7 +32,7 @@ Un solo proceso Node atiende la API y entrega el frontend compilado. Todo el có
 
 - **Base de datos:** SQLite, con Prisma para el acceso y las migraciones. Las migraciones pendientes se aplican al arrancar.
 - **Almacenamiento:** la base de datos y los anexos viven dentro de la carpeta `data/`.
-- **Red:** el servidor escucha en `0.0.0.0`. El puerto predeterminado es 3000 y se cambia con la variable `PORT`. La carpeta de datos se cambia con `DATA_DIR`.
+- **Red:** el servidor escucha en `0.0.0.0`. El puerto predeterminado es 3080 y se cambia con la variable `PORT`. La carpeta de datos se cambia con `DATA_DIR`.
 - **Concurrencia:** si dos personas modifican el mismo registro, prevalece el último guardado.
 
 ## 3. Cuentas y sesiones

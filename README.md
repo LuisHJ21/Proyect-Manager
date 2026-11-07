@@ -21,7 +21,7 @@ npm run build
 npm start
 ```
 
-Al arrancar, la consola muestra las direcciones de acceso, por ejemplo `http://192.168.1.20:3000`. La base de datos se crea o actualiza sola.
+Al arrancar, la consola muestra las direcciones de acceso, por ejemplo `http://192.168.1.20:3080`. La base de datos se crea o actualiza sola.
 
 Para cambiar el puerto o la carpeta de datos, usa las variables de entorno `PORT` y `DATA_DIR`.
 
@@ -36,10 +36,10 @@ Para cambiar el puerto o la carpeta de datos, usa las variables de entorno `PORT
 Abre PowerShell como administrador y permite el puerto en el firewall:
 
 ```powershell
-New-NetFirewallRule -DisplayName "Gestor PMBOK" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
+New-NetFirewallRule -DisplayName "Gestor PMBOK" -Direction Inbound -Protocol TCP -LocalPort 3080 -Action Allow
 ```
 
-Si usas otro puerto, cambia `3000` por ese valor.
+Si usas otro puerto, cambia `3080` por ese valor.
 
 ## Respaldos
 
@@ -64,7 +64,7 @@ Para restaurar, detén el servidor y reemplaza la carpeta `data/` por la copia.
 npm run dev
 ```
 
-La interfaz queda en `http://localhost:5173` y la API en el puerto 3000.
+La consola indica la dirección de la interfaz (normalmente `http://localhost:5173`). La API usa el puerto 3080.
 
 ```bash
 npm test

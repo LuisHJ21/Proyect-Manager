@@ -6,11 +6,13 @@ import {
   LEVEL,
   MILESTONE_STATUS,
   OBJECTIVE_STATUS,
+  PRIORITY,
   PROJECT_STATUS,
   RISK_RESPONSE,
   RISK_STATUS,
   RISK_TYPE,
   ROLE,
+  TASK_STATUS,
   type RiskType,
 } from './enums';
 
@@ -196,3 +198,42 @@ export const updateExpenseSchema = z.object({
   date: calendarDateSchema.optional(),
   category: z.enum(EXPENSE_CATEGORY).optional(),
 });
+
+const taskCommonFields = {
+  description: z.string().optional(),
+  priority: z.enum(PRIORITY).optional(),
+  startDate: optionalDateSchema,
+  dueDate: optionalDateSchema,
+  milestoneId: z.string().nullable().optional(),
+};
+export const TASK_DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la fecha límite';
+export const createTaskSchema = z
+  .object({
+    title: required('Escribe el título'),
+    assigneeIds: z.array(z.string()).default([]),
+    ...taskCommonFields,
+  })
+  .superRefine((value, ctx) => {
+    if (!isDateOrderValid(value.startDate, value.dueDate)) {
+      ctx.addIssue({ code: 'custom', path: ['startDate'], message: TASK_DATE_ORDER_MESSAGE });
+    }
+  });
+const useProgressRoute = 'El estado y el avance se actualizan por separado';
+export const updateTaskSchema = z.object({
+  title: required('Escribe el título').optional(),
+  ...taskCommonFields,
+  status: z.undefined({ message: useProgressRoute }),
+  progress: z.undefined({ message: useProgressRoute }),
+});
+export const assigneesSchema = z.object({ userIds: z.array(z.string()) });
+export const taskProgressSchema = z.object({
+  status: z.enum(TASK_STATUS).optional(),
+  progress: z
+    .number({ message: 'Usa un valor de 0 a 100' })
+    .int('Usa un valor de 0 a 100')
+    .min(0, 'Usa un valor de 0 a 100')
+    .max(100, 'Usa un valor de 0 a 100')
+    .optional(),
+});
+export const commentSchema = z.object({ body: required('Escribe un comentario') });
+export const dependencySchema = z.object({ predecessorId: required('Selecciona una tarea') });

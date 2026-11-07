@@ -16,6 +16,16 @@ import {
   type RiskType,
 } from './enums';
 
+/** Mensajes en español para los casos sin un mensaje propio. */
+z.setErrorMap((issue, ctx) => {
+  if (issue.code === 'invalid_type' && (issue.received === 'undefined' || issue.received === 'null')) {
+    return { message: 'Este campo es obligatorio' };
+  }
+  if (issue.code === 'invalid_enum_value') return { message: 'Selecciona una opción válida' };
+  if (issue.code === 'invalid_type') return { message: 'Valor inválido' };
+  return { message: ctx.defaultError };
+});
+
 export const calendarDateSchema = z.string().refine(isValidCalendarDate, 'Fecha inválida');
 export const optionalDateSchema = calendarDateSchema.nullable().optional();
 

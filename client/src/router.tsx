@@ -7,6 +7,7 @@ import { UsersPage } from './pages/Users';
 import { CharterPage } from './pages/project/Charter';
 import { ProjectLayout, ProjectPmOnly } from './pages/project/ProjectLayout';
 import { ProjectListPage } from './pages/project/ProjectList';
+import { AttachmentsPage, BudgetPage, RisksPage, StakeholdersPage } from './pages/project/Registers';
 import { SummaryPage } from './pages/project/Summary';
 import { TasksPage } from './pages/project/Tasks';
 
@@ -25,10 +26,11 @@ export function AppRoutes() {
             <Route path="resumen" element={<SummaryPage />} />
             <Route path="acta" element={<CharterPage />} />
             <Route path="tareas" element={<TasksPage />} />
+            <Route path="anexos" element={<AttachmentsPage />} />
             <Route element={<ProjectPmOnly />}>
-              <Route path="interesados" element={null} />
-              <Route path="riesgos" element={null} />
-              <Route path="presupuesto" element={null} />
+              <Route path="interesados" element={<StakeholdersPage />} />
+              <Route path="riesgos" element={<RisksPage />} />
+              <Route path="presupuesto" element={<BudgetPage />} />
             </Route>
           </Route>
           <Route path="/mis-tareas" element={<MyTasksPage />} />

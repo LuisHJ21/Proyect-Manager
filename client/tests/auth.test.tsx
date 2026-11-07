@@ -70,7 +70,7 @@ describe('entrar y salir', () => {
     await user.type(screen.getByLabelText('Correo'), 'p@x.com');
     await user.type(screen.getByLabelText('Contraseña'), 'contraseña-larga');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    expect(await screen.findByRole('heading', { name: 'Panel general' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Paula/ })).toBeInTheDocument();
   });
 
   it('tras iniciar sesión entra a la aplicación', async () => {

@@ -92,6 +92,10 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <div className="rounded-lg border border-dashed border-control p-6 text-center text-sm text-ink-soft">{children}</div>;
 }
 
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded-xl bg-surface ${className}`} />;
+}
+
 export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
   const sizes = { sm: 'h-6 w-6 text-[10px]', md: 'h-7 w-7 text-[11px]', lg: 'h-8 w-8 text-xs' };
   return (

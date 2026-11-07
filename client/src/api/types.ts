@@ -2,6 +2,7 @@ import type {
   Approach,
   CharterStatus,
   ExpenseCategory,
+  Health,
   Level,
   MilestoneStatus,
   ObjectiveStatus,
@@ -25,9 +26,25 @@ export type Project = {
   startDate: string | null;
   endDate: string | null;
   progress?: number;
+  team?: PersonRef[];
   /** Solo para Project Manager. */
   plannedBudgetCents?: number;
   currency?: string;
+  health?: Health | null;
+  overdueTasks?: number;
+  highRisks?: number;
+  spentCents?: number;
+};
+
+export type Dashboard = {
+  totals: { activeProjects: number; atRiskProjects: number; overdueTasks: number; overdueProjects: number; highRisks: number; overBudgetProjects: number };
+  projects: { id: string; name: string; progress: number; endDate: string | null; health: Health | null; team: PersonRef[] }[];
+  attention: (
+    | { kind: 'task'; id: string; title: string; projectId: string; projectName: string; dueDate: string; score?: undefined }
+    | { kind: 'risk'; id: string; title: string; projectId: string; projectName: string; score: number; dueDate?: undefined }
+  )[];
+  workload: { userId: string; name: string; openTasks: number; overdueTasks: number }[];
+  upcomingMilestones: { id: string; name: string; dueDate: string; projectId: string; projectName: string }[];
 };
 
 export type Member = { userId: string; name: string; email: string; role: Role; projectRole: string; active?: boolean };

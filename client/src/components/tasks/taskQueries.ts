@@ -10,6 +10,8 @@ export async function refreshTaskData(queryClient: QueryClient, projectId: strin
     queryClient.invalidateQueries({ queryKey: ['project', projectId, 'indicators'] }),
     queryClient.invalidateQueries({ queryKey: ['my-tasks'] }),
     queryClient.invalidateQueries({ queryKey: ['projects'] }),
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+    queryClient.invalidateQueries({ queryKey: ['calendar'] }),
     ...(taskId ? [queryClient.invalidateQueries({ queryKey: taskKey(taskId) })] : []),
   ]);
 }

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomeRedirect, RequireAuth, RequireCollaborator, RequirePm } from './auth/RequireAuth';
 import { AppLayout } from './components/AppLayout';
 import { ChangePasswordPage, LoginPage, SetupPage } from './pages/AuthPages';
+import { DashboardPage } from './pages/Dashboard';
 import { MyTasksPage } from './pages/MyTasks';
 import { UsersPage } from './pages/Users';
 import { CharterPage } from './pages/project/Charter';
@@ -37,7 +38,7 @@ export function AppRoutes() {
             <Route path="/mis-tareas" element={<MyTasksPage />} />
           </Route>
           <Route element={<RequirePm />}>
-            <Route path="/panel" element={<h1 className="text-3xl font-semibold">Panel general</h1>} />
+            <Route path="/panel" element={<DashboardPage />} />
             <Route path="/usuarios" element={<UsersPage />} />
           </Route>
         </Route>

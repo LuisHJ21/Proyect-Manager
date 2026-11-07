@@ -12,8 +12,8 @@ export async function indicatorRoutes(app: FastifyInstance) {
     const [tasks, milestones] = await Promise.all([prisma.task.findMany({ where }), prisma.milestone.findMany({ where })]);
     const pmData = isPm
       ? {
-          plannedBudgetCents: project.plannedBudgetCents,
-          expenses: await prisma.expense.findMany({ where }),
+          plannedBudgetCents: Number(project.plannedBudgetCents),
+          expenses: (await prisma.expense.findMany({ where })).map((e) => ({ amountCents: Number(e.amountCents) })),
           risks: await prisma.risk.findMany({ where }),
         }
       : {};

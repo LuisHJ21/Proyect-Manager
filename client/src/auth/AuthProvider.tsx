@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from 'react';
-import { api, ApiError } from '../api/client';
+import { api, ApiError, isBlockingError } from '../api/client';
 import type { User } from '../api/types';
 
 type AuthContextValue = {
@@ -60,9 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user: me.data ?? null,
       isPm: me.data?.role === 'PM',
-      needsSetup: setup.data?.needsSetup ?? false,
-      isLoading: me.isPending || setup.isPending,
-      error: me.error ?? setup.error,
+      // Con una sesión abierta, la configuración inicial ya se hizo: su estado no puede bloquear la entrada.
+      needsSetup: !me.data && (setup.data?.needsSetup ?? false),
+      isLoading: me.isPending || (!me.data && setup.isPending),
+      error: me.data ? null : isBlockingError(me) ? me.error : isBlockingError(setup) ? setup.error : null,
       retry: () => {
         void me.refetch();
         void setup.refetch();

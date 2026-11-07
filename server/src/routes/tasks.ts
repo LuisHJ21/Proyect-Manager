@@ -47,12 +47,15 @@ export async function taskRoutes(app: FastifyInstance) {
     if (!milestone) throw fieldError('milestoneId', 'El hito debe pertenecer al proyecto');
   };
 
-  const assertAssignable = async (projectId: string, userIds: string[], field: string) => {
+  /** Quien ya está asignado puede seguirlo aunque se haya desactivado; solo se valida a los nuevos. */
+  const assertAssignable = async (projectId: string, userIds: string[], field: string, taskId?: string) => {
     const unique = [...new Set(userIds)];
+    const current = taskId ? await prisma.taskAssignee.findMany({ where: { taskId }, select: { userId: true } }) : [];
+    const added = unique.filter((id) => !current.some((a) => a.userId === id));
     const count = await prisma.projectMember.count({
-      where: { projectId, userId: { in: unique }, user: { active: true } },
+      where: { projectId, userId: { in: added }, user: { active: true } },
     });
-    if (count !== unique.length) throw fieldError(field, 'Solo se pueden asignar miembros activos del proyecto');
+    if (count !== added.length) throw fieldError(field, 'Solo se pueden asignar miembros activos del proyecto');
     return unique;
   };
 
@@ -100,12 +103,21 @@ export async function taskRoutes(app: FastifyInstance) {
 
   app.patch<TaskParams>('/api/tasks/:id', async (req) => {
     const task = await requireTaskPm(req, req.params.id);
-    const { status: _status, progress: _progress, ...input } = updateTaskSchema.parse(req.body);
+    const { status: _status, progress: _progress, assigneeIds, ...input } = updateTaskSchema.parse(req.body);
     const startDate = input.startDate === undefined ? task.startDate : input.startDate;
     const dueDate = input.dueDate === undefined ? task.dueDate : input.dueDate;
     if (!isDateOrderValid(startDate, dueDate)) throw fieldError('startDate', TASK_DATE_ORDER_MESSAGE);
     await assertMilestone(task.projectId, input.milestoneId);
-    await prisma.task.update({ where: { id: task.id }, data: input });
+    const userIds = assigneeIds && (await assertAssignable(task.projectId, assigneeIds, 'assigneeIds', task.id));
+    await prisma.$transaction([
+      prisma.task.update({ where: { id: task.id }, data: input }),
+      ...(userIds
+        ? [
+            prisma.taskAssignee.deleteMany({ where: { taskId: task.id } }),
+            prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),
+          ]
+        : []),
+    ]);
     return loadDto(task.id);
   });
 
@@ -120,7 +132,7 @@ export async function taskRoutes(app: FastifyInstance) {
   app.put<TaskParams>('/api/tasks/:id/assignees', async (req) => {
     const task = await requireTaskPm(req, req.params.id);
     const input = assigneesSchema.parse(req.body);
-    const userIds = await assertAssignable(task.projectId, input.userIds, 'userIds');
+    const userIds = await assertAssignable(task.projectId, input.userIds, 'userIds', task.id);
     await prisma.$transaction([
       prisma.taskAssignee.deleteMany({ where: { taskId: task.id } }),
       prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),

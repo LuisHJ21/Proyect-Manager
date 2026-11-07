@@ -61,6 +61,11 @@ export const updateUserSchema = z.object({
 });
 export const resetPasswordSchema = z.object({ temporaryPassword: passwordSchema });
 
+/** Mayor monto admitido, en centavos. Deja margen para sumar gastos sin perder precisión. */
+export const MAX_AMOUNT_CENTS = 99_999_999_999_999;
+const AMOUNT_TOO_LARGE = 'El monto es demasiado grande';
+const budgetAmount = z.number({ message: 'Monto inválido' }).int('Monto inválido').min(0, 'Monto inválido').max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE);
+
 const projectFields = {
   name: required('Escribe el nombre del proyecto'),
   description: z.string().default(''),
@@ -68,7 +73,7 @@ const projectFields = {
   approach: z.enum(APPROACH).default('PREDICTIVE'),
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
-  plannedBudgetCents: z.number({ message: 'Monto inválido' }).int('Monto inválido').min(0, 'Monto inválido').default(0),
+  plannedBudgetCents: budgetAmount.default(0),
   currency: z.string().trim().toUpperCase().length(3, 'Usa un código de 3 letras, por ejemplo USD').default('USD'),
 };
 export const DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la de fin';
@@ -85,7 +90,7 @@ export const updateProjectSchema = z.object({
   approach: z.enum(APPROACH).optional(),
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
-  plannedBudgetCents: z.number({ message: 'Monto inválido' }).int('Monto inválido').min(0, 'Monto inválido').optional(),
+  plannedBudgetCents: budgetAmount.optional(),
   currency: z.string().trim().toUpperCase().length(3, 'Usa un código de 3 letras, por ejemplo USD').optional(),
 });
 export const deleteProjectSchema = z.object({ confirmName: z.string() });
@@ -195,7 +200,7 @@ export const updateRiskSchema = z.object({
   status: z.enum(RISK_STATUS).optional(),
 });
 
-const amount = z.number({ message: 'Monto inválido' }).int('Monto inválido').positive('El monto debe ser mayor que cero');
+const amount = z.number({ message: 'Monto inválido' }).int('Monto inválido').positive('El monto debe ser mayor que cero').max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE);
 export const createExpenseSchema = z.object({
   description: required('Describe el gasto'),
   amountCents: amount,
@@ -232,6 +237,7 @@ const useProgressRoute = 'El estado y el avance se actualizan por separado';
 export const updateTaskSchema = z.object({
   title: required('Escribe el título').optional(),
   ...taskCommonFields,
+  assigneeIds: z.array(z.string()).optional(),
   status: z.undefined({ message: useProgressRoute }),
   progress: z.undefined({ message: useProgressRoute }),
 });

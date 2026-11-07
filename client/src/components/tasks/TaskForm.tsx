@@ -28,6 +28,9 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
+  // Un inactivo solo aparece si ya estaba asignado, para poder conservarlo o quitarlo.
+  const selectable = members.data?.filter((m) => m.active !== false || task?.assignees.some((a) => a.id === m.userId)) ?? [];
+
   const toggleAssignee = (userId: string) =>
     setAssigneeIds((current) => (current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]));
 
@@ -38,8 +41,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
     const fields = { title, description, priority, startDate: startDate || null, dueDate: dueDate || null, milestoneId: milestoneId || null };
     try {
       if (task) {
-        await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: fields });
-        await api(`/api/tasks/${task.id}/assignees`, { method: 'PUT', body: { userIds: assigneeIds } });
+        await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: { ...fields, assigneeIds } });
       } else {
         await api(`/api/projects/${projectId}/tasks`, { method: 'POST', body: { ...fields, assigneeIds } });
       }
@@ -97,15 +99,15 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
           <legend className="mb-1 text-sm font-medium text-slate-700">Asignados</legend>
           {members.data?.length === 0 && <p className="text-sm text-slate-500">Añade miembros al proyecto desde la pestaña Resumen.</p>}
           <div className="flex flex-wrap gap-3">
-            {members.data?.map((member) => (
+            {selectable.map((member) => (
               <label key={member.userId} className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={assigneeIds.includes(member.userId)} onChange={() => toggleAssignee(member.userId)} />
-                {member.name}
+                {member.active === false ? `${member.name} (inactivo)` : member.name}
               </label>
             ))}
           </div>
-          {(errors.fields.assigneeIds || errors.fields.userIds) && (
-            <p className="mt-1 text-xs text-red-700">{errors.fields.assigneeIds ?? errors.fields.userIds}</p>
+          {errors.fields.assigneeIds && (
+            <p className="mt-1 text-xs text-red-700">{errors.fields.assigneeIds}</p>
           )}
         </fieldset>
         <div className="flex justify-end gap-2 sm:col-span-2">

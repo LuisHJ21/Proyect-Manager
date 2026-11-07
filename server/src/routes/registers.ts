@@ -63,5 +63,6 @@ export async function registerRoutes(app: FastifyInstance) {
     createSchema: createExpenseSchema,
     updateSchema: updateExpenseSchema,
     readAccess: 'pm',
+    toDto: (expense) => ({ ...expense, amountCents: Number(expense.amountCents) }),
   });
 }

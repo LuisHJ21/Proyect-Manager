@@ -1,4 +1,4 @@
-const GROUPED = /^\d{1,3}(?:([.,])\d{3})(?:\1\d{3})*$/;
+const GROUPED = /^[1-9]\d{0,2}(?:([.,])\d{3})(?:\1\d{3})*$/;
 
 /** Convierte texto escrito por una persona a centavos, usando solo aritmética entera. */
 export function parseMoneyToCents(input: string): number | null {

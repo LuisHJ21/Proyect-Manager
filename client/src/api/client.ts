@@ -41,5 +41,14 @@ export async function api<T = unknown>(path: string, options: ApiOptions = {}): 
   throw new ApiError(response.status, error.code, error.message, error.fields, error.details);
 }
 
+/**
+ * Decide si un error debe reemplazar la pantalla. Un fallo al refrescar datos que ya se ven
+ * no debe borrar lo que la persona está escribiendo, salvo que el recurso ya no exista.
+ */
+export function isBlockingError(query: { isError: boolean; data: unknown; error: unknown }): boolean {
+  if (!query.isError) return false;
+  return query.data === undefined || (query.error instanceof ApiError && query.error.status === 404);
+}
+
 export const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'Ocurrió un error inesperado';

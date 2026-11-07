@@ -30,7 +30,7 @@ export type Project = {
   currency?: string;
 };
 
-export type Member = { userId: string; name: string; email: string; role: Role; projectRole: string };
+export type Member = { userId: string; name: string; email: string; role: Role; projectRole: string; active?: boolean };
 
 export type Charter = {
   justification: string;

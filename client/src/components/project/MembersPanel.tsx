@@ -88,7 +88,7 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
           {members.data.map((member) => (
             <li key={member.userId} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span>
-                <span className="font-medium text-slate-900">{member.name}</span>
+                <span className="font-medium text-slate-900">{member.active === false ? `${member.name} (inactivo)` : member.name}</span>
                 <span className="text-slate-500"> · {member.projectRole || LABELS.role[member.role]}</span>
               </span>
               {canEdit && (

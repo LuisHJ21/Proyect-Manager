@@ -1,7 +1,7 @@
 import { LABELS, TASK_STATUS, type TaskStatus } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage } from '../../api/client';
+import { api, errorMessage, isBlockingError } from '../../api/client';
 import type { TaskDetail, TaskWarning } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { AttachmentList } from '../attachments/AttachmentList';
@@ -99,7 +99,7 @@ export function TaskDrawer({ projectId, taskId, onClose }: { projectId: string; 
       </Modal>
     );
   }
-  if (detail.isError) {
+  if (isBlockingError(detail)) {
     return (
       <Modal title="Tarea" onClose={onClose} wide>
         <ErrorState message={errorMessage(detail.error)} onRetry={() => detail.refetch()} />
@@ -110,7 +110,7 @@ export function TaskDrawer({ projectId, taskId, onClose }: { projectId: string; 
     );
   }
 
-  const task = detail.data;
+  const task = detail.data!;
   const isAssignee = task.assignees.some((a) => a.id === user?.id);
   const canUpdate = isPm || isAssignee;
 

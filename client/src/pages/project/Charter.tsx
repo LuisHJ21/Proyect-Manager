@@ -1,7 +1,7 @@
 import { LABELS } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { api, errorMessage } from '../../api/client';
+import { api, errorMessage, isBlockingError } from '../../api/client';
 import type { Charter } from '../../api/types';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../../components/FormField';
@@ -146,6 +146,6 @@ export function CharterPage() {
   });
 
   if (charter.isPending) return <Loading />;
-  if (charter.isError) return <ErrorState message={errorMessage(charter.error)} onRetry={() => charter.refetch()} />;
-  return isPm ? <CharterForm projectId={project.id} charter={charter.data} /> : <CharterReadOnly charter={charter.data} />;
+  if (isBlockingError(charter)) return <ErrorState message={errorMessage(charter.error)} onRetry={() => charter.refetch()} />;
+  return isPm ? <CharterForm projectId={project.id} charter={charter.data!} /> : <CharterReadOnly charter={charter.data!} />;
 }

@@ -8,11 +8,12 @@ type MemberParams = { id: string; userId: string };
 export async function memberRoutes(app: FastifyInstance) {
   const { prisma } = app;
 
-  const toDto = (m: { userId: string; projectRole: string; user: { name: string; email: string; role: string } }) => ({
+  const toDto = (m: { userId: string; projectRole: string; user: { name: string; email: string; role: string; active: boolean } }) => ({
     userId: m.userId,
     name: m.user.name,
     email: m.user.email,
     role: m.user.role,
+    active: m.user.active,
     projectRole: m.projectRole,
   });
 

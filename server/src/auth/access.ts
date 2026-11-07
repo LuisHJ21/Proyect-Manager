@@ -24,5 +24,5 @@ export async function requireProjectPm(req: FastifyRequest, projectId: string): 
 
 export function toProjectDto(project: Project, isPm: boolean) {
   const { plannedBudgetCents, currency, ...visible } = project;
-  return isPm ? { ...visible, plannedBudgetCents, currency } : visible;
+  return isPm ? { ...visible, plannedBudgetCents: Number(plannedBudgetCents), currency } : visible;
 }

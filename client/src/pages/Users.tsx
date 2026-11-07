@@ -1,7 +1,7 @@
 import { LABELS, ROLE, type Role } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { api, errorMessage } from '../api/client';
+import { api, errorMessage, isBlockingError } from '../api/client';
 import type { User } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { ConfirmDialog, Modal } from '../components/ConfirmDialog';
@@ -131,7 +131,7 @@ export function UsersPage() {
   });
 
   if (users.isPending) return <Loading />;
-  if (users.isError) return <ErrorState message={errorMessage(users.error)} onRetry={() => users.refetch()} />;
+  if (isBlockingError(users)) return <ErrorState message={errorMessage(users.error)} onRetry={() => users.refetch()} />;
 
   return (
     <>
@@ -154,7 +154,7 @@ export function UsersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {users.data.map((target) => (
+            {users.data?.map((target) => (
               <tr key={target.id}>
                 <td className="py-2 pr-4 font-medium text-slate-900">{target.name}</td>
                 <td className="py-2 pr-4 text-slate-600">{target.email}</td>

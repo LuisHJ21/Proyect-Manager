@@ -43,7 +43,9 @@ export async function authRoutes(app: FastifyInstance) {
 
     const retryAfterSeconds = limiter.retryAfterSeconds(key, now);
     if (retryAfterSeconds > 0) {
-      throw new AppError(429, 'too_many_attempts', 'Demasiados intentos. Inténtalo de nuevo más tarde.', {
+      const minutes = Math.ceil(retryAfterSeconds / 60);
+      const wait = minutes === 1 ? '1 minuto' : `${minutes} minutos`;
+      throw new AppError(429, 'too_many_attempts', `Demasiados intentos. Inténtalo de nuevo en ${wait}.`, {
         details: { retryAfterSeconds },
       });
     }

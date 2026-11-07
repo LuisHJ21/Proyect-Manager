@@ -48,7 +48,7 @@ model Project {
   approach           String   @default("PREDICTIVE")
   startDate          String?
   endDate            String?
-  plannedBudgetCents Int      @default(0)
+  plannedBudgetCents BigInt   @default(0)
   currency           String   @default("USD")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -255,7 +255,7 @@ model Expense {
   id          String   @id @default(cuid())
   projectId   String
   description String
-  amountCents Int
+  amountCents BigInt
   date        String
   category    String
   createdAt   DateTime @default(now())

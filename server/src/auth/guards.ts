@@ -10,7 +10,7 @@ declare module 'fastify' {
   }
 }
 
-const ALLOWED_DURING_PASSWORD_CHANGE = new Set(['/api/auth/me', '/api/auth/logout', '/api/auth/change-password']);
+const ALLOWED_DURING_PASSWORD_CHANGE = new Set(['/api/setup/status', '/api/auth/me', '/api/auth/logout', '/api/auth/change-password']);
 
 export function registerAuthHook(app: FastifyInstance) {
   app.decorateRequest('user', null);

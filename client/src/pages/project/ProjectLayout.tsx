@@ -1,7 +1,7 @@
 import { LABELS } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom';
-import { api, ApiError, errorMessage } from '../../api/client';
+import { api, ApiError, errorMessage, isBlockingError } from '../../api/client';
 import type { Project } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { ErrorState, Loading } from '../../components/ErrorState';
@@ -29,7 +29,7 @@ export function ProjectLayout() {
   const project = useQuery({ queryKey: projectKey(id), queryFn: () => api<Project>(`/api/projects/${id}`) });
 
   if (project.isPending) return <Loading />;
-  if (project.isError) {
+  if (isBlockingError(project)) {
     const isNotFound = project.error instanceof ApiError && project.error.status === 404;
     return (
       <ErrorState
@@ -39,14 +39,16 @@ export function ProjectLayout() {
     );
   }
 
+  const current = project.data!;
+
   return (
     <>
       <Link to="/proyectos" className="text-sm text-slate-500 hover:underline">
         ← Proyectos
       </Link>
       <div className="mt-1 mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">{project.data.name}</h1>
-        <Badge>{LABELS.projectStatus[project.data.status]}</Badge>
+        <h1 className="text-2xl font-semibold text-slate-900">{current.name}</h1>
+        <Badge>{LABELS.projectStatus[current.status]}</Badge>
       </div>
       <nav aria-label="Secciones del proyecto" className="mb-6 flex flex-wrap gap-1 border-b border-slate-200">
         {TABS.filter((tab) => isPm || !tab.pmOnly).map((tab) => (
@@ -61,7 +63,7 @@ export function ProjectLayout() {
           </NavLink>
         ))}
       </nav>
-      <Outlet context={{ project: project.data, isPm } satisfies ProjectContext} />
+      <Outlet context={{ project: current, isPm } satisfies ProjectContext} />
     </>
   );
 }

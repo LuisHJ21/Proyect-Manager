@@ -13,7 +13,7 @@ describe('parseMoneyToCents', () => {
     expect(parseMoneyToCents('0')).toBe(0);
   });
   it('rechaza valores negativos o mal formados', () => {
-    for (const bad of ['-5', 'abc', '', '1,2,3', '1.2345', '1,234,50', '1.', ',5']) {
+    for (const bad of ['-5', 'abc', '', '1,2,3', '1.2345', '1,234,50', '1.', ',5', '0.500', '0,500', '01.234']) {
       expect(parseMoneyToCents(bad), bad).toBeNull();
     }
   });

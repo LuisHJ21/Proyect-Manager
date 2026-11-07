@@ -5,6 +5,10 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import { registerAuthHook } from './auth/guards';
 import { errorHandler } from './errors';
 import { authRoutes } from './routes/auth';
+import { charterRoutes } from './routes/charter';
+import { memberRoutes } from './routes/members';
+import { projectRoutes } from './routes/projects';
+import { userRoutes } from './routes/users';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -34,6 +38,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(cookie);
   registerAuthHook(app);
   await authRoutes(app);
+  await userRoutes(app);
+  await projectRoutes(app);
+  await memberRoutes(app);
+  await charterRoutes(app);
 
   if (opts.clientDist) {
     await app.register(fastifyStatic, { root: opts.clientDist, wildcard: false });

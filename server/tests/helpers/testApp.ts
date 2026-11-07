@@ -1,10 +1,13 @@
 import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PrismaClient } from '@prisma/client';
+import type { Role } from '@pm/shared';
+import { PrismaClient, type User } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { inject } from 'vitest';
 import { buildApp } from '../../src/app';
+import { hashPassword } from '../../src/auth/passwords';
+import { createSession } from '../../src/auth/sessions';
 import { databaseUrl } from '../../src/config';
 
 type Headers = Record<string, string>;
@@ -30,6 +33,7 @@ export async function createTestApp(opts: { clientDist?: string } = {}) {
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(dataDir) } } });
 
   let current = new Date('2026-11-06T12:00:00');
+  let userCount = 0;
   const app = await buildApp({ prisma, dataDir, now: () => current, clientDist: opts.clientDist });
 
   return {
@@ -43,6 +47,35 @@ export async function createTestApp(opts: { clientDist?: string } = {}) {
     },
     anon: httpClient(app),
     withCookie: (cookie: string) => httpClient(app, cookie),
+    async makeUser(input: {
+      role: Role;
+      name?: string;
+      email?: string;
+      password?: string;
+      active?: boolean;
+      mustChangePassword?: boolean;
+    }) {
+      userCount += 1;
+      return prisma.user.create({
+        data: {
+          role: input.role,
+          name: input.name ?? `Usuario ${userCount}`,
+          email: input.email ?? `usuario${userCount}@x.com`,
+          passwordHash: input.password ? await hashPassword(input.password) : 'sin-contraseña',
+          active: input.active ?? true,
+          mustChangePassword: input.mustChangePassword ?? false,
+        },
+      });
+    },
+    /** Cliente con una sesión creada directamente, sin pasar por el inicio de sesión. */
+    as(user: User): HttpClient {
+      const lazyCookie = createSession(prisma, user.id, current).then((token) => `pm_session=${token}`);
+      const wrap =
+        (method: keyof HttpClient) =>
+        async (url: string, body?: unknown, headers?: Headers) =>
+          httpClient(app, await lazyCookie)[method](url, body, headers);
+      return { get: wrap('get'), post: wrap('post'), put: wrap('put'), patch: wrap('patch'), delete: wrap('delete') } as HttpClient;
+    },
     async close() {
       await app.close();
       await prisma.$disconnect();

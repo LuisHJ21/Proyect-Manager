@@ -2,7 +2,9 @@ import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import type { PrismaClient } from '@prisma/client';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { registerAuthHook } from './auth/guards';
 import { errorHandler } from './errors';
+import { authRoutes } from './routes/auth';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -30,6 +32,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   app.setErrorHandler(errorHandler);
   await app.register(cookie);
+  registerAuthHook(app);
+  await authRoutes(app);
 
   if (opts.clientDist) {
     await app.register(fastifyStatic, { root: opts.clientDist, wildcard: false });

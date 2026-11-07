@@ -1,19 +1,21 @@
-# Rediseño del panel de administrador: especificación de diseño
+# Rediseño de la app y panel de administrador: especificación de diseño
 
 **Fecha:** 2026-11-07
 **Estado:** pendiente de revisión
 **Amplía:** `docs/superpowers/specs/2026-11-06-gestor-proyectos-pmbok7-design.md`
+**Diseño de referencia:** "App de gestión de proyectos", https://claude.ai/artifact/J3ogkZueoEghGDjbqnWwnk
 
 ## 1. Propósito
 
-La vista del Project Manager (PM) se percibe como básica: no hay una vista general, el aspecto es simple, la lista de proyectos da poca información y la pantalla de usuarios es limitada. Este rediseño añade un panel general, un sistema de diseño nuevo y pantallas de Proyectos y Usuarios más completas.
+La vista del Project Manager (PM) se percibe como básica. Este rediseño aplica a toda la app el diseño de referencia con una paleta oscura, y añade un panel general, Proyectos y Usuarios más completos, y un calendario. Se mantienen las funciones ya establecidas: del diseño de referencia se toman el aspecto y la estructura, no sus funciones nuevas.
 
 ### Criterios de éxito
 
-1. Al entrar, el PM ve en una pantalla el estado de todos sus proyectos activos y qué requiere atención.
+1. Al entrar, el PM ve en una pantalla el estado de sus proyectos activos y qué requiere atención.
 2. El PM puede buscar, filtrar, ordenar y comparar proyectos y usuarios.
 3. El PM puede editar el nombre y el rol de un usuario, y ver sus proyectos y tareas abiertas.
-4. Un colaborador no recibe ningún dato adicional de presupuesto, riesgos ni usuarios.
+4. Cada rol puede ver sus actividades por fecha en un calendario.
+5. Un colaborador no recibe ningún dato adicional de presupuesto, riesgos ni usuarios.
 
 ### Restricciones
 
@@ -21,41 +23,77 @@ La vista del Project Manager (PM) se percibe como básica: no hay una vista gene
 - La app funciona en red local sin depender de internet.
 - La interfaz sigue en español.
 
-## 2. Sistema de diseño
+## 2. Regla nueva: el PM no tiene tareas asignadas
 
-Definido con la skill ui-ux-pro-max, partiendo de la dirección elegida: barra lateral oscura con acentos de color.
+Las tareas se asignan solo a usuarios con rol Colaborador.
+
+- **Asignar:** el servidor rechaza con 400 asignar a quien no sea un colaborador activo y miembro del proyecto. Un colaborador ya asignado que se haya desactivado puede conservarse.
+- **Formulario de tarea:** la lista de asignados no incluye a los PM, aunque sean miembros.
+- **Mis tareas:** no aparece en la navegación del PM. Si un PM abre `/mis-tareas`, vuelve a su inicio.
+- **Cambiar un colaborador a PM:** la app avisa cuántas tareas abiertas tiene asignadas y, al confirmar, se quitan todas sus asignaciones en la misma operación. Esas tareas quedan sin esa persona.
+- **Datos existentes:** una migración elimina las asignaciones actuales de usuarios con rol PM.
+- **Sin cambios:** el PM sigue creando y editando tareas, y actualizando el estado y avance de cualquiera.
+
+El rol se sigue llamando **Colaborador** en pantalla.
+
+## 3. Sistema de diseño
+
+Basado en el diseño de referencia, con paleta oscura como único tema. No hay selector de tema.
 
 | Elemento | Valor |
 |---|---|
-| Estilo | Panel denso de datos: filas compactas, cifras en columnas, encabezados de tabla fijos |
-| Barra lateral | `#0F172A`, elemento activo `#1E293B` con marca `#818CF8`, ancho 200 px |
-| Color principal | `#4F46E5` con texto blanco |
-| Fondo de página | `#F5F3FF` |
-| Tarjetas | Blanco con borde `#E0E7FF` |
-| Texto | `#1E1B4B`, secundario `#475569` |
-| Estados | Bien `#047857`, atención `#B45309`, peligro `#B91C1C` |
-| Tipografía | Plus Jakarta Sans, incluida en la app con `@fontsource-variable/plus-jakarta-sans` |
-| Cifras | `font-variant-numeric: tabular-nums` |
+| Fondo de página | `#0F1117` |
+| Barra lateral | `#0A0C11` |
+| Tarjetas y campos | `#181B23` |
+| Bordes | `#2A2F3A`; controles `#3F4552` |
+| Texto | `#F4F4F5`; secundario `#A1A1AA`; barra lateral `#D4D4D8` |
+| Botón principal | `#3B5BDB` con texto blanco |
+| Enlaces y elemento activo | Texto `#A9BBFF`; fondo activo `#1E2747` |
+| Salud En riesgo | Fondo `#451A03`, texto `#FDBA8C` |
+| Salud Atención | Fondo `#422006`, texto `#FDE68A` |
+| Salud Al día | Fondo `#064E3B`, texto `#A7F3D0` |
+| Títulos | Space Grotesk, peso 600 |
+| Texto general | Inter, 14 px |
+| Radio | Tarjetas 12 px; controles 8 px; etiquetas y filtros redondos |
 | Iconos | `lucide-react`, nunca emojis |
 
-Los colores se definen como variables de tema de Tailwind, y los componentes usan esos nombres en lugar de valores directos.
+- Las fuentes se incluyen en la app con `@fontsource-variable/inter` y `@fontsource-variable/space-grotesk`.
+- Los colores se definen como variables de tema de Tailwind, y los componentes usan esos nombres.
+- Cada proyecto recibe un color fijo calculado de su identificador, de esta lista: `#6C8CFF`, `#A78BFA`, `#F97316`, `#2DD4BF`, `#EAB308`. No se puede elegir y no se guarda.
 
-### Reglas de accesibilidad y movimiento
+### Accesibilidad y movimiento
 
 - Contraste mínimo de 4.5:1 en texto normal.
-- El estado nunca se indica solo con color: lleva icono y texto.
+- El estado nunca se indica solo con color: lleva icono o texto.
 - Foco visible en todos los controles.
-- Filas de tabla de al menos 44 px.
+- Filas de tabla y controles principales de al menos 44 px; filtros de al menos 34 px.
 - Transiciones de 150 a 200 ms solo en color y opacidad, desactivadas con `prefers-reduced-motion`.
 - Los encabezados ordenables usan `aria-sort`.
+- Cifras con `font-variant-numeric: tabular-nums`.
 
-### Alcance visual
+El tema oscuro se aplica a toda la app: acceso, formularios, ventanas, Kanban, cronograma y pestañas de proyecto.
 
-La barra lateral, la tipografía y los colores se aplican a toda la app. Las pestañas internas de cada proyecto y **Mis tareas** cambian de aspecto, pero no de estructura ni de contenido.
+## 4. Estructura común
 
-Se descartan de la guía el patrón de página comercial, las animaciones al desplazarse, la exportación de datos y las acciones masivas.
+### Barra lateral (desde 768 px)
 
-## 3. Reglas de negocio
+- Logotipo y nombre "Gestor PMBOK".
+- **PM:** Inicio, Calendario, Proyectos, Usuarios.
+- **Colaborador:** Mis tareas con contador de tareas abiertas, Calendario, Proyectos.
+- Lista "Proyectos activos" con el cuadrado de color de cada uno y desplazamiento propio. Un colaborador ve solo los suyos.
+- Tarjeta de la persona con nombre, rol, cambio de contraseña y cierre de sesión.
+
+### Barra superior
+
+Contiene "Nuevo proyecto", solo para el PM.
+
+### Móvil (menos de 768 px)
+
+- La barra lateral se sustituye por navegación inferior con los mismos destinos principales de cada rol.
+- Las tablas y el Kanban se desplazan horizontalmente dentro de su caja.
+- El calendario pasa a una lista por día.
+
+## 5. Reglas de negocio
 
 **Proyecto activo:** estado *Planificación*, *En ejecución* o *En pausa*.
 
@@ -75,80 +113,118 @@ Se evalúa en este orden, y gana la primera condición que se cumple:
 | **Atención** | Hay al menos una tarea vencida, o al menos un riesgo alto, o el gasto es igual o mayor al 90 % del presupuesto |
 | **Al día** | Ninguna de las anteriores |
 
-Un proyecto con presupuesto 0 no activa ninguna condición de presupuesto. Los umbrales son fijos.
+Un proyecto con presupuesto 0 no activa ninguna condición de presupuesto. Los umbrales son fijos. Los proyectos cerrados y cancelados no tienen salud: la API devuelve `null`.
 
-Los proyectos cerrados y cancelados no tienen salud: la API devuelve `null`.
+## 6. Pantallas
 
-## 4. Pantallas
+### Inicio del PM (`/panel`)
 
-### Panel general (`/panel`, solo PM)
+Solo para PM. Un colaborador que la abre vuelve a `/mis-tareas`. Todo se calcula con proyectos activos.
 
-Es la pantalla de inicio del PM.
-
+- **Encabezado:** fecha y saludo según la hora local con el primer nombre: "Buenos días" hasta las 11:59, "Buenas tardes" hasta las 18:59, y "Buenas noches" después.
 - **Indicadores:**
   - Proyectos activos, con cuántos están en riesgo.
   - Tareas vencidas, con en cuántos proyectos.
   - Riesgos altos.
   - Proyectos sobre presupuesto.
-- **Color de los indicadores:** refleja el estado real. Vencidas y sobre presupuesto usan peligro si son más de 0; riesgos altos usa atención si es más de 0; con valor 0 usan el color de bien.
-- **Salud de los proyectos:** nombre, avance, fecha de fin y salud. Orden: *En riesgo*, *Atención*, *Al día*; dentro de cada grupo, por fecha de fin ascendente, con las fechas vacías al final. Cada fila abre el resumen del proyecto.
-- **Requiere atención:** máximo 8 elementos. Primero las tareas vencidas, de la más antigua a la más reciente, y después los riesgos altos, de mayor a menor puntaje. Cada elemento lleva a la pestaña de tareas o de riesgos de su proyecto.
-- **Carga del equipo:** usuarios activos con tareas abiertas en proyectos activos, con abiertas y vencidas, de mayor a menor número de abiertas. La barra es proporcional a quien tiene más.
-- **Próximos hitos:** pendientes de proyectos activos con fecha de hoy a 14 días después, por fecha ascendente.
+  - La nota inferior usa el color de atención si el valor es mayor que 0, y el de bien si es 0, salvo en proyectos activos, que usa texto secundario.
+- **Salud de los proyectos:** nombre, equipo, avance, salud y fin. Orden: *En riesgo*, *Atención*, *Al día*; dentro de cada grupo, por fecha de fin ascendente, con las fechas vacías al final. Cada fila abre el resumen del proyecto.
+- **Carga del equipo:** colaboradores activos con tareas abiertas, con abiertas y vencidas, de mayor a menor número de abiertas. La barra es proporcional a quien tiene más.
+- **Requiere atención (columna derecha):** máximo 8 elementos. Primero las tareas vencidas, de la más antigua a la más reciente, y después los riesgos altos, de mayor a menor puntaje. Una tarea abre su detalle y un riesgo abre la pestaña de riesgos del proyecto.
+- **Próximos hitos (columna derecha):** pendientes con fecha de hoy a 14 días después, por fecha ascendente.
 
-Todo se calcula solo con proyectos activos.
+### Calendario (`/calendario`)
+
+Para ambos roles. Muestra un mes, de lunes a domingo.
+
+- **Navegación:** mes anterior, mes siguiente y Hoy. El día actual está destacado.
+- **Tareas:** aparecen solo en su **fecha límite**, con el color de su proyecto. Las vencidas llevan icono y color de atención.
+- **Hitos:** aparecen en su fecha, con icono propio.
+- **Día con más de 3 elementos:** muestra 3 y "+N más", que abre la lista completa de ese día.
+- **Al hacer clic:** una tarea abre su detalle y un hito abre el resumen de su proyecto.
+- **Filtros:** proyecto; persona (solo PM); Todas, Solo tareas o Solo hitos; y "Mostrar terminadas", desactivado al inicio. Las terminadas se ven tachadas.
+- **Tareas sin fecha:** un contador "N tareas sin fecha" abre una lista con enlace a cada una.
+- **Móvil:** lista de los días con actividades del mes.
+
+**Qué ve cada rol, solo de proyectos activos:**
+
+| Rol | Tareas | Hitos |
+|---|---|---|
+| PM | Todas | Todos |
+| Colaborador | Las que tiene asignadas | Los de sus proyectos |
+
+### Mis tareas (`/mis-tareas`, solo colaborador)
+
+Tarjetas agrupadas en *Vencidas*, *Hoy*, *Próximas* y *Sin fecha*, cada una con proyecto y fecha.
+
+- **Casilla:** marcarla pasa la tarea a *Hecha*; desmarcarla la pasa a *En curso*. El bloqueo por dependencias sigue aplicando: si se rechaza, la casilla vuelve a su estado y se muestra el motivo.
+- **Terminadas:** ocultas hasta activar "Mostrar terminadas".
+- Al hacer clic en el título se abre el detalle.
 
 ### Proyectos (`/proyectos`)
 
-Tabla con encabezado fijo. Por debajo de 1024 px, la tabla se desplaza horizontalmente.
+Tabla con encabezado fijo.
 
 **Para el PM:**
 
-- **Columnas:** proyecto y estado, salud, avance, presupuesto (barra y "gastado de planificado" con su moneda), fin, equipo y alertas.
+- **Columnas:** proyecto con cuadrado de color y estado, salud, avance, presupuesto (barra y "gastado de planificado" con su moneda), fin, equipo y alertas.
 - **Barra de presupuesto:** usa el color de atención desde el 90 %.
 - **Alertas:** tareas vencidas y riesgos altos, o "Sin alertas".
 - **Equipo:** iniciales de hasta 2 personas y "+N" por el resto.
 - **Búsqueda:** por nombre, sin distinguir mayúsculas ni acentos.
-- **Filtros:** estado (*Activos* como valor inicial, *Todos*, o cada estado individual) y salud (*Todas* como valor inicial, o cada salud).
-- **Orden:** al hacer clic en el encabezado de salud (predeterminado), proyecto, avance o fin.
+- **Filtros:** estado (*Activos* como valor inicial, *Todos*, o cada estado) y salud (*Todas* como valor inicial, o cada salud).
+- **Orden:** con clic en el encabezado de salud (predeterminado), proyecto, avance o fin.
 - **Contador:** "N de M proyectos".
 
-**Para el colaborador:**
-
-- Ve solo sus proyectos, con las columnas proyecto y estado, avance, fin y equipo.
-- Filtro de estado y búsqueda, sin salud.
-- Orden predeterminado por proyecto.
+**Para el colaborador:** solo sus proyectos, con columnas proyecto y estado, avance, fin y equipo; filtro de estado y búsqueda; orden predeterminado por proyecto.
 
 Cada fila abre el resumen del proyecto.
 
 ### Usuarios (`/usuarios`, solo PM)
 
-- **Columnas:** persona (iniciales, nombre y correo), rol, estado, proyectos, tareas ("N abiertas" y "N vencidas") y acciones.
+- **Columnas:** persona (iniciales, nombre y correo), rol, estado, proyectos, tareas ("N abiertas" y "N vencidas") y acciones. Las tareas de un PM muestran "No aplica".
 - **Proyectos:** hasta 2 nombres y "y N más". Un PM sin membresías muestra "Ve todos los proyectos".
 - **Búsqueda:** por nombre o correo, sin distinguir mayúsculas ni acentos.
 - **Filtros:** rol (*Todos* como valor inicial) y estado (*Activos* como valor inicial, *Inactivos* o *Todos*).
 - **Contador:** "N de M usuarios".
 - **Editar:** nombre y rol, con `PATCH /api/users/:id`. El correo no se puede cambiar.
 - **Menú "Más":** restablecer contraseña y activar o desactivar.
-- **Avisos sobre la propia cuenta:** quitarse el rol de PM o desactivarse pide una confirmación que explica la consecuencia. Debe seguir quedando al menos un PM activo.
-- **Detalle:** al hacer clic en la fila se abre un panel con sus proyectos, su rol en cada uno, y sus tareas abiertas ordenadas por fecha límite. Cada proyecto y tarea enlaza a su proyecto.
+- **Avisos:** quitarse el rol de PM o desactivarse pide una confirmación que explica la consecuencia; cambiar un colaborador a PM avisa de sus asignaciones. Debe seguir quedando al menos un PM activo.
+- **Detalle:** al hacer clic en la fila se abre un panel con sus proyectos, su rol en cada uno, y sus tareas abiertas ordenadas por fecha límite, con enlaces.
 
-Los filtros de Proyectos y Usuarios vuelven a su valor inicial al salir de la pantalla.
+Los filtros de Proyectos, Usuarios y Calendario vuelven a su valor inicial al salir de la pantalla.
 
-### Navegación
+### Proyecto (`/proyectos/:id/...`)
 
-Barra lateral con Panel (solo PM), Proyectos, Mis tareas y Usuarios (solo PM), más la persona, el cambio de contraseña y cerrar sesión. Un colaborador que abre `/panel` vuelve a su inicio, **Mis tareas**.
+- **Encabezado:** ruta "Proyectos / nombre", título, estado, iniciales del equipo y "Nueva tarea" para el PM.
+- **Pestañas:** Resumen, Acta, Tareas, Anexos, y para el PM Interesados, Riesgos y Presupuesto.
+- Su contenido no cambia, salvo lo descrito aquí y el aspecto.
 
-## 5. API
+### Tareas de un proyecto
 
-No se añaden tablas ni migraciones.
+- Selector de vista: Tablero, Lista y Cronograma, guardado en `?vista=`. El valor anterior `kanban` se reemplaza por `tablero`.
+- **Filtros rápidos en Tablero y Lista:** *Todas*, *Asignadas a mí* (solo colaborador), *Prioridad alta* y *Vencen esta semana* (de hoy a 7 días después), con contador de tareas. Son la única función añadida por el diseño de referencia.
+- **Tablero:** las 4 columnas actuales (*Por hacer*, *En curso*, *Bloqueada*, *Hecha*) con punto de color y contador.
+- **Tarjeta:** prioridad, título, aviso de espera, barra de avance si es mayor que 0, fecha límite, número de comentarios e iniciales de los asignados.
+
+### Detalle de tarea (`/proyectos/:id/tareas/:taskId`)
+
+Página completa que sustituye a la ventana emergente. El botón de volver y la ruta llevan a las tareas del proyecto.
+
+- **Columna principal:** título, descripción, advertencias, comentarios y formulario para comentar.
+- **Columna derecha:** estado y avance editables según permisos; asignados; fechas; prioridad; hito; predecesoras; anexos.
+- **Acciones del PM:** editar y eliminar, con los mismos avisos actuales.
+
+## 7. API
+
+La única migración elimina las asignaciones de usuarios con rol PM.
 
 ### `GET /api/dashboard` (solo PM)
 
 ```
 {
   totals: { activeProjects, atRiskProjects, overdueTasks, overdueProjects, highRisks, overBudgetProjects },
-  projects: [{ id, name, progress, endDate, health }],
+  projects: [{ id, name, progress, endDate, health, team: [{ id, name }] }],
   attention: [
     { kind: 'task', id, title, projectId, projectName, dueDate },
     { kind: 'risk', id, title, projectId, projectName, score }
@@ -157,6 +233,20 @@ No se añaden tablas ni migraciones.
   upcomingMilestones: [{ id, name, dueDate, projectId, projectName }]
 }
 ```
+
+### `GET /api/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+Para ambos roles, con el alcance de la sección 6. Las fechas son obligatorias, `from` no puede ser posterior a `to`, y el rango máximo es de 62 días; si no, responde 400 por campo.
+
+```
+{
+  tasks: [{ id, title, dueDate, status, projectId, projectName, assignees: [{ id, name }] }],
+  milestones: [{ id, name, dueDate, status, projectId, projectName }],
+  undated: [{ id, title, status, projectId, projectName }]
+}
+```
+
+`undated` lista las tareas abiertas sin fecha límite del alcance del usuario y no depende del rango.
 
 ### `GET /api/projects` (ampliada)
 
@@ -171,6 +261,12 @@ Añade a cada usuario `projects: [{ id, name, projectRole }]`, `openTasks` y `ov
 
 Tareas abiertas de la persona: `{ id, title, status, dueDate, projectId, projectName }`, por fecha límite ascendente con las fechas vacías al final. Usuario inexistente: 404.
 
+### Cambios en rutas existentes
+
+- `PATCH /api/users/:id`: al pasar a rol PM, quita las asignaciones del usuario en la misma transacción.
+- Asignar tareas: aplica la regla de la sección 2.
+- `TaskDto` añade `commentCount`.
+
 Un colaborador recibe 403 en las rutas solo para PM. "Hoy" se calcula con `localToday(app.now())`.
 
 ### Unidades de código
@@ -178,17 +274,19 @@ Un colaborador recibe 403 en las rutas solo para PM. "Hoy" se calcula con `local
 - **`server/src/domain/health.ts`:** función pura `computeHealth`, única fuente de las reglas de salud.
 - **`server/src/domain/dashboard.ts`:** función pura que arma la respuesta del panel a partir de datos ya leídos.
 
-## 6. Estados y errores
+## 8. Estados y errores
 
 - **Cargando:** bloques de relleno con la forma final.
 - **Fallo al cargar sin datos previos:** aviso con reintento.
 - **Fallo al refrescar con datos en pantalla:** se conservan los datos y lo escrito (`isBlockingError`).
 - **Panel sin proyectos activos:** invitación a crear un proyecto.
-- **Secciones vacías del panel:** un mensaje breve, por ejemplo "Nada requiere atención".
+- **Secciones vacías:** un mensaje breve, por ejemplo "Nada requiere atención".
 - **Filtros sin resultados:** mensaje y botón para limpiarlos.
+- **Mes sin actividades:** la cuadrícula se muestra con un mensaje.
 - **Error al editar un usuario:** por campo y sin perder lo escrito; `last_pm` se muestra como mensaje claro.
+- **Tarea inexistente o sin acceso en su página:** "no encontrado" con enlace a las tareas del proyecto.
 
-## 7. Pruebas
+## 9. Pruebas
 
 - **Reglas de salud (Vitest):**
   - Límites: 2 y 3 vencidas; 89 %, 90 % y más del 100 % de presupuesto.
@@ -196,22 +294,47 @@ Un colaborador recibe 403 en las rutas solo para PM. "Hoy" se calcula con `local
   - Fecha de fin de ayer, hoy y mañana.
   - Riesgo de puntaje 14, 15 y cerrado.
   - Orden de evaluación.
-- **Panel (Vitest):** solo cuenta proyectos activos, máximo 8 en atención con su orden, carga sin usuarios inactivos, hitos en los límites de 14 días.
+- **Panel (Vitest):** solo cuenta proyectos activos, máximo 8 en atención con su orden, carga solo de colaboradores activos, hitos en los límites de 14 días.
 - **API:**
   - 403 para colaboradores en panel, usuarios y tareas de usuario.
   - La lista de proyectos no envía a un colaborador salud, alertas ni gastos.
   - Totales correctos con montos de más de 2.147.483.647 centavos.
-- **Interfaz (React Testing Library):** búsqueda sin acentos, filtros, orden, contador, estados vacíos, edición de usuario, avisos sobre la propia cuenta y redirección del colaborador.
-- **Flujo completo (Playwright):** se actualiza para entrar por el panel.
-- **Revisión visual:** capturas del panel, Proyectos y Usuarios con datos de ejemplo, comparadas con la maqueta aprobada.
+  - Asignar a un PM se rechaza; cambiar a PM quita las asignaciones.
+  - La migración elimina solo asignaciones de usuarios con rol PM.
+  - Calendario: alcance por rol, límites del rango, 400 con rango inválido, tarea en su fecha límite, tareas sin fecha.
+- **Interfaz (React Testing Library):**
+  - Búsqueda sin acentos, filtros, orden, contador y estados vacíos.
+  - Edición de usuario y avisos de rol.
+  - Navegación por rol y redirecciones.
+  - Calendario: colocación por fecha, cambio de mes, "+N más" y filtros.
+  - Mis tareas: grupos y casilla con reversión ante bloqueo.
+  - Filtros rápidos del tablero.
+- **Flujo completo (Playwright):** se actualiza al panel, a la página de tarea y al calendario.
+- **Revisión visual:** capturas de escritorio y móvil del panel, Calendario, Proyectos, Usuarios, Tablero y Detalle de tarea con datos de ejemplo, comparadas con las maquetas y el diseño de referencia.
 
-## 8. Fuera del alcance
+## 10. Fuera del alcance
 
+**Elementos del diseño de referencia que requerirían funciones nuevas:**
+
+- Notificaciones y avisos.
+- Compartir.
+- Actividad reciente.
+- Selector de periodo del inicio.
+- Búsqueda global.
+- Subtareas y etiquetas.
+- Estimación y horas registradas.
+- "Creada por".
+- @menciones.
+- Botón de añadir tarea en cada columna.
+- Tira de días en móvil.
+
+**Otros:**
+
+- Vista semanal, crear o mover tareas desde el calendario, y sincronización con otros calendarios.
 - Exportar datos y acciones masivas.
 - Umbrales de salud configurables.
+- Elegir el color de un proyecto.
 - Cambiar el correo de un usuario.
 - Guardar filtros entre visitas.
 - Gráficas históricas o de tendencia.
-- Notificaciones.
-- Modo oscuro.
-- Rediseñar la estructura de las pestañas internas de un proyecto.
+- Selector de tema claro u oscuro.

@@ -10,6 +10,7 @@ import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
 import { charterRoutes } from './routes/charter';
 import { dependencyRoutes } from './routes/dependencies';
+import { indicatorRoutes } from './routes/indicators';
 import { memberRoutes } from './routes/members';
 import { projectRoutes } from './routes/projects';
 import { registerRoutes } from './routes/registers';
@@ -53,6 +54,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await taskRoutes(app);
   await dependencyRoutes(app);
   await attachmentRoutes(app);
+  await indicatorRoutes(app);
 
   if (opts.clientDist) {
     await app.register(fastifyStatic, { root: opts.clientDist, wildcard: false });

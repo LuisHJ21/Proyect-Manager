@@ -15,7 +15,9 @@ export async function projectRoutes(app: FastifyInstance) {
       where: isPm ? {} : { members: { some: { userId: user.id } } },
       orderBy: { name: 'asc' },
     });
-    return projects.map((project) => toProjectDto(project, isPm));
+    const averages = await prisma.task.groupBy({ by: ['projectId'], _avg: { progress: true } });
+    const progressById = new Map(averages.map((a) => [a.projectId, Math.round(a._avg.progress ?? 0)]));
+    return projects.map((project) => ({ ...toProjectDto(project, isPm), progress: progressById.get(project.id) ?? 0 }));
   });
 
   app.post('/api/projects', async (req, reply) => {

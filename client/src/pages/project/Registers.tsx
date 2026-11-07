@@ -31,7 +31,7 @@ export function StakeholdersPage() {
       itemLabel={(item) => item.name}
       defaults={{ name: '', organization: '', position: '', contact: '', influence: 'MEDIUM', interest: 'MEDIUM', strategy: '' }}
       columns={[
-        { header: 'Nombre', cell: (item) => <span className="font-medium text-slate-900">{item.name}</span> },
+        { header: 'Nombre', cell: (item) => <span className="font-medium text-ink">{item.name}</span> },
         { header: 'Organización y cargo', cell: (item) => [item.organization, item.position].filter(Boolean).join(' · ') },
         { header: 'Contacto', cell: (item) => item.contact },
         { header: 'Influencia', cell: (item) => <Badge>{LABELS.level[item.influence]}</Badge> },
@@ -73,7 +73,7 @@ export function RisksPage() {
       normalize={normalize}
       defaults={{ description: '', type: 'THREAT', probability: 3, impact: 3, response: 'MITIGATE', responsePlan: '', ownerId: null, status: 'OPEN' }}
       columns={[
-        { header: 'Riesgo', cell: (item) => <span className="font-medium text-slate-900">{item.description}</span> },
+        { header: 'Riesgo', cell: (item) => <span className="font-medium text-ink">{item.description}</span> },
         { header: 'Tipo', cell: (item) => LABELS.riskType[item.type] },
         { header: 'Prob. × Impacto', cell: (item) => `${item.probability} × ${item.impact}` },
         {
@@ -123,14 +123,14 @@ function BudgetTotals({ projectId, currency }: { projectId: string; currency: st
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
-            <p className={`mt-1 text-2xl font-semibold ${stat.alert ? 'text-red-700' : 'text-slate-900'}`}>{formatMoney(stat.value, currency)}</p>
+          <div key={stat.label} className="rounded-lg border border-line bg-surface p-4">
+            <p className="text-xs font-medium text-ink-soft">{stat.label}</p>
+            <p className={`mt-1 text-2xl font-semibold ${stat.alert ? 'text-risk-fg' : 'text-ink'}`}>{formatMoney(stat.value, currency)}</p>
           </div>
         ))}
       </div>
       {overBudget && (
-        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p role="alert" className="rounded-md bg-risk-bg px-3 py-2 text-sm text-risk-fg">
           Los gastos superan el presupuesto planificado.
         </p>
       )}
@@ -155,7 +155,7 @@ export function BudgetPage() {
         defaults={{ description: '', amountCents: null, date: '', category: 'LABOR' }}
         columns={[
           { header: 'Fecha', cell: (item) => item.date },
-          { header: 'Descripción', cell: (item) => <span className="font-medium text-slate-900">{item.description}</span> },
+          { header: 'Descripción', cell: (item) => <span className="font-medium text-ink">{item.description}</span> },
           { header: 'Categoría', cell: (item) => LABELS.expenseCategory[item.category] },
           { header: 'Monto', cell: (item) => formatMoney(item.amountCents, currency) },
         ]}
@@ -175,7 +175,7 @@ export function AttachmentsPage() {
   const { user } = useAuth();
   return (
     <Card title="Anexos del proyecto">
-      <p className="mb-3 text-sm text-slate-600">Todos los miembros del proyecto pueden ver y descargar estos archivos.</p>
+      <p className="mb-3 text-sm text-ink-nav">Todos los miembros del proyecto pueden ver y descargar estos archivos.</p>
       <AttachmentList scope={{ projectId: project.id }} canUpload={isPm} isPm={isPm} currentUserId={user?.id} />
     </Card>
   );

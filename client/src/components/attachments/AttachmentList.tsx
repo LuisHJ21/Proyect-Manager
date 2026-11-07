@@ -60,16 +60,16 @@ export function AttachmentList({ scope, canUpload, isPm, currentUserId }: Props)
       ) : list.isError ? (
         <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} />
       ) : list.data.length === 0 ? (
-        <p className="text-sm text-slate-500">Sin anexos.</p>
+        <p className="text-sm text-ink-soft">Sin anexos.</p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {list.data.map((attachment) => (
             <li key={attachment.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <div className="min-w-0">
-                <a href={`/api/attachments/${attachment.id}/download`} className="block truncate font-medium text-indigo-700 hover:underline">
+                <a href={`/api/attachments/${attachment.id}/download`} className="block truncate font-medium text-link hover:underline">
                   {attachment.originalName}
                 </a>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-soft">
                   {formatSize(attachment.size)} · {attachment.uploadedBy.name}
                 </p>
               </div>
@@ -84,11 +84,11 @@ export function AttachmentList({ scope, canUpload, isPm, currentUserId }: Props)
       )}
       {canUpload && (
         <div className="mt-3">
-          <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-ink-nav">
             Adjuntar archivo
           </label>
-          <input id={inputId} type="file" accept={ACCEPT_ATTRIBUTE} onChange={onPick} disabled={upload.isPending} className="block w-full text-sm text-slate-700 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium" />
-          <p className="mt-1 text-xs text-slate-500">{upload.isPending ? 'Subiendo…' : 'Hasta 25 MB. PDF, Office, imágenes, TXT, CSV o ZIP.'}</p>
+          <input id={inputId} type="file" accept={ACCEPT_ATTRIBUTE} onChange={onPick} disabled={upload.isPending} className="block w-full text-sm text-ink-nav file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-raised file:text-ink file:px-3 file:py-2 file:text-sm file:font-medium" />
+          <p className="mt-1 text-xs text-ink-soft">{upload.isPending ? 'Subiendo…' : 'Hasta 25 MB. PDF, Office, imágenes, TXT, CSV o ZIP.'}</p>
         </div>
       )}
       {deleting && (

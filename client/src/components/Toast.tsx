@@ -29,7 +29,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role={toast.kind === 'error' ? 'alert' : 'status'}
-            className={`rounded-md px-4 py-3 text-sm shadow-lg ${toast.kind === 'error' ? 'bg-red-700 text-white' : 'bg-slate-800 text-white'}`}
+            className={`rounded-md px-4 py-3 text-sm shadow-lg ${toast.kind === 'error' ? 'bg-danger text-white' : 'bg-raised text-white'}`}
           >
             {toast.message}
           </div>

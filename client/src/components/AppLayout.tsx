@@ -149,6 +149,9 @@ export function AppLayout() {
             <Brand />
             <div className="flex items-center gap-1">
               {user && <Avatar name={user.name} />}
+              <NavLink to="/cambiar-contrasena" aria-label="Cambiar mi contraseña" className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-nav hover:bg-raised">
+                <KeyRound size={18} aria-hidden="true" />
+              </NavLink>
               <button type="button" aria-label="Cerrar sesión" onClick={() => void logout()} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-ink-nav hover:bg-raised">
                 <LogOut size={18} aria-hidden="true" />
               </button>

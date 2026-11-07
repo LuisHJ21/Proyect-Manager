@@ -28,15 +28,15 @@ export function CommentList({ taskId, comments, canComment }: { taskId: string; 
 
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold text-slate-900">Comentarios</h3>
-      {comments.length === 0 && <p className="text-sm text-slate-500">Sin comentarios.</p>}
+      <h3 className="mb-2 text-sm font-semibold text-ink">Comentarios</h3>
+      {comments.length === 0 && <p className="text-sm text-ink-soft">Sin comentarios.</p>}
       <ul className="space-y-3">
         {comments.map((comment) => (
           <li key={comment.id} className="text-sm">
-            <p className="text-xs text-slate-500">
-              <span className="font-medium text-slate-700">{comment.author.name}</span> · {new Date(comment.createdAt).toLocaleString('es')}
+            <p className="text-xs text-ink-soft">
+              <span className="font-medium text-ink-nav">{comment.author.name}</span> · {new Date(comment.createdAt).toLocaleString('es')}
             </p>
-            <p className="mt-0.5 whitespace-pre-wrap text-slate-800">{comment.body}</p>
+            <p className="mt-0.5 whitespace-pre-wrap text-ink">{comment.body}</p>
           </li>
         ))}
       </ul>

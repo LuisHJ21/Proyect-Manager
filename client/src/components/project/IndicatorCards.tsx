@@ -8,9 +8,9 @@ import { ProgressBar } from '../ui';
 
 function Stat({ label, value, testId, children, alert }: { label: string; value: ReactNode; testId?: string; children?: ReactNode; alert?: boolean }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p data-testid={testId} className={`mt-1 text-2xl font-semibold ${alert ? 'text-red-700' : 'text-slate-900'}`}>
+    <div className="rounded-lg border border-line bg-surface p-4">
+      <p className="text-xs font-medium text-ink-soft">{label}</p>
+      <p data-testid={testId} className={`mt-1 text-2xl font-semibold ${alert ? 'text-risk-fg' : 'text-ink'}`}>
         {value}
       </p>
       {children}
@@ -42,9 +42,9 @@ export function IndicatorCards({ query, currency = 'USD' }: { query: UseQueryRes
         </div>
       )}
       {data.upcomingMilestones.length > 0 && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="mb-2 text-xs font-medium text-slate-500">Próximos hitos (14 días)</p>
-          <ul className="space-y-1 text-sm text-slate-800">
+        <div className="rounded-lg border border-line bg-surface p-4">
+          <p className="mb-2 text-xs font-medium text-ink-soft">Próximos hitos (14 días)</p>
+          <ul className="space-y-1 text-sm text-ink">
             {data.upcomingMilestones.map((milestone) => (
               <li key={milestone.id}>
                 {milestone.dueDate} · {milestone.name}

@@ -26,7 +26,7 @@ const toDraft = (charter: Charter): Draft => Object.fromEntries(FIELDS.map((f) =
 
 function ApprovalNote({ charter }: { charter: Charter }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+    <div className="flex flex-wrap items-center gap-2 text-sm text-ink-nav">
       <Badge tone={charter.status === 'APPROVED' ? 'success' : 'warning'}>{LABELS.charterStatus[charter.status]}</Badge>
       {charter.status === 'APPROVED' && charter.approvedAt && (
         <span>
@@ -44,8 +44,8 @@ function CharterReadOnly({ charter }: { charter: Charter }) {
       <dl className="mt-4 space-y-4">
         {FIELDS.map((field) => (
           <div key={field.name}>
-            <dt className="text-xs font-medium text-slate-500">{field.label}</dt>
-            <dd className="mt-0.5 text-sm whitespace-pre-wrap text-slate-800">{charter[field.name] || '—'}</dd>
+            <dt className="text-xs font-medium text-ink-soft">{field.label}</dt>
+            <dd className="mt-0.5 text-sm whitespace-pre-wrap text-ink">{charter[field.name] || '—'}</dd>
           </div>
         ))}
       </dl>
@@ -91,7 +91,7 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
     <Card>
       <ApprovalNote charter={charter} />
       {charter.status === 'APPROVED' && dirty && (
-        <p role="status" className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p role="status" className="mt-3 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn-fg">
           Al guardar estos cambios, el acta volverá a Borrador y deberá aprobarse de nuevo.
         </p>
       )}
@@ -128,7 +128,7 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
             </Button>
           )}
           {notice && (
-            <span role="status" className="text-sm text-green-700">
+            <span role="status" className="text-sm text-ok-fg">
               {notice}
             </span>
           )}

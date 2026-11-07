@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { HealthBadge } from '../src/components/ui';
 import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
 
@@ -75,6 +75,16 @@ describe('navegación por rol', () => {
     renderApp('/proyectos');
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
     expect(await screen.findByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument();
+  });
+});
+
+describe('navegación móvil', () => {
+  it('ofrece cambiar la contraseña y cerrar sesión', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} }));
+    mockApi({ ...signedInAs(collaborator), 'GET /api/projects': [], 'GET /api/me/tasks': [] });
+    renderApp('/proyectos');
+    expect(await screen.findByRole('link', { name: 'Cambiar mi contraseña' })).toHaveAttribute('href', '/cambiar-contrasena');
+    expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
   });
 });
 

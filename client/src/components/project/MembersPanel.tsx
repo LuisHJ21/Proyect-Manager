@@ -84,12 +84,12 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
       ) : members.data.length === 0 ? (
         <EmptyState>Aún no hay miembros en este proyecto.</EmptyState>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {members.data.map((member) => (
             <li key={member.userId} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span>
-                <span className="font-medium text-slate-900">{member.active === false ? `${member.name} (inactivo)` : member.name}</span>
-                <span className="text-slate-500"> · {member.projectRole || LABELS.role[member.role]}</span>
+                <span className="font-medium text-ink">{member.active === false ? `${member.name} (inactivo)` : member.name}</span>
+                <span className="text-ink-soft"> · {member.projectRole || LABELS.role[member.role]}</span>
               </span>
               {canEdit && (
                 <Button variant="ghost" aria-label={`Quitar a ${member.name}`} onClick={() => setRemoving(member)}>
@@ -101,7 +101,7 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
         </ul>
       )}
       {canEdit && (
-        <form onSubmit={submit} className="mt-4 grid items-end gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_1fr_auto]" noValidate>
+        <form onSubmit={submit} className="mt-4 grid items-end gap-3 border-t border-line pt-4 sm:grid-cols-[1fr_1fr_auto]" noValidate>
           <FormField label="Añadir persona" error={errors.fields.userId}>
             <select className={inputClass} value={userId} onChange={(e) => setUserId(e.target.value)}>
               <option value="">Selecciona…</option>

@@ -2,8 +2,8 @@ import { Button } from './ui';
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="mx-auto mt-16 max-w-md rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-      <p className="text-sm text-red-800">{message}</p>
+    <div role="alert" className="mx-auto mt-16 max-w-md rounded-lg border border-risk-fg bg-risk-bg p-6 text-center">
+      <p className="text-sm text-risk-fg">{message}</p>
       {onRetry && (
         <Button variant="secondary" className="mt-4" onClick={onRetry}>
           Reintentar
@@ -15,7 +15,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 
 export function Loading() {
   return (
-    <p role="status" className="p-8 text-center text-sm text-slate-500">
+    <p role="status" className="p-8 text-center text-sm text-ink-soft">
       Cargando…
     </p>
   );

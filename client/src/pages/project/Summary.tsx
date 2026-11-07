@@ -73,19 +73,19 @@ export function SummaryPage() {
           ) : undefined
         }
       >
-        <p className="text-sm whitespace-pre-wrap text-slate-700">{project.description || 'Sin descripción.'}</p>
+        <p className="text-sm whitespace-pre-wrap text-ink-nav">{project.description || 'Sin descripción.'}</p>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-xs text-slate-500">Enfoque de desarrollo</dt>
-            <dd className="text-slate-900">{LABELS.approach[project.approach]}</dd>
+            <dt className="text-xs text-ink-soft">Enfoque de desarrollo</dt>
+            <dd className="text-ink">{LABELS.approach[project.approach]}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Inicio</dt>
-            <dd className="text-slate-900">{project.startDate ?? '—'}</dd>
+            <dt className="text-xs text-ink-soft">Inicio</dt>
+            <dd className="text-ink">{project.startDate ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Fin</dt>
-            <dd className="text-slate-900">{project.endDate ?? '—'}</dd>
+            <dt className="text-xs text-ink-soft">Fin</dt>
+            <dd className="text-ink">{project.endDate ?? '—'}</dd>
           </div>
         </dl>
       </Card>

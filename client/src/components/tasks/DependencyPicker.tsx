@@ -33,13 +33,13 @@ export function DependencyPicker({ task, canEdit }: { task: Task; canEdit: boole
 
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold text-slate-900">Predecesoras</h3>
+      <h3 className="mb-2 text-sm font-semibold text-ink">Predecesoras</h3>
       {task.predecessorIds.length === 0 ? (
-        <p className="text-sm text-slate-500">Esta tarea no depende de otras.</p>
+        <p className="text-sm text-ink-soft">Esta tarea no depende de otras.</p>
       ) : (
         <ul className="space-y-1">
           {task.predecessorIds.map((id) => (
-            <li key={id} className="flex items-center justify-between gap-2 text-sm text-slate-700">
+            <li key={id} className="flex items-center justify-between gap-2 text-sm text-ink-nav">
               {titleOf(id)}
               {canEdit && (
                 <Button variant="ghost" aria-label={`Quitar dependencia de ${titleOf(id)}`} onClick={() => remove.mutate(id)}>

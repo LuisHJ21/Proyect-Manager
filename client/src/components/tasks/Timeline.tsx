@@ -9,10 +9,10 @@ const HEADER_HEIGHT = 24;
 const TICK_DAYS = 7;
 
 const BAR_COLOR: Record<TaskStatus, string> = {
-  TODO: 'fill-slate-400',
-  IN_PROGRESS: 'fill-blue-500',
-  BLOCKED: 'fill-red-500',
-  DONE: 'fill-green-600',
+  TODO: 'fill-ink-soft',
+  IN_PROGRESS: 'fill-link',
+  BLOCKED: 'fill-risk-fg',
+  DONE: 'fill-ok-fg',
 };
 
 export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milestones: Milestone[]; onOpen: (task: Task) => void }) {
@@ -33,11 +33,11 @@ export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milesto
       {totalDays === 0 ? (
         <EmptyState>Asigna fechas de inicio y límite a las tareas para verlas en el cronograma.</EmptyState>
       ) : (
-        <div className="flex overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <ul className="w-48 shrink-0 border-r border-slate-200" style={{ paddingTop: HEADER_HEIGHT }}>
+        <div className="flex overflow-hidden rounded-lg border border-line bg-surface">
+          <ul className="w-48 shrink-0 border-r border-line" style={{ paddingTop: HEADER_HEIGHT }}>
             {layout.bars.map((bar) => (
               <li key={bar.taskId} className="truncate px-3 text-sm leading-9" style={{ height: ROW_HEIGHT }}>
-                <button type="button" className="max-w-full cursor-pointer truncate text-left text-slate-800 hover:underline" onClick={() => onOpen(byId.get(bar.taskId)!)}>
+                <button type="button" className="max-w-full cursor-pointer truncate text-left text-ink hover:underline" onClick={() => onOpen(byId.get(bar.taskId)!)}>
                   {byId.get(bar.taskId)!.title}
                 </button>
               </li>
@@ -47,13 +47,13 @@ export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milesto
             <svg width={width} height={height + HEADER_HEIGHT} role="img" aria-label="Cronograma de tareas">
               <defs>
                 <marker id={markerId} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M0 0 L8 4 L0 8 z" className="fill-slate-500" />
+                  <path d="M0 0 L8 4 L0 8 z" className="fill-ink-soft" />
                 </marker>
               </defs>
               {ticks.map((offset) => (
                 <g key={offset}>
-                  <line x1={offset * DAY_WIDTH} x2={offset * DAY_WIDTH} y1={0} y2={height + HEADER_HEIGHT} className="stroke-slate-100" />
-                  <text x={offset * DAY_WIDTH + 4} y={16} className="fill-slate-500 text-[11px]">
+                  <line x1={offset * DAY_WIDTH} x2={offset * DAY_WIDTH} y1={0} y2={height + HEADER_HEIGHT} className="stroke-line" />
+                  <text x={offset * DAY_WIDTH + 4} y={16} className="fill-ink-soft text-[11px]">
                     {addDays(layout.rangeStart, offset).slice(5)}
                   </text>
                 </g>
@@ -61,7 +61,7 @@ export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milesto
               <g transform={`translate(0 ${HEADER_HEIGHT})`}>
                 {layout.milestones.map((milestone) => (
                   <g key={milestone.id}>
-                    <line x1={milestone.x} x2={milestone.x} y1={0} y2={height} className="stroke-amber-500" strokeDasharray="4 3" />
+                    <line x1={milestone.x} x2={milestone.x} y1={0} y2={height} className="stroke-warn-fg" strokeDasharray="4 3" />
                     <title>{milestoneById.get(milestone.id)?.name}</title>
                   </g>
                 ))}
@@ -74,7 +74,7 @@ export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milesto
                   );
                 })}
                 {layout.arrows.map((arrow) => (
-                  <path key={`${arrow.from}-${arrow.to}`} d={arrow.path} fill="none" className="stroke-slate-500" strokeWidth={1.5} markerEnd={`url(#${markerId})`} />
+                  <path key={`${arrow.from}-${arrow.to}`} d={arrow.path} fill="none" className="stroke-ink-soft" strokeWidth={1.5} markerEnd={`url(#${markerId})`} />
                 ))}
               </g>
             </svg>
@@ -82,12 +82,12 @@ export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milesto
         </div>
       )}
       {undatedTasks.length > 0 && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="mb-2 text-xs font-medium text-slate-500">Sin fechas completas</p>
+        <div className="rounded-lg border border-line bg-surface p-4">
+          <p className="mb-2 text-xs font-medium text-ink-soft">Sin fechas completas</p>
           <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {undatedTasks.map((task) => (
               <li key={task.id}>
-                <button type="button" className="cursor-pointer text-slate-800 hover:underline" onClick={() => onOpen(task)}>
+                <button type="button" className="cursor-pointer text-ink hover:underline" onClick={() => onOpen(task)}>
                   {task.title}
                 </button>
               </li>

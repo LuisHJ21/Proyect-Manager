@@ -19,9 +19,9 @@ export function Modal({ title, children, onClose, wide }: { title: string; child
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:p-10">
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className={`w-full rounded-lg bg-white p-6 shadow-xl ${wide ? 'max-w-2xl' : 'max-w-md'}`}>
-        <h2 id={titleId} className="mb-4 text-lg font-semibold text-slate-900">
+    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:p-10">
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className={`w-full rounded-lg bg-surface p-6 shadow-xl ${wide ? 'max-w-2xl' : 'max-w-md'}`}>
+        <h2 id={titleId} className="mb-4 text-lg font-semibold text-ink">
           {title}
         </h2>
         {children}
@@ -33,7 +33,7 @@ export function Modal({ title, children, onClose, wide }: { title: string; child
 export function ConfirmDialog({ title, children, confirmLabel = 'Confirmar', danger, confirmDisabled, onConfirm, onCancel }: Props) {
   return (
     <Modal title={title} onClose={onCancel}>
-      <div className="mb-6 space-y-3 text-sm text-slate-700">{children}</div>
+      <div className="mb-6 space-y-3 text-sm text-ink-nav">{children}</div>
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>
           Cancelar

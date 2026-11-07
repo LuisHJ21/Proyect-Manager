@@ -96,18 +96,18 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
           </select>
         </FormField>
         <fieldset className="sm:col-span-2">
-          <legend className="mb-1 text-sm font-medium text-slate-700">Asignados</legend>
+          <legend className="mb-1 text-sm font-medium text-ink-nav">Asignados</legend>
           {selectable.length === 0 && <p className="text-sm text-ink-soft">Añade colaboradores al proyecto desde la pestaña Resumen.</p>}
           <div className="flex flex-wrap gap-3">
             {selectable.map((member) => (
-              <label key={member.userId} className="flex items-center gap-2 text-sm text-slate-700">
+              <label key={member.userId} className="flex items-center gap-2 text-sm text-ink-nav">
                 <input type="checkbox" checked={assigneeIds.includes(member.userId)} onChange={() => toggleAssignee(member.userId)} />
                 {member.active === false ? `${member.name} (inactivo)` : member.name}
               </label>
             ))}
           </div>
           {errors.fields.assigneeIds && (
-            <p className="mt-1 text-xs text-red-700">{errors.fields.assigneeIds}</p>
+            <p className="mt-1 text-xs text-risk-fg">{errors.fields.assigneeIds}</p>
           )}
         </fieldset>
         <div className="flex justify-end gap-2 sm:col-span-2">

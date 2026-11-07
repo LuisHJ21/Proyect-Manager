@@ -178,7 +178,7 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="text-xs text-slate-500 uppercase">
+            <thead className="text-xs text-ink-soft uppercase">
               <tr>
                 {columns.map((column) => (
                   <th key={column.header} className="py-2 pr-4 font-medium">
@@ -192,11 +192,11 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line">
               {list.data.map((item) => (
                 <tr key={item.id}>
                   {columns.map((column) => (
-                    <td key={column.header} className="py-2 pr-4 align-top text-slate-700">
+                    <td key={column.header} className="py-2 pr-4 align-top text-ink-nav">
                       {column.cell(item)}
                     </td>
                   ))}

@@ -90,7 +90,7 @@ export function KanbanBoard({ tasks, canMove, onMove }: Props) {
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="grid auto-cols-[minmax(16rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
+      <div className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
         {TASK_STATUS.map((status) => (
           <Column key={status} status={status} tasks={tasks.filter((t) => t.status === status)} canMove={canMove} />
         ))}

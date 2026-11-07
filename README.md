@@ -1,6 +1,13 @@
 # Gestor de proyectos PMBOK 7
 
-Aplicación web para gestionar proyectos según PMBOK 7 en una red local. Incluye acta de constitución, tareas con varios asignados y dependencias, anexos, interesados, riesgos, presupuesto e indicadores. Tiene dos roles: Project Manager y Colaborador.
+Aplicación web para gestionar proyectos según PMBOK 7 en una red local. Incluye panel general, calendario, acta de constitución, tareas con varios asignados y dependencias, anexos, interesados, riesgos, presupuesto e indicadores.
+
+## Roles
+
+- **Project Manager:** entra al panel general, ve todos los proyectos y gestiona proyectos, tareas y usuarios. No recibe tareas asignadas.
+- **Colaborador:** entra a **Mis tareas** y ve solo los proyectos de los que es miembro. Actualiza el estado y el avance de las tareas que tiene asignadas.
+
+Ambos roles tienen un calendario con las actividades por fecha límite. El Project Manager ve todas las de los proyectos activos, y el colaborador, las suyas y los hitos de sus proyectos.
 
 ## Requisitos
 
@@ -30,6 +37,7 @@ Para cambiar el puerto o la carpeta de datos, usa las variables de entorno `PORT
 1. Abre la dirección en el navegador y crea tu cuenta de Project Manager.
 2. En **Usuarios**, crea las cuentas de tus colaboradores con una contraseña temporal y compártela con cada persona. Deberán cambiarla al entrar.
 3. Crea un proyecto y añade a tus colaboradores al equipo desde la pestaña **Resumen**. Solo verán los proyectos de los que son miembros.
+4. Crea tareas y asígnalas a los colaboradores del proyecto.
 
 ## Permitir el acceso desde otros equipos (Windows)
 

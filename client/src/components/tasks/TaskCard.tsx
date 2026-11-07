@@ -36,7 +36,7 @@ export function TaskCardBody({ task }: { task: Task }) {
       )}
       <div className="flex items-center gap-3 text-xs text-ink-soft">
         {task.dueDate && (
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1 whitespace-nowrap">
             <Calendar size={13} aria-hidden="true" />
             <span>{shortDate(task.dueDate)}</span>
           </span>

@@ -9,11 +9,11 @@ import { Button, inputClass } from '../components/ui';
 
 function AuthCard({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="mb-1 text-sm font-bold text-indigo-700">Gestor de proyectos</p>
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-        {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}
+    <div className="flex min-h-screen items-center justify-center bg-raised p-4">
+      <div className="w-full max-w-sm rounded-lg border border-line bg-surface p-6 shadow-sm">
+        <p className="mb-1 text-sm font-bold text-link">Gestor de proyectos</p>
+        <h1 className="text-xl font-semibold text-ink">{title}</h1>
+        {description && <p className="mt-1 text-sm text-ink-nav">{description}</p>}
         <div className="mt-5">{children}</div>
       </div>
     </div>

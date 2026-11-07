@@ -53,7 +53,7 @@ describe('fallos al volver a la ventana', () => {
   });
 
   it('un fallo en segundo plano no cierra el formulario de nuevo usuario', async () => {
-    const api = mockApi({ ...signedInAs(pmUser), 'GET /api/users': [pmUser] });
+    const api = mockApi({ ...signedInAs(pmUser), 'GET /api/users': [{ ...pmUser, projects: [], openTasks: 0, overdueTasks: 0 }] });
     renderApp('/usuarios');
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Nuevo usuario' }));

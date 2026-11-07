@@ -16,6 +16,15 @@ import type {
 
 export type User = { id: string; name: string; email: string; role: Role; active: boolean; mustChangePassword: boolean };
 export type PersonRef = { id: string; name: string };
+export type UserOverview = User & { projects: { id: string; name: string; projectRole: string }[]; openTasks: number; overdueTasks: number };
+export type UserTask = { id: string; title: string; status: TaskStatus; dueDate: string | null; projectId: string; projectName: string };
+export type CalendarTask = { id: string; title: string; dueDate: string; status: TaskStatus; projectId: string; projectName: string; assignees: PersonRef[] };
+export type CalendarMilestone = { id: string; name: string; dueDate: string; status: MilestoneStatus; projectId: string; projectName: string };
+export type CalendarData = {
+  tasks: CalendarTask[];
+  milestones: CalendarMilestone[];
+  undated: { id: string; title: string; status: TaskStatus; projectId: string; projectName: string }[];
+};
 
 export type Project = {
   id: string;

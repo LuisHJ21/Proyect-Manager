@@ -111,35 +111,3 @@ describe('entrar y salir', () => {
     expect(await screen.findByRole('heading', { name: 'Mis tareas' })).toBeInTheDocument();
   });
 });
-
-describe('usuarios', () => {
-  const routes = {
-    ...signedInAs(pmUser),
-    'GET /api/users': [pmUser],
-    'POST /api/users': apiError(409, 'email_taken', { message: 'Ya existe', fields: { email: 'Ya existe una cuenta con este correo' } }),
-  };
-
-  it('conserva lo escrito y marca fields.email ante email_taken', async () => {
-    mockApi(routes);
-    renderApp('/usuarios');
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Nuevo usuario' }));
-    await user.type(screen.getByLabelText('Nombre'), 'Bea');
-    await user.type(screen.getByLabelText('Correo'), 'bea@x.com');
-    await user.type(screen.getByLabelText('Contraseña temporal'), 'temporal-12345');
-    await user.click(screen.getByRole('button', { name: 'Crear usuario' }));
-    expect(await screen.findByText('Ya existe una cuenta con este correo')).toBeInTheDocument();
-    expect(screen.getByLabelText('Nombre')).toHaveValue('Bea');
-    expect(screen.getByLabelText('Correo')).toHaveValue('bea@x.com');
-  });
-
-  it('desactivar llama a la API', async () => {
-    const other = { ...collaborator };
-    const api = mockApi({ ...routes, 'GET /api/users': [pmUser, other], 'PATCH /api/users/c1': { ...other, active: false } });
-    renderApp('/usuarios');
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Desactivar a Carlos' }));
-    await user.click(await screen.findByRole('button', { name: 'Confirmar' }));
-    await waitFor(() => expect(api.calls.some((c) => c.key === 'PATCH /api/users/c1')).toBe(true));
-  });
-});

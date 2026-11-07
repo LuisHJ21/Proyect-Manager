@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomeRedirect, RequireAuth, RequireCollaborator, RequirePm } from './auth/RequireAuth';
 import { AppLayout } from './components/AppLayout';
 import { ChangePasswordPage, LoginPage, SetupPage } from './pages/AuthPages';
+import { CalendarPage } from './pages/Calendar';
 import { DashboardPage } from './pages/Dashboard';
 import { MyTasksPage } from './pages/MyTasks';
 import { UsersPage } from './pages/Users';
@@ -34,6 +35,7 @@ export function AppRoutes() {
               <Route path="presupuesto" element={<BudgetPage />} />
             </Route>
           </Route>
+          <Route path="/calendario" element={<CalendarPage />} />
           <Route element={<RequireCollaborator />}>
             <Route path="/mis-tareas" element={<MyTasksPage />} />
           </Route>

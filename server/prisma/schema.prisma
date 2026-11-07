@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               String
+  active             Boolean  @default(true)
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  sessions         Session[]
+  memberships      ProjectMember[]
+  assignments      TaskAssignee[]
+  comments         TaskComment[]
+  attachments      Attachment[]
+  ownedRisks       Risk[]
+  approvedCharters Charter[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Project {
+  id                 String   @id @default(cuid())
+  name               String
+  description        String   @default("")
+  status             String   @default("PLANNING")
+  approach           String   @default("PREDICTIVE")
+  startDate          String?
+  endDate            String?
+  plannedBudgetCents Int      @default(0)
+  currency           String   @default("USD")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  members      ProjectMember[]
+  charter      Charter?
+  objectives   Objective[]
+  milestones   Milestone[]
+  tasks        Task[]
+  attachments  Attachment[]
+  stakeholders Stakeholder[]
+  risks        Risk[]
+  expenses     Expense[]
+}
+
+model ProjectMember {
+  id          String   @id @default(cuid())
+  projectId   String
+  userId      String
+  projectRole String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+}
+
+model Charter {
+  id              String    @id @default(cuid())
+  projectId       String    @unique
+  justification   String    @default("")
+  scopeIncluded   String    @default("")
+  scopeExcluded   String    @default("")
+  boundaries      String    @default("")
+  assumptions     String    @default("")
+  constraints     String    @default("")
+  successCriteria String    @default("")
+  sponsor         String    @default("")
+  status          String    @default("DRAFT")
+  approvedById    String?
+  approvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  approvedBy User?   @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+}
+
+model Objective {
+  id          String   @id @default(cuid())
+  projectId   String
+  description String
+  metric      String   @default("")
+  target      String   @default("")
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Milestone {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  dueDate   String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@index([projectId])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  projectId   String
+  milestoneId String?
+  title       String
+  description String   @default("")
+  status      String   @default("TODO")
+  priority    String   @default("MEDIUM")
+  startDate   String?
+  dueDate     String?
+  progress    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone    Milestone?       @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  assignees    TaskAssignee[]
+  predecessors TaskDependency[] @relation("successor")
+  successors   TaskDependency[] @relation("predecessor")
+  comments     TaskComment[]
+  attachments  Attachment[]
+
+  @@index([projectId])
+}
+
+model TaskAssignee {
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([taskId, userId])
+  @@index([userId])
+}
+
+model TaskDependency {
+  predecessorId String
+  successorId   String
+  createdAt     DateTime @default(now())
+
+  predecessor Task @relation("predecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor   Task @relation("successor", fields: [successorId], references: [id], onDelete: Cascade)
+
+  @@id([predecessorId, successorId])
+  @@index([successorId])
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([taskId])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  projectId    String
+  taskId       String?
+  uploadedById String
+  originalName String
+  storedName   String   @unique
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task       Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([projectId])
+  @@index([taskId])
+}
+
+model Stakeholder {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  organization String   @default("")
+  position     String   @default("")
+  contact      String   @default("")
+  influence    String   @default("MEDIUM")
+  interest     String   @default("MEDIUM")
+  strategy     String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Risk {
+  id           String   @id @default(cuid())
+  projectId    String
+  description  String
+  type         String
+  probability  Int
+  impact       Int
+  response     String
+  responsePlan String   @default("")
+  ownerId      String?
+  status       String   @default("OPEN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  projectId   String
+  description String
+  amountCents Int
+  date        String
+  category    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}

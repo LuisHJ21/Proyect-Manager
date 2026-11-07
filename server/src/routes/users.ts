@@ -51,7 +51,11 @@ export async function userRoutes(app: FastifyInstance) {
       throw new AppError(409, 'last_pm', 'Debe quedar al menos un Project Manager activo');
     }
 
-    const updated = await prisma.user.update({ where: { id: target.id }, data: input });
+    const becomesPm = input.role === 'PM' && target.role !== 'PM';
+    const updated = await prisma.$transaction(async (tx) => {
+      if (becomesPm) await tx.taskAssignee.deleteMany({ where: { userId: target.id } });
+      return tx.user.update({ where: { id: target.id }, data: input });
+    });
     if (input.active === false) await deleteUserSessions(prisma, target.id);
     return toUserDto(updated);
   });

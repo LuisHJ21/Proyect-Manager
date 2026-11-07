@@ -53,9 +53,9 @@ export async function taskRoutes(app: FastifyInstance) {
     const current = taskId ? await prisma.taskAssignee.findMany({ where: { taskId }, select: { userId: true } }) : [];
     const added = unique.filter((id) => !current.some((a) => a.userId === id));
     const count = await prisma.projectMember.count({
-      where: { projectId, userId: { in: added }, user: { active: true } },
+      where: { projectId, userId: { in: added }, user: { active: true, role: 'COLLABORATOR' } },
     });
-    if (count !== added.length) throw fieldError(field, 'Solo se pueden asignar miembros activos del proyecto');
+    if (count !== added.length) throw fieldError(field, 'Solo se pueden asignar colaboradores activos del proyecto');
     return unique;
   };
 

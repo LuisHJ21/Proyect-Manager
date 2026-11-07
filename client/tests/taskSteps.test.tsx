@@ -118,6 +118,23 @@ describe('pasos en el detalle', () => {
     await waitFor(() => expect(api.calls.find((c) => c.key === 'PATCH /api/tasks/t1/progress')?.body).toEqual({ status: 'IN_PROGRESS' }));
   });
 
+  it('muestra el error de persona al añadir un paso', async () => {
+    const { section, user } = await open({
+      'POST /api/tasks/t1/steps': apiError(400, 'validation_error', { message: 'x', fields: { assigneeId: 'La persona debe estar asignada a la tarea' } }),
+    });
+    await user.type(section.getByLabelText('Nuevo paso'), 'Publicar');
+    await user.click(section.getByRole('button', { name: 'Añadir paso' }));
+    expect(await section.findByText('La persona debe estar asignada a la tarea')).toBeInTheDocument();
+  });
+
+  it('una fila admite títulos y nombres largos en pantallas angostas', async () => {
+    const { section } = await open();
+    const row = section.getByRole('checkbox', { name: 'Estructura' }).closest('li')!;
+    expect(row).toHaveClass('flex-wrap');
+    expect(section.getByText('Estructura')).toHaveClass('[overflow-wrap:anywhere]');
+    expect(within(row).getByText('Carlos')).toHaveClass('truncate');
+  });
+
   it('sin pasos el avance se edita como antes', async () => {
     await open({}, detail({ steps: [], stepsDone: 0, stepsTotal: 0 }));
     expect(screen.getByLabelText('Avance (%)')).toBeInTheDocument();

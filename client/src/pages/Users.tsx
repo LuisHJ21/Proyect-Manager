@@ -13,9 +13,11 @@ import { Avatar, Badge, Button, EmptyState, inputClass, PageHeader, Skeleton } f
 import { EditUserModal } from '../components/users/EditUserModal';
 import { UserDetailPanel } from '../components/users/UserDetailPanel';
 import { normalizeText } from '../lib/display';
+import { useIsMobile } from '../lib/useIsMobile';
 
 const INITIAL_FILTERS = { search: '', role: 'ALL', state: 'ACTIVE' };
 const MENU_HEIGHT = 96;
+const MOBILE_NAV_HEIGHT = 64;
 
 function NewUserModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -122,6 +124,7 @@ function ResetPasswordModal({ target, onClose }: { target: UserOverview; onClose
 }
 
 function ActionsMenu({ target, onReset, onToggle }: { target: UserOverview; onReset: () => void; onToggle: () => void }) {
+  const isMobile = useIsMobile();
   const [position, setPosition] = useState<CSSProperties | null>(null);
   const open = position !== null;
   const setOpen = (value: boolean) => {
@@ -131,7 +134,8 @@ function ActionsMenu({ target, onReset, onToggle }: { target: UserOverview; onRe
     }
     // Posición fija: la tabla recorta lo que se sale de su caja.
     const rect = container.current!.getBoundingClientRect();
-    const flip = rect.bottom + MENU_HEIGHT > window.innerHeight;
+    const visibleBottom = window.innerHeight - (isMobile ? MOBILE_NAV_HEIGHT : 0);
+    const flip = rect.bottom + MENU_HEIGHT > visibleBottom;
     setPosition({
       right: window.innerWidth - rect.right,
       ...(flip ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
@@ -168,7 +172,7 @@ function ActionsMenu({ target, onReset, onToggle }: { target: UserOverview; onRe
         <MoreHorizontal size={16} aria-hidden="true" />
       </Button>
       {open && (
-        <div role="menu" style={position} className="fixed z-30 w-56 overflow-hidden rounded-lg border border-control bg-surface shadow-xl">
+        <div role="menu" style={position} className="fixed z-40 w-56 overflow-hidden rounded-lg border border-control bg-surface shadow-xl">
           <button type="button" role="menuitem" className={itemClass} onClick={choose(onReset)}>
             Restablecer contraseña
           </button>

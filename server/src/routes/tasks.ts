@@ -180,7 +180,7 @@ export async function taskRoutes(app: FastifyInstance) {
       }
       const pendingSteps = steps.filter((step) => !step.done).length;
       if (input.status === 'DONE' && pendingSteps > 0) {
-        throw new AppError(409, 'steps_pending', `Faltan ${pendingSteps} ${pendingSteps === 1 ? 'paso' : 'pasos'} por completar`, {
+        throw new AppError(409, 'steps_pending', pendingSteps === 1 ? 'Falta 1 paso por completar' : `Faltan ${pendingSteps} pasos por completar`, {
           details: { pending: pendingSteps },
         });
       }

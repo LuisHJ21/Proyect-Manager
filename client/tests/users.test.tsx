@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
 
 const paula = { ...pmUser, projects: [], openTasks: 0, overdueTasks: 0 };
@@ -172,6 +172,19 @@ describe('menú Más', () => {
     const { main, user } = await open();
     await user.click(main.getByRole('button', { name: 'Más acciones de Carlos Vega' }));
     expect(screen.getByRole('menu')).toHaveClass('fixed');
+  });
+
+  it('en móvil el menú se abre hacia arriba si la navegación inferior lo taparía', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} }));
+    const { main, user } = await open();
+    const button = main.getByRole('button', { name: 'Más acciones de Carlos Vega' });
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ top: 500, bottom: window.innerHeight - 100, right: 300, left: 0, width: 300, height: 40, x: 0, y: 0, toJSON: () => ({}) });
+    await user.click(button);
+    rect.mockRestore();
+    const menu = screen.getByRole('menu');
+    expect(menu.style.bottom).not.toBe('');
+    expect(menu.style.top).toBe('');
+    expect(menu).toHaveClass('z-40');
   });
 
   it('la tabla mantiene su encabezado a la vista', async () => {

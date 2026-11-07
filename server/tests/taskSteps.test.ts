@@ -128,6 +128,7 @@ describe('pasos de tarea', () => {
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe('steps_pending');
     expect(res.json().error.details.pending).toBe(1);
+    expect(res.json().error.message).toBe('Falta 1 paso por completar');
     expect((await current()).status).toBe('TODO');
   });
 

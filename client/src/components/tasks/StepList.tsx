@@ -95,19 +95,19 @@ function StepRow({ task, step, canManage, canCheck }: { task: TaskDetail; step: 
   };
 
   return (
-    <li className="flex min-h-11 items-center gap-2 rounded-lg border border-line px-3 py-1.5">
-      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+    <li className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-line px-3 py-1.5">
+      <label className="flex min-w-0 flex-[1_1_12rem] cursor-pointer items-center gap-3">
         <input type="checkbox" checked={step.done} disabled={!canCheck || toggle.isPending} onChange={onToggle} className="h-[18px] w-[18px] shrink-0 cursor-pointer accent-primary disabled:cursor-not-allowed" />
-        <span className={step.done ? 'text-ink-soft line-through' : 'text-ink'}>{step.title}</span>
+        <span className={`min-w-0 [overflow-wrap:anywhere] ${step.done ? 'text-ink-soft line-through' : 'text-ink'}`}>{step.title}</span>
       </label>
       {step.assignee && (
-        <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-soft">
+        <span className="flex max-w-44 min-w-0 items-center gap-1.5 text-xs text-ink-soft">
           <Avatar name={step.assignee.name} size="sm" />
-          <span>{step.assignee.name}</span>
+          <span className="truncate">{step.assignee.name}</span>
         </span>
       )}
       {canManage && (
-        <span className="flex shrink-0">
+        <span className="ml-auto flex shrink-0">
           <button type="button" aria-label={`Editar paso ${step.title}`} onClick={() => setEditing(true)} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-raised hover:text-ink">
             <Pencil size={15} aria-hidden="true" />
           </button>
@@ -131,9 +131,11 @@ export function StepList({ task, canManage, canCheck }: { task: TaskDetail; canM
   const [title, setTitle] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
+  // Si la persona elegida dejó de estar asignada, la selección vuelve a "Sin persona".
+  const selectedAssignee = task.assignees.some((person) => person.id === assigneeId) ? assigneeId : '';
 
   const add = useMutation({
-    mutationFn: () => api(`/api/tasks/${task.id}/steps`, { method: 'POST', body: { title, assigneeId: assigneeId || null } }),
+    mutationFn: () => api(`/api/tasks/${task.id}/steps`, { method: 'POST', body: { title, assigneeId: selectedAssignee || null } }),
     onSuccess: async () => {
       setTitle('');
       setAssigneeId('');
@@ -181,12 +183,13 @@ export function StepList({ task, canManage, canCheck }: { task: TaskDetail; canM
             <FormField label="Nuevo paso" error={errors.fields.title}>
               <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} />
             </FormField>
-            <PersonSelect label="Persona del nuevo paso" people={task.assignees} value={assigneeId} onChange={setAssigneeId} />
+            <PersonSelect label="Persona del nuevo paso" people={task.assignees} value={selectedAssignee} onChange={setAssigneeId} />
             <Button type="submit" variant="secondary" disabled={add.isPending || !title.trim()}>
               <Plus size={16} aria-hidden="true" />
               Añadir paso
             </Button>
           </div>
+          {errors.fields.assigneeId && <p className="text-xs text-risk-fg">{errors.fields.assigneeId}</p>}
         </form>
       )}
     </section>

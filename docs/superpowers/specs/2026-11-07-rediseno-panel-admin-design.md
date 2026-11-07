@@ -36,6 +36,39 @@ Las tareas se asignan solo a usuarios con rol Colaborador.
 
 El rol se sigue llamando **Colaborador** en pantalla.
 
+## 2.1. Regla nueva: fechas de tarea dentro del proyecto
+
+El inicio y la fecha límite de una tarea deben estar entre el inicio y el fin del proyecto, ambos incluidos.
+
+- **Validación:** el servidor responde 400 con error en el campo `startDate` o `dueDate`, con este mensaje: "La fecha debe estar dentro del proyecto (inicio a fin)", usando las fechas reales. El formulario limita además los campos de fecha con ese intervalo.
+- **Proyecto sin fechas:** cada límite solo aplica si está definido.
+- **Al editar una tarea:** solo se valida una fecha cuando cambia. Una tarea que ya estaba fuera se puede editar en sus demás campos.
+- **Al cambiar las fechas del proyecto:** si alguna tarea quedaría fuera, responde 400 con error en `startDate` o `endDate`, indicando cuántas tareas son. Solo se comprueba la fecha que cambia.
+- **Datos existentes:** no se modifican.
+- **Hitos:** no aplica esta regla.
+
+## 2.2. Función nueva: pasos de una tarea
+
+Una tarea puede tener una lista de pasos (subtareas). Cada paso tiene título, estado hecho o no, y una persona opcional. No tiene fechas, comentarios, anexos ni dependencias, y no aparece por separado en el tablero, el calendario ni Mis tareas.
+
+- **Quién los gestiona:** el PM crea, edita y elimina pasos. El PM y los asignados a la tarea pueden marcarlos.
+- **Persona del paso:** debe estar asignada a la tarea. Si deja de estarlo, el paso queda sin persona.
+- **Orden:** el de creación. No se pueden reordenar.
+- **Avance automático:** si una tarea tiene pasos, su avance es `hechos / total`, redondeado, y se recalcula con cada cambio. Enviar `progress` para esa tarea responde 400 con error en `progress`. Si se eliminan todos los pasos, conserva su último avance y vuelve a editarse a mano.
+- **Estado:**
+  - Marcar un paso de una tarea en *Por hacer* la pasa a *En curso*.
+  - Una tarea no pasa a *Hecha* con pasos pendientes: responde 409 `steps_pending`, indicando cuántos faltan.
+  - Terminar todos los pasos no marca la tarea como *Hecha*; eso sigue siendo una acción de la persona.
+  - Desmarcar un paso o añadir uno a una tarea *Hecha* la pasa a *En curso*.
+- **Dependencias:** con predecesoras pendientes no se puede marcar un paso: responde 409 `predecessors_pending`. Sí se puede desmarcar.
+- **Mis tareas:** la casilla de una tarea con pasos pendientes muestra el motivo del rechazo y vuelve a su estado.
+
+**Pantallas:**
+
+- **Detalle de tarea:** sección "Pasos" en la columna principal, con "N de M completados", barra de avance, casillas, persona, y para el PM añadir, editar y eliminar.
+- **Formulario de avance:** con pasos, el campo de avance se muestra como solo lectura.
+- **Tarjeta del tablero y lista:** muestran "N de M" si la tarea tiene pasos.
+
 ## 3. Sistema de diseño
 
 Basado en el diseño de referencia, con paleta oscura como único tema. No hay selector de tema.
@@ -217,7 +250,17 @@ Página completa que sustituye a la ventana emergente. El botón de volver y la 
 
 ## 7. API
 
-La única migración elimina las asignaciones de usuarios con rol PM.
+Hay dos migraciones: una elimina las asignaciones de usuarios con rol PM y otra crea la tabla `TaskStep` (`id`, `taskId`, `title`, `done`, `assigneeId` opcional, fechas de creación y actualización). Los pasos se borran con su tarea.
+
+### Pasos
+
+- `POST /api/tasks/:id/steps` `{ title, assigneeId? }`: solo PM.
+- `PATCH /api/tasks/:id/steps/:stepId` `{ title?, assigneeId?, done? }`: `title` y `assigneeId` solo PM; `done` PM o asignado.
+- `DELETE /api/tasks/:id/steps/:stepId`: solo PM.
+- `GET /api/tasks/:id` añade `steps: [{ id, title, done, assignee: { id, name } | null }]`, en orden de creación.
+- `TaskDto` añade `stepsDone` y `stepsTotal`.
+
+Un paso de otra tarea responde 404. Los cambios de pasos, avance y estado de la tarea ocurren en una sola transacción.
 
 ### `GET /api/dashboard` (solo PM)
 
@@ -302,6 +345,8 @@ Un colaborador recibe 403 en las rutas solo para PM. "Hoy" se calcula con `local
   - Asignar a un PM se rechaza; cambiar a PM quita las asignaciones.
   - La migración elimina solo asignaciones de usuarios con rol PM.
   - Calendario: alcance por rol, límites del rango, 400 con rango inválido, tarea en su fecha límite, tareas sin fecha.
+  - Fechas de tarea: el primer y el último día del proyecto se aceptan, un día antes o después no; proyecto con un solo límite o sin fechas; tarea ya fuera editable en otros campos; proyecto que dejaría tareas fuera.
+  - Pasos: permisos por rol, persona que no está asignada, avance recalculado y redondeado, `progress` rechazado con pasos, `steps_pending`, paso de otra tarea, bloqueo por dependencias, cambios de estado automáticos, quitar un asignado limpia sus pasos, y sin pasos el avance vuelve a ser manual.
 - **Interfaz (React Testing Library):**
   - Búsqueda sin acentos, filtros, orden, contador y estados vacíos.
   - Edición de usuario y avisos de rol.
@@ -309,6 +354,8 @@ Un colaborador recibe 403 en las rutas solo para PM. "Hoy" se calcula con `local
   - Calendario: colocación por fecha, cambio de mes, "+N más" y filtros.
   - Mis tareas: grupos y casilla con reversión ante bloqueo.
   - Filtros rápidos del tablero.
+  - Pasos en el detalle por rol, reversión ante rechazo y avance en solo lectura.
+  - Formulario de tarea: error de fechas por campo y límites del proyecto.
 - **Flujo completo (Playwright):** se actualiza al panel, a la página de tarea y al calendario.
 - **Revisión visual:** capturas de escritorio y móvil del panel, Calendario, Proyectos, Usuarios, Tablero y Detalle de tarea con datos de ejemplo, comparadas con las maquetas y el diseño de referencia.
 
@@ -321,7 +368,8 @@ Un colaborador recibe 403 en las rutas solo para PM. "Hoy" se calcula con `local
 - Actividad reciente.
 - Selector de periodo del inicio.
 - Búsqueda global.
-- Subtareas y etiquetas.
+- Etiquetas.
+- Subtareas con fechas, comentarios, anexos o dependencias propias; reordenar pasos.
 - Estimación y horas registradas.
 - "Creada por".
 - @menciones.

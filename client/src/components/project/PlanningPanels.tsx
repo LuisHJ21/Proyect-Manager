@@ -1,0 +1,69 @@
+import { LABELS, MILESTONE_STATUS, OBJECTIVE_STATUS } from '@pm/shared';
+import type { Milestone, Objective } from '../../api/types';
+import { RegisterTable, type Option } from '../RegisterTable';
+import { Badge } from '../ui';
+
+const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
+  values.map((value) => ({ value, label: labels[value] }));
+
+export function ObjectivesPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+  return (
+    <RegisterTable<Objective>
+      projectId={projectId}
+      path="objectives"
+      title="Objetivos"
+      singular="objetivo"
+      canEdit={canEdit}
+      emptyText="Aún no hay objetivos."
+      itemLabel={(item) => item.description}
+      defaults={{ description: '', metric: '', target: '', status: 'PENDING' }}
+      columns={[
+        { header: 'Objetivo', cell: (item) => item.description },
+        { header: 'Métrica', cell: (item) => item.metric },
+        { header: 'Meta', cell: (item) => item.target },
+        {
+          header: 'Estado',
+          cell: (item) => (
+            <Badge tone={item.status === 'MET' ? 'success' : item.status === 'NOT_MET' ? 'danger' : 'neutral'}>
+              {LABELS.objectiveStatus[item.status]}
+            </Badge>
+          ),
+        },
+      ]}
+      fields={[
+        { name: 'description', label: 'Objetivo', type: 'textarea' },
+        { name: 'metric', label: 'Métrica', type: 'text' },
+        { name: 'target', label: 'Meta', type: 'text' },
+        { name: 'status', label: 'Estado', type: 'select', options: options(OBJECTIVE_STATUS, LABELS.objectiveStatus) },
+      ]}
+    />
+  );
+}
+
+export function MilestonesPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+  return (
+    <RegisterTable<Milestone>
+      projectId={projectId}
+      path="milestones"
+      title="Hitos"
+      singular="hito"
+      canEdit={canEdit}
+      emptyText="Aún no hay hitos."
+      itemLabel={(item) => item.name}
+      defaults={{ name: '', dueDate: '', status: 'PENDING' }}
+      columns={[
+        { header: 'Hito', cell: (item) => item.name },
+        { header: 'Fecha límite', cell: (item) => item.dueDate },
+        {
+          header: 'Estado',
+          cell: (item) => <Badge tone={item.status === 'REACHED' ? 'success' : 'neutral'}>{LABELS.milestoneStatus[item.status]}</Badge>,
+        },
+      ]}
+      fields={[
+        { name: 'name', label: 'Nombre', type: 'text' },
+        { name: 'dueDate', label: 'Fecha límite', type: 'date' },
+        { name: 'status', label: 'Estado', type: 'select', options: options(MILESTONE_STATUS, LABELS.milestoneStatus) },
+      ]}
+    />
+  );
+}

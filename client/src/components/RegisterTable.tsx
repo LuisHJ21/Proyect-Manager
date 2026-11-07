@@ -1,0 +1,236 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { api, errorMessage } from '../api/client';
+import { ConfirmDialog, Modal } from './ConfirmDialog';
+import { ErrorState, Loading } from './ErrorState';
+import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from './FormField';
+import { INVALID_MONEY_MESSAGE, MoneyInput } from './MoneyInput';
+import { useToast } from './Toast';
+import { Button, Card, EmptyState, inputClass } from './ui';
+
+export type Option = { value: string | number; label: string };
+export type Values = Record<string, any>;
+
+export type FieldDef = {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'date' | 'select' | 'money';
+  options?: Option[] | ((values: Values) => Option[]);
+  /** El valor del select se convierte a número al guardar. */
+  numeric?: boolean;
+  /** Admite dejar el select vacío; se guarda como null. */
+  nullable?: boolean;
+};
+
+export type Column<T> = { header: string; cell: (item: T) => ReactNode };
+
+type Props<T extends { id: string }> = {
+  projectId: string;
+  path: string;
+  title?: string;
+  singular: string;
+  canEdit: boolean;
+  columns: Column<T>[];
+  fields: FieldDef[];
+  defaults: Values;
+  emptyText: string;
+  /** Ajusta los valores tras cada cambio, por ejemplo para limpiar opciones que dejan de valer. */
+  normalize?: (values: Values) => Values;
+  itemLabel: (item: T) => string;
+  onChanged?: () => void;
+};
+
+export const registerKey = (projectId: string, path: string) => ['project', projectId, path];
+
+function RegisterForm({
+  title,
+  fields,
+  initial,
+  normalize,
+  onSubmit,
+  onClose,
+}: {
+  title: string;
+  fields: FieldDef[];
+  initial: Values;
+  normalize?: (values: Values) => Values;
+  onSubmit: (values: Values) => Promise<unknown>;
+  onClose: () => void;
+}) {
+  const [values, setValues] = useState<Values>(initial);
+  const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
+  const [busy, setBusy] = useState(false);
+
+  const setField = (name: string, value: unknown) => {
+    const next = { ...values, [name]: value };
+    setValues(normalize ? normalize(next) : next);
+  };
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const invalidMoney = fields.find((f) => f.type === 'money' && values[f.name] === null);
+    if (invalidMoney) {
+      setErrors({ fields: { [invalidMoney.name]: INVALID_MONEY_MESSAGE } });
+      return;
+    }
+    setErrors(NO_ERRORS);
+    setBusy(true);
+    try {
+      await onSubmit(values);
+      onClose();
+    } catch (error) {
+      applyFieldErrors(error, setErrors);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title={title} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        <FormMessage message={errors.message} />
+        {fields.map((field) => (
+          <FormField key={field.name} label={field.label} error={errors.fields[field.name]}>
+            {field.type === 'money' ? (
+              <MoneyInput value={values[field.name]} onChange={(cents) => setField(field.name, cents)} />
+            ) : field.type === 'select' ? (
+              <select
+                className={inputClass}
+                value={values[field.name] ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setField(field.name, field.numeric ? Number(raw) : field.nullable && raw === '' ? null : raw);
+                }}
+              >
+                {field.nullable && <option value="">Sin asignar</option>}
+                {(typeof field.options === 'function' ? field.options(values) : (field.options ?? [])).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : field.type === 'textarea' ? (
+              <textarea className={inputClass} rows={3} value={values[field.name] ?? ''} onChange={(e) => setField(field.name, e.target.value)} />
+            ) : (
+              <input
+                className={inputClass}
+                type={field.type}
+                value={values[field.name] ?? ''}
+                onChange={(e) => setField(field.name, e.target.value)}
+              />
+            )}
+          </FormField>
+        ))}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={busy}>
+            Guardar
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/** Lista con alta, edición y baja para los registros de un proyecto. */
+export function RegisterTable<T extends { id: string }>(props: Props<T>) {
+  const { projectId, path, title, singular, canEdit, columns, fields, defaults, emptyText, normalize, itemLabel, onChanged } = props;
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const key = registerKey(projectId, path);
+  const base = `/api/projects/${projectId}/${path}`;
+  const list = useQuery({ queryKey: key, queryFn: () => api<T[]>(base) });
+  const [editing, setEditing] = useState<T | 'new' | null>(null);
+  const [deleting, setDeleting] = useState<T | null>(null);
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: key });
+    await queryClient.invalidateQueries({ queryKey: ['project', projectId, 'indicators'] });
+    onChanged?.();
+  };
+
+  const remove = useMutation({
+    mutationFn: (item: T) => api(`${base}/${item.id}`, { method: 'DELETE' }),
+    onSuccess: refresh,
+    onError: (error) => toast.error(errorMessage(error)),
+    onSettled: () => setDeleting(null),
+  });
+
+  const save = async (values: Values) => {
+    const body = Object.fromEntries(fields.map((f) => [f.name, f.type === 'date' && values[f.name] === '' ? null : values[f.name]]));
+    if (editing === 'new') await api(base, { method: 'POST', body });
+    else if (editing) await api(`${base}/${editing.id}`, { method: 'PATCH', body });
+    await refresh();
+  };
+
+  const newButton = canEdit ? <Button variant="secondary" onClick={() => setEditing('new')}>{`Añadir ${singular}`}</Button> : undefined;
+
+  return (
+    <Card title={title} actions={newButton}>
+      {list.isPending ? (
+        <Loading />
+      ) : list.isError ? (
+        <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} />
+      ) : list.data.length === 0 ? (
+        <EmptyState>{emptyText}</EmptyState>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-slate-500 uppercase">
+              <tr>
+                {columns.map((column) => (
+                  <th key={column.header} className="py-2 pr-4 font-medium">
+                    {column.header}
+                  </th>
+                ))}
+                {canEdit && (
+                  <th className="py-2 font-medium">
+                    <span className="sr-only">Acciones</span>
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {list.data.map((item) => (
+                <tr key={item.id}>
+                  {columns.map((column) => (
+                    <td key={column.header} className="py-2 pr-4 align-top text-slate-700">
+                      {column.cell(item)}
+                    </td>
+                  ))}
+                  {canEdit && (
+                    <td className="py-1 text-right whitespace-nowrap">
+                      <Button variant="ghost" aria-label={`Editar ${itemLabel(item)}`} onClick={() => setEditing(item)}>
+                        Editar
+                      </Button>
+                      <Button variant="ghost" aria-label={`Eliminar ${itemLabel(item)}`} onClick={() => setDeleting(item)}>
+                        Eliminar
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && (
+        <RegisterForm
+          title={editing === 'new' ? `Añadir ${singular}` : `Editar ${singular}`}
+          fields={fields}
+          initial={editing === 'new' ? defaults : (editing as Values)}
+          normalize={normalize}
+          onSubmit={save}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {deleting && (
+        <ConfirmDialog title={`Eliminar ${singular}`} danger confirmLabel="Eliminar" onCancel={() => setDeleting(null)} onConfirm={() => remove.mutate(deleting)}>
+          Se eliminará «{itemLabel(deleting)}» de forma permanente.
+        </ConfirmDialog>
+      )}
+    </Card>
+  );
+}

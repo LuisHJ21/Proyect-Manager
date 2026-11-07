@@ -8,6 +8,7 @@ import { CharterPage } from './pages/project/Charter';
 import { ProjectLayout, ProjectPmOnly } from './pages/project/ProjectLayout';
 import { ProjectListPage } from './pages/project/ProjectList';
 import { SummaryPage } from './pages/project/Summary';
+import { TasksPage } from './pages/project/Tasks';
 
 export function AppRoutes() {
   return (
@@ -23,6 +24,7 @@ export function AppRoutes() {
             <Route index element={<Navigate to="resumen" replace />} />
             <Route path="resumen" element={<SummaryPage />} />
             <Route path="acta" element={<CharterPage />} />
+            <Route path="tareas" element={<TasksPage />} />
             <Route element={<ProjectPmOnly />}>
               <Route path="interesados" element={null} />
               <Route path="riesgos" element={null} />

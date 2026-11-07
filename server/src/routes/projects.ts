@@ -1,9 +1,10 @@
-import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrderValid, updateProjectSchema } from '@pm/shared';
+import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrderValid, localToday, updateProjectSchema } from '@pm/shared';
 import type { FastifyInstance } from 'fastify';
 import { getProjectAccess, requireProjectPm, toProjectDto } from '../auth/access';
 import { requirePm, requireUser } from '../auth/guards';
 import { fieldError } from '../errors';
 import { removeStoredFiles } from '../files';
+import { loadProjectSummaries } from './projectStats';
 
 export async function projectRoutes(app: FastifyInstance) {
   const { prisma } = app;
@@ -13,11 +14,23 @@ export async function projectRoutes(app: FastifyInstance) {
     const isPm = user.role === 'PM';
     const projects = await prisma.project.findMany({
       where: isPm ? {} : { members: { some: { userId: user.id } } },
+      include: { members: { include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: 'asc' } } } },
       orderBy: { name: 'asc' },
     });
     const averages = await prisma.task.groupBy({ by: ['projectId'], _avg: { progress: true } });
     const progressById = new Map(averages.map((a) => [a.projectId, Math.round(a._avg.progress ?? 0)]));
-    return projects.map((project) => ({ ...toProjectDto(project, isPm), progress: progressById.get(project.id) ?? 0 }));
+    const summaries = isPm ? await loadProjectSummaries(prisma, projects, localToday(app.now())) : null;
+    return projects.map(({ members, ...project }) => {
+      const summary = summaries?.get(project.id);
+      return {
+        ...toProjectDto(project, isPm),
+        progress: progressById.get(project.id) ?? 0,
+        team: members.map((m) => m.user),
+        ...(summary
+          ? { health: summary.health, overdueTasks: summary.overdueTasks, highRisks: summary.highRisks, spentCents: summary.spentCents }
+          : {}),
+      };
+    });
   });
 
   app.post('/api/projects', async (req, reply) => {

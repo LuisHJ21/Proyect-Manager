@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 export const taskInclude = {
   assignees: { include: { user: { select: { id: true, name: true } } } },
   predecessors: { include: { predecessor: { select: { id: true, title: true, status: true, dueDate: true } } } },
-  _count: { select: { successors: true } },
+  _count: { select: { successors: true, comments: true } },
 } satisfies Prisma.TaskInclude;
 
 export type TaskWithRelations = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
@@ -29,6 +29,7 @@ export function toTaskDto(task: TaskWithRelations) {
     assignees: assignees.map((a) => a.user),
     predecessorIds: predecessors.map((p) => p.predecessorId),
     successorCount: _count.successors,
+    commentCount: _count.comments,
     waitingOn,
     warnings,
   };

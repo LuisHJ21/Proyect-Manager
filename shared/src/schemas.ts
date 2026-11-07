@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isValidCalendarDate } from './dates';
+import { diffDays, isValidCalendarDate } from './dates';
 import {
   APPROACH,
   EXPENSE_CATEGORY,
@@ -251,5 +251,16 @@ export const taskProgressSchema = z.object({
     .max(100, 'Usa un valor de 0 a 100')
     .optional(),
 });
+const MAX_CALENDAR_DAYS = 62;
+export const calendarRangeSchema = z
+  .object({ from: calendarDateSchema, to: calendarDateSchema })
+  .superRefine(({ from, to }, ctx) => {
+    if (from > to) {
+      ctx.addIssue({ code: 'custom', path: ['to'], message: 'La fecha final no puede ser anterior a la inicial' });
+    } else if (diffDays(from, to) + 1 > MAX_CALENDAR_DAYS) {
+      ctx.addIssue({ code: 'custom', path: ['to'], message: `El rango máximo es de ${MAX_CALENDAR_DAYS} días` });
+    }
+  });
+
 export const commentSchema = z.object({ body: required('Escribe un comentario') });
 export const dependencySchema = z.object({ predecessorId: required('Selecciona una tarea') });

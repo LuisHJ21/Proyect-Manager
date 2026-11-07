@@ -1,10 +1,11 @@
-import { createUserSchema, resetPasswordSchema, updateUserSchema } from '@pm/shared';
+import { createUserSchema, localToday, resetPasswordSchema, updateUserSchema } from '@pm/shared';
 import type { User } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { requirePm } from '../auth/guards';
 import { hashPassword } from '../auth/passwords';
 import { deleteUserSessions } from '../auth/sessions';
 import { toUserDto } from '../auth/userDto';
+import { isOverdue } from '../domain/health';
 import { AppError, notFound } from '../errors';
 
 export async function userRoutes(app: FastifyInstance) {
@@ -18,8 +19,38 @@ export async function userRoutes(app: FastifyInstance) {
 
   app.get('/api/users', async (req) => {
     requirePm(req);
-    const users = await prisma.user.findMany({ orderBy: { name: 'asc' } });
-    return users.map(toUserDto);
+    const users = await prisma.user.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        memberships: { include: { project: { select: { id: true, name: true } } }, orderBy: { project: { name: 'asc' } } },
+        assignments: { where: { task: { status: { not: 'DONE' } } }, include: { task: { select: { status: true, dueDate: true } } } },
+      },
+    });
+    const today = localToday(app.now());
+    return users.map((user) => ({
+      ...toUserDto(user),
+      projects: user.memberships.map((m) => ({ id: m.project.id, name: m.project.name, projectRole: m.projectRole })),
+      openTasks: user.assignments.length,
+      overdueTasks: user.assignments.filter((a) => isOverdue(a.task, today)).length,
+    }));
+  });
+
+  app.get<{ Params: { id: string } }>('/api/users/:id/tasks', async (req) => {
+    requirePm(req);
+    const user = await findUser(req.params.id);
+    const tasks = await prisma.task.findMany({
+      where: { status: { not: 'DONE' }, assignees: { some: { userId: user.id } } },
+      include: { project: { select: { name: true } } },
+      orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
+    });
+    return tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      dueDate: t.dueDate,
+      projectId: t.projectId,
+      projectName: t.project.name,
+    }));
   });
 
   app.post('/api/users', async (req, reply) => {

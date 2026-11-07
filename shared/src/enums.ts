@@ -13,6 +13,8 @@ export const RISK_RESPONSE = {
   THREAT: ['AVOID', 'MITIGATE', 'TRANSFER', 'ESCALATE', 'ACCEPT'],
   OPPORTUNITY: ['EXPLOIT', 'ENHANCE', 'SHARE', 'ESCALATE', 'ACCEPT'],
 } as const;
+export const HEALTH = ['AT_RISK', 'ATTENTION', 'ON_TRACK'] as const;
+export const ACTIVE_PROJECT_STATUS = ['PLANNING', 'EXECUTING', 'PAUSED'] as const;
 export const EXPENSE_CATEGORY = ['LABOR', 'MATERIALS', 'EQUIPMENT', 'SERVICES', 'OTHER'] as const;
 
 export type Role = (typeof ROLE)[number];
@@ -26,6 +28,7 @@ export type Priority = (typeof PRIORITY)[number];
 export type Level = (typeof LEVEL)[number];
 export type RiskType = (typeof RISK_TYPE)[number];
 export type RiskStatus = (typeof RISK_STATUS)[number];
+export type Health = (typeof HEALTH)[number];
 export type ExpenseCategory = (typeof EXPENSE_CATEGORY)[number];
 
 export const LABELS = {
@@ -38,6 +41,7 @@ export const LABELS = {
     CANCELLED: 'Cancelado',
   },
   approach: { PREDICTIVE: 'Predictivo', AGILE: 'Ágil', HYBRID: 'Híbrido' },
+  health: { AT_RISK: 'En riesgo', ATTENTION: 'Atención', ON_TRACK: 'Al día' },
   charterStatus: { DRAFT: 'Borrador', APPROVED: 'Aprobada' },
   objectiveStatus: { PENDING: 'Pendiente', MET: 'Cumplido', NOT_MET: 'No cumplido' },
   milestoneStatus: { PENDING: 'Pendiente', REACHED: 'Alcanzado' },

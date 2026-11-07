@@ -56,6 +56,62 @@ describe('acceso', () => {
   });
 });
 
+describe('entrar y salir', () => {
+  it('tras la configuración inicial entra a la aplicación', async () => {
+    mockApi({
+      'GET /api/setup/status': { needsSetup: true },
+      'GET /api/auth/me': apiError(401, 'unauthenticated'),
+      'POST /api/setup': pmUser,
+      'GET /api/projects': [],
+    });
+    renderApp('/');
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText('Nombre'), 'Paula');
+    await user.type(screen.getByLabelText('Correo'), 'p@x.com');
+    await user.type(screen.getByLabelText('Contraseña'), 'contraseña-larga');
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+    expect(await screen.findByRole('heading', { name: 'Proyectos' })).toBeInTheDocument();
+  });
+
+  it('tras iniciar sesión entra a la aplicación', async () => {
+    mockApi({ ...noSession, 'POST /api/auth/login': collaborator, 'GET /api/me/tasks': [] });
+    renderApp('/login');
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText('Correo'), 'c@x.com');
+    await user.type(screen.getByLabelText('Contraseña'), 'contraseña-larga');
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+    expect(await screen.findByRole('heading', { name: 'Mis tareas' })).toBeInTheDocument();
+  });
+
+  it('cerrar sesión lleva a iniciar sesión y olvida los datos anteriores', async () => {
+    mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'POST /api/auth/logout': { ok: true } });
+    renderApp('/proyectos');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
+    expect(await screen.findByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument();
+  });
+
+  it('al vencer la sesión lleva a iniciar sesión', async () => {
+    mockApi({ ...signedInAs(pmUser), 'GET /api/projects': apiError(401, 'unauthenticated') });
+    renderApp('/proyectos');
+    expect(await screen.findByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument();
+  });
+
+  it('tras cambiar la contraseña temporal entra a la aplicación', async () => {
+    mockApi({
+      ...signedInAs({ ...collaborator, mustChangePassword: true }),
+      'POST /api/auth/change-password': collaborator,
+      'GET /api/me/tasks': [],
+    });
+    renderApp('/');
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText('Contraseña actual'), 'temporal-12345');
+    await user.type(screen.getByLabelText('Contraseña nueva'), 'nueva-clave-larga');
+    await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
+    expect(await screen.findByRole('heading', { name: 'Mis tareas' })).toBeInTheDocument();
+  });
+});
+
 describe('usuarios', () => {
   const routes = {
     ...signedInAs(pmUser),

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +10,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(here, '../..');
 const dataDir = resolveDataDir(process.env, rootDir);
 const port = resolvePort(process.env);
-const clientDist = resolve(rootDir, 'client/dist');
+const clientDistPath = resolve(rootDir, 'client/dist');
+const clientDist = existsSync(clientDistPath) ? clientDistPath : undefined;
+if (!clientDist) console.warn('No se encontró la interfaz compilada. Ejecuta "npm run build".');
 
 const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(dataDir) } } });
 const app = await buildApp({ prisma, dataDir, clientDist, logger: { level: 'warn' } });

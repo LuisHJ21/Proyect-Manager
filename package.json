@@ -1,16 +1,22 @@
 {
   "name": "gestor-proyectos-pmbok7",
   "private": true,
-  "workspaces": ["shared", "server", "client"],
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
   "scripts": {
     "dev": "concurrently -n server,client \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w client && npm run build -w server",
     "start": "npm start -w server",
-    "test": "npm test -w shared && npm test -w server && npm test -w client --if-present"
+    "test": "npm test -w shared && npm test -w server && npm test -w client --if-present",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",
     "typescript": "^5.6.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "@playwright/test": "^1.50.0"
   }
 }

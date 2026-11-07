@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts --format esm --out-dir dist --noExternal @pm/shared",
+    "dev": "node scripts/migrate.mjs && tsx watch src/index.ts",
+    "build": "tsup",
     "start": "node scripts/start.mjs",
     "test": "vitest run",
     "postinstall": "prisma generate"

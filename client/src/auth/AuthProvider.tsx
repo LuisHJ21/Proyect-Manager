@@ -41,9 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('pm:unauthenticated', onUnauthenticated);
   }, [queryClient]);
 
-  const signedIn = useCallback(
-    (user: User) => {
-      queryClient.clear();
+  // Olvida los datos de la sesión anterior. No usa clear(): este proveedor seguiría leyendo las consultas borradas.
+  const setSession = useCallback(
+    (user: User | null) => {
+      queryClient.removeQueries({ predicate: (query) => !['me', 'setup-status'].includes(String(query.queryKey[0])) });
       queryClient.setQueryData(['me'], user);
       queryClient.setQueryData(['setup-status'], { needsSetup: false });
     },
@@ -52,10 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await api('/api/auth/logout', { method: 'POST' });
-    queryClient.clear();
-    queryClient.setQueryData(['me'], null);
-    queryClient.setQueryData(['setup-status'], { needsSetup: false });
-  }, [queryClient]);
+    setSession(null);
+  }, [setSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -68,10 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void me.refetch();
         void setup.refetch();
       },
-      signedIn,
+      signedIn: setSession,
       logout,
     }),
-    [me, setup, signedIn, logout],
+    [me, setup, setSession, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 export const taskInclude = {
   assignees: { include: { user: { select: { id: true, name: true } } } },
   predecessors: { include: { predecessor: { select: { id: true, title: true, status: true, dueDate: true } } } },
+  steps: { select: { done: true } },
   _count: { select: { successors: true, comments: true } },
 } satisfies Prisma.TaskInclude;
 
@@ -10,7 +11,7 @@ export type TaskWithRelations = Prisma.TaskGetPayload<{ include: typeof taskIncl
 export type TaskWarning = 'predecessor_not_done' | 'starts_before_predecessor_due';
 
 export function toTaskDto(task: TaskWithRelations) {
-  const { assignees, predecessors, _count, ...fields } = task;
+  const { assignees, predecessors, steps, _count, ...fields } = task;
   const waitingOn = predecessors
     .filter((p) => p.predecessor.status !== 'DONE')
     .map((p) => ({ id: p.predecessor.id, title: p.predecessor.title }));
@@ -30,6 +31,8 @@ export function toTaskDto(task: TaskWithRelations) {
     predecessorIds: predecessors.map((p) => p.predecessorId),
     successorCount: _count.successors,
     commentCount: _count.comments,
+    stepsDone: steps.filter((s) => s.done).length,
+    stepsTotal: steps.length,
     waitingOn,
     warnings,
   };

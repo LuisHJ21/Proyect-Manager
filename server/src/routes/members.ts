@@ -72,6 +72,7 @@ export async function memberRoutes(app: FastifyInstance) {
     const member = await findMember(project.id, req.params.userId);
     await prisma.$transaction([
       prisma.taskAssignee.deleteMany({ where: { userId: member.userId, task: { projectId: project.id } } }),
+      prisma.taskStep.updateMany({ where: { assigneeId: member.userId, task: { projectId: project.id } }, data: { assigneeId: null } }),
       prisma.risk.updateMany({ where: { ownerId: member.userId, projectId: project.id }, data: { ownerId: null } }),
       prisma.projectMember.delete({ where: { id: member.id } }),
     ]);

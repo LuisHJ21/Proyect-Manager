@@ -1,4 +1,5 @@
 import {
+  ACTIVE_PROJECT_STATUS,
   assigneesSchema,
   commentSchema,
   createTaskSchema,
@@ -11,6 +12,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { getProjectAccess, requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { checkProgressChange } from '../domain/dependencies';
+import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { removeStoredFiles } from '../files';
 import { taskInclude, toTaskDto } from './taskDto';
@@ -39,6 +41,13 @@ export async function taskRoutes(app: FastifyInstance) {
     const { task, isPm } = await getTaskAccess(req, taskId);
     if (!isPm) throw forbidden();
     return task;
+  };
+
+  const assertDatesWithinProject = (project: ProjectRange, dates: { startDate?: string | null; dueDate?: string | null }) => {
+    for (const field of ['startDate', 'dueDate'] as const) {
+      const date = dates[field];
+      if (date && !isWithinProject(date, project)) throw fieldError(field, outsideProjectMessage(project));
+    }
   };
 
   const assertMilestone = async (projectId: string, milestoneId?: string | null) => {
@@ -72,6 +81,7 @@ export async function taskRoutes(app: FastifyInstance) {
   app.post<TaskParams>('/api/projects/:id/tasks', async (req, reply) => {
     const project = await requireProjectPm(req, req.params.id);
     const { assigneeIds, ...input } = createTaskSchema.parse(req.body);
+    assertDatesWithinProject(project, input);
     await assertMilestone(project.id, input.milestoneId);
     const userIds = await assertAssignable(project.id, assigneeIds, 'assigneeIds');
     const task = await prisma.task.create({
@@ -84,7 +94,7 @@ export async function taskRoutes(app: FastifyInstance) {
   app.get('/api/me/tasks', async (req) => {
     const user = requireUser(req);
     const tasks = await prisma.task.findMany({
-      where: { assignees: { some: { userId: user.id } } },
+      where: { assignees: { some: { userId: user.id } }, project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } },
       include: { ...taskInclude, project: { select: { name: true } } },
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
     });
@@ -98,7 +108,16 @@ export async function taskRoutes(app: FastifyInstance) {
       include: { author: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'asc' },
     });
-    return { ...(await loadDto(task.id)), comments };
+    const steps = await prisma.taskStep.findMany({
+      where: { taskId: task.id },
+      include: { assignee: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      ...(await loadDto(task.id)),
+      comments,
+      steps: steps.map((s) => ({ id: s.id, title: s.title, done: s.done, assignee: s.assignee })),
+    };
   });
 
   app.patch<TaskParams>('/api/tasks/:id', async (req) => {
@@ -107,6 +126,11 @@ export async function taskRoutes(app: FastifyInstance) {
     const startDate = input.startDate === undefined ? task.startDate : input.startDate;
     const dueDate = input.dueDate === undefined ? task.dueDate : input.dueDate;
     if (!isDateOrderValid(startDate, dueDate)) throw fieldError('startDate', TASK_DATE_ORDER_MESSAGE);
+    const project = await prisma.project.findUniqueOrThrow({ where: { id: task.projectId } });
+    assertDatesWithinProject(project, {
+      startDate: input.startDate === task.startDate ? undefined : input.startDate,
+      dueDate: input.dueDate === task.dueDate ? undefined : input.dueDate,
+    });
     await assertMilestone(task.projectId, input.milestoneId);
     const userIds = assigneeIds && (await assertAssignable(task.projectId, assigneeIds, 'assigneeIds', task.id));
     await prisma.$transaction([
@@ -115,6 +139,7 @@ export async function taskRoutes(app: FastifyInstance) {
         ? [
             prisma.taskAssignee.deleteMany({ where: { taskId: task.id } }),
             prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),
+            prisma.taskStep.updateMany({ where: { taskId: task.id, assigneeId: { notIn: userIds } }, data: { assigneeId: null } }),
           ]
         : []),
     ]);
@@ -136,6 +161,7 @@ export async function taskRoutes(app: FastifyInstance) {
     await prisma.$transaction([
       prisma.taskAssignee.deleteMany({ where: { taskId: task.id } }),
       prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),
+      prisma.taskStep.updateMany({ where: { taskId: task.id, assigneeId: { notIn: userIds } }, data: { assigneeId: null } }),
     ]);
     return loadDto(task.id);
   });
@@ -148,6 +174,16 @@ export async function taskRoutes(app: FastifyInstance) {
 
     await prisma.$transaction(async (tx) => {
       const current = await tx.task.findUniqueOrThrow({ where: { id: task.id } });
+      const steps = await tx.taskStep.findMany({ where: { taskId: task.id }, select: { done: true } });
+      if (steps.length > 0 && input.progress !== undefined) {
+        throw fieldError('progress', 'El avance de una tarea con pasos se calcula con ellos');
+      }
+      const pendingSteps = steps.filter((step) => !step.done).length;
+      if (input.status === 'DONE' && pendingSteps > 0) {
+        throw new AppError(409, 'steps_pending', `Faltan ${pendingSteps} ${pendingSteps === 1 ? 'paso' : 'pasos'} por completar`, {
+          details: { pending: pendingSteps },
+        });
+      }
       const pending = await tx.taskDependency.findMany({
         where: { successorId: task.id, predecessor: { status: { not: 'DONE' } } },
         include: { predecessor: { select: { id: true, title: true } } },

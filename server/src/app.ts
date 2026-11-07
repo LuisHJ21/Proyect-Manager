@@ -16,6 +16,7 @@ import { indicatorRoutes } from './routes/indicators';
 import { memberRoutes } from './routes/members';
 import { projectRoutes } from './routes/projects';
 import { registerRoutes } from './routes/registers';
+import { taskStepRoutes } from './routes/taskSteps';
 import { taskRoutes } from './routes/tasks';
 import { userRoutes } from './routes/users';
 
@@ -54,6 +55,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await charterRoutes(app);
   await registerRoutes(app);
   await taskRoutes(app);
+  await taskStepRoutes(app);
   await dependencyRoutes(app);
   await attachmentRoutes(app);
   await indicatorRoutes(app);

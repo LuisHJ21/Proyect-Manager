@@ -1,4 +1,4 @@
-import { createUserSchema, localToday, resetPasswordSchema, updateUserSchema } from '@pm/shared';
+import { ACTIVE_PROJECT_STATUS, createUserSchema, localToday, resetPasswordSchema, updateUserSchema } from '@pm/shared';
 import type { User } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { requirePm } from '../auth/guards';
@@ -23,7 +23,10 @@ export async function userRoutes(app: FastifyInstance) {
       orderBy: { name: 'asc' },
       include: {
         memberships: { include: { project: { select: { id: true, name: true } } }, orderBy: { project: { name: 'asc' } } },
-        assignments: { where: { task: { status: { not: 'DONE' } } }, include: { task: { select: { status: true, dueDate: true } } } },
+        assignments: {
+          where: { task: { status: { not: 'DONE' }, project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } } },
+          include: { task: { select: { status: true, dueDate: true } } },
+        },
       },
     });
     const today = localToday(app.now());
@@ -39,7 +42,7 @@ export async function userRoutes(app: FastifyInstance) {
     requirePm(req);
     const user = await findUser(req.params.id);
     const tasks = await prisma.task.findMany({
-      where: { status: { not: 'DONE' }, assignees: { some: { userId: user.id } } },
+      where: { status: { not: 'DONE' }, assignees: { some: { userId: user.id } }, project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } },
       include: { project: { select: { name: true } } },
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
     });
@@ -84,7 +87,10 @@ export async function userRoutes(app: FastifyInstance) {
 
     const becomesPm = input.role === 'PM' && target.role !== 'PM';
     const updated = await prisma.$transaction(async (tx) => {
-      if (becomesPm) await tx.taskAssignee.deleteMany({ where: { userId: target.id } });
+      if (becomesPm) {
+        await tx.taskAssignee.deleteMany({ where: { userId: target.id } });
+        await tx.taskStep.updateMany({ where: { assigneeId: target.id }, data: { assigneeId: null } });
+      }
       return tx.user.update({ where: { id: target.id }, data: input });
     });
     if (input.active === false) await deleteUserSessions(prisma, target.id);

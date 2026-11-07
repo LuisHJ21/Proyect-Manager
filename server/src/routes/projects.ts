@@ -2,12 +2,28 @@ import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrd
 import type { FastifyInstance } from 'fastify';
 import { getProjectAccess, requireProjectPm, toProjectDto } from '../auth/access';
 import { requirePm, requireUser } from '../auth/guards';
+import { countTasksOutside, type ProjectRange } from '../domain/projectDates';
 import { fieldError } from '../errors';
 import { removeStoredFiles } from '../files';
 import { loadProjectSummaries } from './projectStats';
 
 export async function projectRoutes(app: FastifyInstance) {
   const { prisma } = app;
+
+  /** Solo comprueba los límites que cambian, y solo las tareas que hoy están dentro: las que ya estaban fuera no impiden editar. */
+  const assertTasksStayInside = async (project: ProjectRange & { id: string }, changed: ProjectRange) => {
+    const tasks = await prisma.task.findMany({ where: { projectId: project.id }, select: { startDate: true, dueDate: true } });
+    for (const field of ['startDate', 'endDate'] as const) {
+      if (!changed[field]) continue;
+      const limit = (value: string | null): ProjectRange => ({ startDate: null, endDate: null, [field]: value });
+      const inside = tasks.filter((task) => countTasksOutside([task], limit(project[field])) === 0);
+      const count = countTasksOutside(inside, limit(changed[field]));
+      if (count > 0) {
+        const tasksText = count === 1 ? '1 tarea quedaría' : `${count} tareas quedarían`;
+        throw fieldError(field, `${tasksText} fuera del proyecto. Ajusta sus fechas primero.`);
+      }
+    }
+  };
 
   app.get('/api/projects', async (req) => {
     const user = requireUser(req);
@@ -51,6 +67,7 @@ export async function projectRoutes(app: FastifyInstance) {
     const startDate = input.startDate === undefined ? project.startDate : input.startDate;
     const endDate = input.endDate === undefined ? project.endDate : input.endDate;
     if (!isDateOrderValid(startDate, endDate)) throw fieldError('startDate', DATE_ORDER_MESSAGE);
+    await assertTasksStayInside(project, { startDate: startDate === project.startDate ? null : startDate, endDate: endDate === project.endDate ? null : endDate });
     const updated = await prisma.project.update({ where: { id: project.id }, data: input });
     return toProjectDto(updated, true);
   });

@@ -87,6 +87,9 @@ export async function createTestApp(opts: { clientDist?: string } = {}) {
         data: { projectId, title, ...rest, assignees: { create: assignees.map((a) => ({ userId: a.id })) } },
       });
     },
+    makeStep(taskId: string, input: { title?: string; done?: boolean; assigneeId?: string } = {}) {
+      return prisma.taskStep.create({ data: { taskId, title: input.title ?? 'Paso', done: input.done ?? false, assigneeId: input.assigneeId } });
+    },
     /** Cliente con una sesión creada directamente, sin pasar por el inicio de sesión. */
     as(user: User): HttpClient {
       const lazyCookie = createSession(prisma, user.id, current).then((token) => `pm_session=${token}`);

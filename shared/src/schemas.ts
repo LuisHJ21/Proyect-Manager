@@ -262,5 +262,14 @@ export const calendarRangeSchema = z
     }
   });
 
+export const stepSchema = z.object({
+  title: required('Escribe el paso'),
+  assigneeId: z.string().nullable().optional(),
+});
+export const updateStepSchema = z.object({
+  title: required('Escribe el paso').optional(),
+  assigneeId: z.string().nullable().optional(),
+  done: z.boolean().optional(),
+});
 export const commentSchema = z.object({ body: required('Escribe un comentario') });
 export const dependencySchema = z.object({ predecessorId: required('Selecciona una tarea') });

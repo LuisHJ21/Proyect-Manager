@@ -4,6 +4,7 @@ import { getProjectAccess, requireProjectPm, toProjectDto } from '../auth/access
 import { requirePm, requireUser } from '../auth/guards';
 import { countTasksOutside, type ProjectRange } from '../domain/projectDates';
 import { fieldError } from '../errors';
+import { sanitizeFields } from '../richText';
 import { removeStoredFiles } from '../files';
 import { loadProjectSummaries } from './projectStats';
 
@@ -51,7 +52,7 @@ export async function projectRoutes(app: FastifyInstance) {
 
   app.post('/api/projects', async (req, reply) => {
     requirePm(req);
-    const input = createProjectSchema.parse(req.body);
+    const input = createProjectSchema.parse(sanitizeFields(req.body, ['description']));
     const project = await prisma.project.create({ data: { ...input, charter: { create: {} } } });
     return reply.status(201).send(toProjectDto(project, true));
   });
@@ -63,7 +64,7 @@ export async function projectRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>('/api/projects/:id', async (req) => {
     const project = await requireProjectPm(req, req.params.id);
-    const input = updateProjectSchema.parse(req.body);
+    const input = updateProjectSchema.parse(sanitizeFields(req.body, ['description']));
     const startDate = input.startDate === undefined ? project.startDate : input.startDate;
     const endDate = input.endDate === undefined ? project.endDate : input.endDate;
     if (!isDateOrderValid(startDate, endDate)) throw fieldError('startDate', DATE_ORDER_MESSAGE);

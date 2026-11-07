@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodType } from 'zod';
 import { getProjectAccess, requireProjectPm } from '../auth/access';
 import { forbidden, notFound } from '../errors';
+import { sanitizeFields } from '../richText';
 
 /** Subconjunto de un delegado de Prisma: los delegados no comparten un tipo genérico. */
 type Delegate = {
@@ -24,10 +25,12 @@ export type ProjectCrudOptions = {
   /** Reglas sobre el registro resultante, ya combinado con lo guardado. */
   validate?: (merged: Record<string, any>, project: Project) => Promise<void>;
   toDto?: (item: any) => object;
+  /** Campos con formato: se limpian antes de validar. */
+  richTextFields?: readonly string[];
 };
 
 export function registerProjectCrud(app: FastifyInstance, options: ProjectCrudOptions) {
-  const { path, delegate, createSchema, updateSchema, readAccess, validate, toDto = (item) => item } = options;
+  const { path, delegate, createSchema, updateSchema, readAccess, validate, toDto = (item) => item, richTextFields = [] } = options;
   const base = `/api/projects/:id/${path}`;
 
   const findItem = async (projectId: string, itemId: string) => {
@@ -45,7 +48,7 @@ export function registerProjectCrud(app: FastifyInstance, options: ProjectCrudOp
 
   app.post<{ Params: { id: string } }>(base, async (req, reply) => {
     const project = await requireProjectPm(req, req.params.id);
-    const input = createSchema.parse(req.body);
+    const input = createSchema.parse(sanitizeFields(req.body, richTextFields));
     await validate?.(input, project);
     const item = await delegate.create({ data: { ...input, projectId: project.id } });
     return reply.status(201).send(toDto(item));
@@ -54,7 +57,7 @@ export function registerProjectCrud(app: FastifyInstance, options: ProjectCrudOp
   app.patch<{ Params: Params }>(`${base}/:itemId`, async (req) => {
     const project = await requireProjectPm(req, req.params.id);
     const current = await findItem(project.id, req.params.itemId);
-    const input = updateSchema.parse(req.body);
+    const input = updateSchema.parse(sanitizeFields(req.body, richTextFields));
     await validate?.({ ...current, ...input }, project);
     const item = await delegate.update({ where: { id: current.id }, data: input });
     return toDto(item);

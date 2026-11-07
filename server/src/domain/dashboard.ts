@@ -1,4 +1,4 @@
-import { addDays, type Health } from '@pm/shared';
+import { addDays, toPlainText, type Health } from '@pm/shared';
 import { isActiveProject, isHighRisk, isOverdue, summarizeProject } from './health';
 
 const MAX_ATTENTION_ITEMS = 8;
@@ -59,7 +59,7 @@ export function buildDashboard(input: DashboardInput, today: string) {
       .map((t) => ({ kind: 'task' as const, id: t.id, title: t.title, projectId: t.projectId, projectName: projectName(t.projectId), dueDate: t.dueDate })),
     ...[...highRisks]
       .sort((a, b) => b.probability * b.impact - a.probability * a.impact)
-      .map((r) => ({ kind: 'risk' as const, id: r.id, title: r.description, projectId: r.projectId, projectName: projectName(r.projectId), score: r.probability * r.impact })),
+      .map((r) => ({ kind: 'risk' as const, id: r.id, title: toPlainText(r.description), projectId: r.projectId, projectName: projectName(r.projectId), score: r.probability * r.impact })),
   ].slice(0, MAX_ATTENTION_ITEMS);
 
   const load = new Map<string, { userId: string; name: string; openTasks: number; overdueTasks: number }>();

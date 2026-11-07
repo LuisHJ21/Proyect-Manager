@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { HomeRedirect, RequireAuth, RequirePm } from './auth/RequireAuth';
+import { HomeRedirect, RequireAuth, RequireCollaborator, RequirePm } from './auth/RequireAuth';
 import { AppLayout } from './components/AppLayout';
 import { ChangePasswordPage, LoginPage, SetupPage } from './pages/AuthPages';
 import { MyTasksPage } from './pages/MyTasks';
@@ -33,8 +33,11 @@ export function AppRoutes() {
               <Route path="presupuesto" element={<BudgetPage />} />
             </Route>
           </Route>
-          <Route path="/mis-tareas" element={<MyTasksPage />} />
+          <Route element={<RequireCollaborator />}>
+            <Route path="/mis-tareas" element={<MyTasksPage />} />
+          </Route>
           <Route element={<RequirePm />}>
+            <Route path="/panel" element={<h1 className="text-3xl font-semibold">Panel general</h1>} />
             <Route path="/usuarios" element={<UsersPage />} />
           </Route>
         </Route>

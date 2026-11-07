@@ -1,1 +1,60 @@
 @import "tailwindcss";
+
+@theme {
+  --color-page: #0f1117;
+  --color-sidebar: #0a0c11;
+  --color-surface: #181b23;
+  --color-raised: #232732;
+  --color-line: #2a2f3a;
+  --color-control: #3f4552;
+  --color-ink: #f4f4f5;
+  --color-ink-nav: #d4d4d8;
+  --color-ink-soft: #a1a1aa;
+  --color-primary: #3b5bdb;
+  --color-primary-hover: #2f4ac0;
+  --color-link: #a9bbff;
+  --color-active: #1e2747;
+  --color-risk-bg: #451a03;
+  --color-risk-fg: #fdba8c;
+  --color-warn-bg: #422006;
+  --color-warn-fg: #fde68a;
+  --color-ok-bg: #064e3b;
+  --color-ok-fg: #a7f3d0;
+  --color-info-bg: #1e2747;
+  --color-info-fg: #a9bbff;
+  --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Space Grotesk Variable', 'Inter Variable', system-ui, sans-serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

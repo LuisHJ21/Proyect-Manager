@@ -37,8 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onUnauthenticated = () => queryClient.setQueryData(['me'], null);
+    // Un 403 puede significar que el rol cambió con la sesión abierta: se vuelve a consultar.
+    const onForbidden = () => void queryClient.invalidateQueries({ queryKey: ['me'] });
     window.addEventListener('pm:unauthenticated', onUnauthenticated);
-    return () => window.removeEventListener('pm:unauthenticated', onUnauthenticated);
+    window.addEventListener('pm:forbidden', onForbidden);
+    return () => {
+      window.removeEventListener('pm:unauthenticated', onUnauthenticated);
+      window.removeEventListener('pm:forbidden', onForbidden);
+    };
   }, [queryClient]);
 
   // Olvida los datos de la sesión anterior. No usa clear(): este proveedor seguiría leyendo las consultas borradas.

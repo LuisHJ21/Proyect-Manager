@@ -44,7 +44,7 @@ describe('acceso', () => {
   it('el colaborador no ve Usuarios y entra a /mis-tareas', async () => {
     mockApi({ ...signedInAs(collaborator), 'GET /api/me/tasks': [] });
     renderApp('/');
-    await screen.findByRole('link', { name: 'Mis tareas' });
+    await screen.findByRole('link', { name: /^Mis tareas/ });
     expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Mis tareas' })).toBeInTheDocument();
   });
@@ -70,7 +70,7 @@ describe('entrar y salir', () => {
     await user.type(screen.getByLabelText('Correo'), 'p@x.com');
     await user.type(screen.getByLabelText('Contraseña'), 'contraseña-larga');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    expect(await screen.findByRole('heading', { name: 'Proyectos' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Panel general' })).toBeInTheDocument();
   });
 
   it('tras iniciar sesión entra a la aplicación', async () => {

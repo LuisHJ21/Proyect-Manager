@@ -69,7 +69,7 @@ describe('lista de proyectos', () => {
   it('el colaborador no ve el botón para crear', async () => {
     mockApi({ ...signedInAs(collaborator), 'GET /api/projects': [{ ...project, progress: 40 }] });
     renderApp('/proyectos');
-    expect(await screen.findByRole('link', { name: 'Portal' })).toBeInTheDocument();
+    expect(await within(await screen.findByRole('main')).findByRole('link', { name: 'Portal' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Nuevo proyecto' })).not.toBeInTheDocument();
   });
 

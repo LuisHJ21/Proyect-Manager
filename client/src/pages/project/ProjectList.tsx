@@ -1,24 +1,19 @@
 import { LABELS } from '@pm/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../../api/client';
 import type { Project } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { ErrorState, Loading } from '../../components/ErrorState';
-import { ProjectForm } from '../../components/project/ProjectForm';
-import { Badge, Button, EmptyState, PageHeader, ProgressBar } from '../../components/ui';
+import { Badge, EmptyState, PageHeader, ProgressBar } from '../../components/ui';
 
 export function ProjectListPage() {
   const { isPm } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<Project[]>('/api/projects') });
-  const [creating, setCreating] = useState(false);
 
   return (
     <>
-      <PageHeader title="Proyectos" actions={isPm ? <Button onClick={() => setCreating(true)}>Nuevo proyecto</Button> : undefined} />
+      <PageHeader title="Proyectos" />
       {projects.isPending ? (
         <Loading />
       ) : projects.isError ? (
@@ -44,15 +39,6 @@ export function ProjectListPage() {
             </li>
           ))}
         </ul>
-      )}
-      {creating && (
-        <ProjectForm
-          onClose={() => setCreating(false)}
-          onSaved={(project) => {
-            void queryClient.invalidateQueries({ queryKey: ['projects'] });
-            navigate(`/proyectos/${project.id}/resumen`);
-          }}
-        />
       )}
     </>
   );

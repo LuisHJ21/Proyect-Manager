@@ -10,7 +10,8 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { getProjectAccess, requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
-import { fieldError, forbidden, notFound } from '../errors';
+import { checkProgressChange } from '../domain/dependencies';
+import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { removeStoredFiles } from '../files';
 import { taskInclude, toTaskDto } from './taskDto';
 
@@ -132,7 +133,21 @@ export async function taskRoutes(app: FastifyInstance) {
     if (!isPm && !isAssignee) throw forbidden('Solo puedes actualizar las tareas que tienes asignadas');
     const input = taskProgressSchema.parse(req.body);
     const data = input.status === 'DONE' ? { ...input, progress: 100 } : input;
-    await prisma.task.update({ where: { id: task.id }, data });
+
+    await prisma.$transaction(async (tx) => {
+      const current = await tx.task.findUniqueOrThrow({ where: { id: task.id } });
+      const pending = await tx.taskDependency.findMany({
+        where: { successorId: task.id, predecessor: { status: { not: 'DONE' } } },
+        include: { predecessor: { select: { id: true, title: true } } },
+      });
+      if (checkProgressChange(current, data, pending.length) === 'blocked') {
+        const titles = pending.map((d) => d.predecessor.title).join(', ');
+        throw new AppError(409, 'predecessors_pending', `Antes deben terminar: ${titles}`, {
+          details: { pending: pending.map((d) => d.predecessor) },
+        });
+      }
+      await tx.task.update({ where: { id: task.id }, data });
+    });
     return loadDto(task.id);
   });
 

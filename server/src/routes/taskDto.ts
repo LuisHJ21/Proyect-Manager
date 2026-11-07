@@ -3,18 +3,33 @@ import type { Prisma } from '@prisma/client';
 export const taskInclude = {
   assignees: { include: { user: { select: { id: true, name: true } } } },
   predecessors: { include: { predecessor: { select: { id: true, title: true, status: true, dueDate: true } } } },
+  _count: { select: { successors: true } },
 } satisfies Prisma.TaskInclude;
 
 export type TaskWithRelations = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
 export type TaskWarning = 'predecessor_not_done' | 'starts_before_predecessor_due';
 
 export function toTaskDto(task: TaskWithRelations) {
-  const { assignees, predecessors, ...fields } = task;
+  const { assignees, predecessors, _count, ...fields } = task;
+  const waitingOn = predecessors
+    .filter((p) => p.predecessor.status !== 'DONE')
+    .map((p) => ({ id: p.predecessor.id, title: p.predecessor.title }));
+
+  const warnings: TaskWarning[] = [];
+  if (waitingOn.length > 0 && (task.status === 'IN_PROGRESS' || task.status === 'DONE')) {
+    warnings.push('predecessor_not_done');
+  }
+  const { startDate } = task;
+  if (startDate && predecessors.some((p) => p.predecessor.dueDate && startDate < p.predecessor.dueDate)) {
+    warnings.push('starts_before_predecessor_due');
+  }
+
   return {
     ...fields,
     assignees: assignees.map((a) => a.user),
     predecessorIds: predecessors.map((p) => p.predecessorId),
-    waitingOn: [] as { id: string; title: string }[],
-    warnings: [] as TaskWarning[],
+    successorCount: _count.successors,
+    waitingOn,
+    warnings,
   };
 }

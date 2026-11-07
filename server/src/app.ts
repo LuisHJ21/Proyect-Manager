@@ -6,6 +6,7 @@ import { registerAuthHook } from './auth/guards';
 import { errorHandler } from './errors';
 import { authRoutes } from './routes/auth';
 import { charterRoutes } from './routes/charter';
+import { dependencyRoutes } from './routes/dependencies';
 import { memberRoutes } from './routes/members';
 import { projectRoutes } from './routes/projects';
 import { registerRoutes } from './routes/registers';
@@ -46,6 +47,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await charterRoutes(app);
   await registerRoutes(app);
   await taskRoutes(app);
+  await dependencyRoutes(app);
 
   if (opts.clientDist) {
     await app.register(fastifyStatic, { root: opts.clientDist, wildcard: false });

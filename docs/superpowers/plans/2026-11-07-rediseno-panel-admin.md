@@ -708,3 +708,196 @@ Expected: todo en PASS.
 git add -A
 git commit -m "feat: tema oscuro completo y flujo actualizado"
 ```
+
+---
+
+## Ampliación: fechas dentro del proyecto y pasos de tarea
+
+Implementa las secciones 2.1 y 2.2 de la especificación. Estas tareas se ejecutan después de la revisión de la rama, junto con sus correcciones.
+
+**Review Focus adicional:**
+
+6. **Doble clic en la casilla de un paso:** una sola solicitud a la vez, y la casilla vuelve a su estado si se rechaza. Prueba en la Tarea 16.
+7. **Último paso eliminado de una tarea *Hecha*, o quitar la persona de un paso al cambiar asignados:** el avance y la persona quedan coherentes. Prueba en la Tarea 15.
+
+### Task 14: Fechas de tarea dentro del proyecto
+
+**Files:**
+- Create: `server/src/domain/projectDates.ts`
+- Modify: `server/src/routes/tasks.ts`, `server/src/routes/projects.ts`, `client/src/components/tasks/TaskForm.tsx`
+- Test: `server/tests/domain/projectDates.test.ts`, `server/tests/taskDates.test.ts`, modify `client/tests/taskDetail.test.tsx`
+
+**Interfaces:**
+- Consumes: `projectKey` de `ProjectLayout`.
+- Produces: `isWithinProject(date: string, project: { startDate: string | null; endDate: string | null }): boolean`, `formatRange(project): string` y `countTasksOutside(tasks, range): number`.
+
+- [ ] **Step 1: Escribir las pruebas que fallan**
+
+```ts
+const project = { startDate: '2026-11-01', endDate: '2026-11-30' };
+it('primer y último día se aceptan; un día antes o después no', () => {
+  expect(isWithinProject('2026-11-01', project)).toBe(true);
+  expect(isWithinProject('2026-11-30', project)).toBe(true);
+  expect(isWithinProject('2026-10-31', project)).toBe(false);
+  expect(isWithinProject('2026-12-01', project)).toBe(false);
+});
+it('cada límite solo aplica si está definido', () => {
+  expect(isWithinProject('2030-01-01', { startDate: '2026-11-01', endDate: null })).toBe(true);
+  expect(isWithinProject('2020-01-01', { startDate: '2026-11-01', endDate: null })).toBe(false);
+  expect(isWithinProject('2020-01-01', { startDate: null, endDate: null })).toBe(true);
+});
+// API
+it('POST rechaza startDate y dueDate fuera, con error por campo y las fechas del proyecto en el mensaje', ...);
+it('PATCH valida solo la fecha que cambia: una tarea ya fuera se puede renombrar', ...);
+it('PATCH rechaza mover una fecha fuera', ...);
+it('cambiar las fechas del proyecto rechaza si deja tareas fuera, e indica cuántas', ...);
+it('cambiar el proyecto sin afectar tareas se acepta; no se comprueba la fecha que no cambia', ...);
+it('los datos existentes no se modifican', ...);
+// Cliente
+it('el formulario de tarea limita los campos con min y max del proyecto y muestra el error por campo', ...);
+```
+
+- [ ] **Step 2: Verificar que fallan**
+
+Run: `npm test -w server -- tests/domain/projectDates.test.ts tests/taskDates.test.ts`
+Expected: FAIL.
+
+- [ ] **Step 3: Implementar**
+
+`TaskForm` lee el proyecto con `useQuery(projectKey(projectId))` para fijar `min` y `max`.
+
+- [ ] **Step 4: Verificar que pasan**
+
+Run: `npm test -w server; npm test -w client -- tests/taskDetail.test.tsx`
+Expected: PASS. Ajustar datos de pruebas existentes si caen fuera de las fechas de su proyecto.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "feat: las fechas de tarea deben estar dentro del proyecto"
+```
+
+---
+
+### Task 15: Pasos de tarea en la API
+
+**Files:**
+- Create: migración `<fecha>_add_task_steps`, `server/src/routes/taskSteps.ts`, `server/src/domain/taskSteps.ts`
+- Modify: `server/prisma/schema.prisma`, `shared/src/schemas.ts`, `server/src/routes/tasks.ts`, `server/src/routes/taskDto.ts`, `server/src/app.ts`, `server/tests/helpers/testApp.ts`
+- Test: `server/tests/domain/taskSteps.test.ts`, `server/tests/taskSteps.test.ts`
+
+**Interfaces:**
+- Consumes: `getTaskAccess`, `checkProgressChange`, `taskInclude`.
+- Produces:
+  - `stepProgress(steps: { done: boolean }[]): number | null` (`null` sin pasos).
+  - `stepSchema`, `updateStepSchema`.
+  - `TaskDto.stepsDone`, `TaskDto.stepsTotal`; `steps` en el detalle.
+  - `ctx.makeStep(taskId, { title?, done?, assigneeId? })`.
+
+- [ ] **Step 1: Escribir las pruebas que fallan**
+
+```ts
+it('stepProgress redondea y es null sin pasos', () => {
+  expect(stepProgress([])).toBeNull();
+  expect(stepProgress([{ done: true }, { done: false }, { done: false }])).toBe(33);
+});
+it('solo el PM crea, edita y elimina; un colaborador recibe 403', ...);
+it('asignado y PM marcan; un colaborador no asignado recibe 403 y un no miembro 404', ...);
+it('el colaborador no puede cambiar title ni assigneeId', ...);       // 403
+it('un paso de otra tarea responde 404', ...);
+it('rechaza una persona que no está asignada a la tarea', ...);       // 400 fields.assigneeId
+it('crear un paso con título vacío responde 400', ...);
+it('marcar recalcula el avance y pasa Por hacer a En curso', ...);
+it('crear un paso recalcula el avance y reabre una tarea Hecha', ...);
+it('desmarcar reabre una tarea Hecha', ...);
+it('eliminar recalcula; sin pasos conserva el último avance y se puede editar a mano', ...);
+it('eliminar el último paso de una tarea Hecha la deja Hecha', ...);
+it('con pasos, enviar progress responde 400 con fields.progress', ...);
+it('Hecha con pasos pendientes responde 409 steps_pending con details.pending', ...);
+it('Hecha con todos los pasos hechos se acepta; terminar pasos no la marca sola', ...);
+it('con predecesoras pendientes no se marca (409 predecessors_pending) y sí se desmarca', ...);
+it('quitar a un asignado deja sus pasos sin persona, por PUT, PATCH, salir del proyecto y pasar a PM', ...);
+it('borrar la tarea borra sus pasos', ...);
+it('el detalle incluye steps en orden y las listas stepsDone y stepsTotal', ...);
+```
+
+- [ ] **Step 2: Verificar que fallan**
+
+Run: `npm test -w server -- tests/domain/taskSteps.test.ts tests/taskSteps.test.ts`
+Expected: FAIL.
+
+- [ ] **Step 3: Añadir el modelo y crear la migración**
+
+```
+TaskStep: id, taskId, title, done (false), assigneeId?, createdAt, updatedAt; Task onDelete Cascade; User onDelete SetNull
+```
+
+Run: `npx prisma migrate dev --name add_task_steps` en `server/`, con `DATABASE_URL` de desarrollo.
+Expected: crea la migración y genera el cliente.
+
+- [ ] **Step 4: Implementar**
+
+Cada cambio de pasos, avance y estado ocurre en una sola transacción. Añadir la limpieza de persona a los puntos que quitan asignados.
+
+- [ ] **Step 5: Verificar que pasan**
+
+Run: `npm test -w server`
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "feat: pasos de tarea con avance automático"
+```
+
+---
+
+### Task 16: Pasos de tarea en la interfaz
+
+**Files:**
+- Create: `client/src/components/tasks/StepList.tsx`
+- Modify: `client/src/pages/project/TaskDetail.tsx`, `client/src/components/tasks/TaskCard.tsx`, `client/src/components/tasks/TaskList.tsx`, `client/src/api/types.ts`, `e2e/main-flow.spec.ts`
+- Test: `client/tests/taskSteps.test.tsx`, modify `client/tests/projectTasks.test.tsx`
+
+**Interfaces:**
+- Consumes: rutas de la Tarea 15, `refreshTaskData`, `useToast`.
+- Produces: `<StepList task canManage canCheck />`.
+
+- [ ] **Step 1: Escribir las pruebas que fallan**
+
+```ts
+it('muestra "N de M completados", barra y personas', ...);
+it('el PM añade, edita y elimina; el colaborador asignado solo marca', ...);
+it('un colaborador no asignado solo lee', ...);
+it('doble clic en una casilla envía una sola solicitud', ...);          // Review Focus 6
+it('ante 409 la casilla vuelve a su estado y muestra el motivo', ...);
+it('con pasos, el avance es de solo lectura y no se envía', ...);       // cuerpo sin progress
+it('sin pasos el avance se edita como antes', ...);
+it('la persona del paso se elige entre los asignados de la tarea', ...);
+it('tablero y lista muestran "2 de 5" si la tarea tiene pasos', ...);
+```
+
+- [ ] **Step 2: Verificar que fallan**
+
+Run: `npm test -w client -- tests/taskSteps.test.tsx tests/projectTasks.test.tsx`
+Expected: FAIL.
+
+- [ ] **Step 3: Implementar**
+
+- [ ] **Step 4: Añadir pasos al flujo completo**
+
+El PM añade dos pasos a una tarea; el colaborador asignado no puede marcarla como *Hecha* con uno pendiente, marca ambos, y entonces la termina.
+
+- [ ] **Step 5: Verificar**
+
+Run: `npm test -w client; npm run build; npm run test:e2e`
+Expected: PASS y 1 passed.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "feat: pasos de tarea en el detalle, tablero y lista"
+```

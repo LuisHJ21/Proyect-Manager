@@ -1,9 +1,12 @@
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
+import { MAX_FILE_BYTES } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { registerAuthHook } from './auth/guards';
 import { errorHandler } from './errors';
+import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
 import { charterRoutes } from './routes/charter';
 import { dependencyRoutes } from './routes/dependencies';
@@ -39,6 +42,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   app.setErrorHandler(errorHandler);
   await app.register(cookie);
+  await app.register(multipart, { limits: { fileSize: MAX_FILE_BYTES, files: 1 }, throwFileSizeLimit: false });
   registerAuthHook(app);
   await authRoutes(app);
   await userRoutes(app);
@@ -48,6 +52,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await registerRoutes(app);
   await taskRoutes(app);
   await dependencyRoutes(app);
+  await attachmentRoutes(app);
 
   if (opts.clientDist) {
     await app.register(fastifyStatic, { root: opts.clientDist, wildcard: false });

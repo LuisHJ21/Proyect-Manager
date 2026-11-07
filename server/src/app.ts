@@ -8,6 +8,7 @@ import { authRoutes } from './routes/auth';
 import { charterRoutes } from './routes/charter';
 import { memberRoutes } from './routes/members';
 import { projectRoutes } from './routes/projects';
+import { registerRoutes } from './routes/registers';
 import { userRoutes } from './routes/users';
 
 declare module 'fastify' {
@@ -42,6 +43,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await projectRoutes(app);
   await memberRoutes(app);
   await charterRoutes(app);
+  await registerRoutes(app);
 
   if (opts.clientDist) {
     await app.register(fastifyStatic, { root: opts.clientDist, wildcard: false });

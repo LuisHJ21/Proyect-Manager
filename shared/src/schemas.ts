@@ -1,6 +1,18 @@
 import { z } from 'zod';
 import { isValidCalendarDate } from './dates';
-import { APPROACH, PROJECT_STATUS, ROLE } from './enums';
+import {
+  APPROACH,
+  EXPENSE_CATEGORY,
+  LEVEL,
+  MILESTONE_STATUS,
+  OBJECTIVE_STATUS,
+  PROJECT_STATUS,
+  RISK_RESPONSE,
+  RISK_STATUS,
+  RISK_TYPE,
+  ROLE,
+  type RiskType,
+} from './enums';
 
 export const calendarDateSchema = z.string().refine(isValidCalendarDate, 'Fecha inválida');
 export const optionalDateSchema = calendarDateSchema.nullable().optional();
@@ -92,4 +104,95 @@ export const charterSchema = z.object({
   constraints: z.string().default(''),
   successCriteria: z.string().default(''),
   sponsor: z.string().default(''),
+});
+
+const objectiveFields = {
+  description: required('Describe el objetivo'),
+  metric: z.string().default(''),
+  target: z.string().default(''),
+  status: z.enum(OBJECTIVE_STATUS).default('PENDING'),
+};
+export const createObjectiveSchema = z.object(objectiveFields);
+export const updateObjectiveSchema = z.object({
+  description: objectiveFields.description.optional(),
+  metric: z.string().optional(),
+  target: z.string().optional(),
+  status: z.enum(OBJECTIVE_STATUS).optional(),
+});
+
+export const createMilestoneSchema = z.object({
+  name: required('Escribe el nombre del hito'),
+  dueDate: calendarDateSchema,
+  status: z.enum(MILESTONE_STATUS).default('PENDING'),
+});
+export const updateMilestoneSchema = z.object({
+  name: required('Escribe el nombre del hito').optional(),
+  dueDate: calendarDateSchema.optional(),
+  status: z.enum(MILESTONE_STATUS).optional(),
+});
+
+export const createStakeholderSchema = z.object({
+  name: required('Escribe el nombre'),
+  organization: z.string().default(''),
+  position: z.string().default(''),
+  contact: z.string().default(''),
+  influence: z.enum(LEVEL).default('MEDIUM'),
+  interest: z.enum(LEVEL).default('MEDIUM'),
+  strategy: z.string().default(''),
+});
+export const updateStakeholderSchema = z.object({
+  name: required('Escribe el nombre').optional(),
+  organization: z.string().optional(),
+  position: z.string().optional(),
+  contact: z.string().optional(),
+  influence: z.enum(LEVEL).optional(),
+  interest: z.enum(LEVEL).optional(),
+  strategy: z.string().optional(),
+});
+
+const scale = z.number({ message: 'Usa un valor de 1 a 5' }).int('Usa un valor de 1 a 5').min(1, 'Usa un valor de 1 a 5').max(5, 'Usa un valor de 1 a 5');
+const ALL_RESPONSES = [...new Set(Object.values(RISK_RESPONSE).flat())] as [string, ...string[]];
+const riskResponse = z.enum(ALL_RESPONSES, { message: 'Selecciona una respuesta' });
+export const INVALID_RESPONSE_MESSAGE = 'Esta respuesta no corresponde al tipo de riesgo';
+export const isResponseValidForType = (type: RiskType, response: string) =>
+  (RISK_RESPONSE[type] as readonly string[]).includes(response);
+export const createRiskSchema = z
+  .object({
+    description: required('Describe el riesgo'),
+    type: z.enum(RISK_TYPE),
+    probability: scale,
+    impact: scale,
+    response: riskResponse,
+    responsePlan: z.string().default(''),
+    ownerId: z.string().nullable().optional(),
+    status: z.enum(RISK_STATUS).default('OPEN'),
+  })
+  .superRefine((value, ctx) => {
+    if (!isResponseValidForType(value.type, value.response)) {
+      ctx.addIssue({ code: 'custom', path: ['response'], message: INVALID_RESPONSE_MESSAGE });
+    }
+  });
+export const updateRiskSchema = z.object({
+  description: required('Describe el riesgo').optional(),
+  type: z.enum(RISK_TYPE).optional(),
+  probability: scale.optional(),
+  impact: scale.optional(),
+  response: riskResponse.optional(),
+  responsePlan: z.string().optional(),
+  ownerId: z.string().nullable().optional(),
+  status: z.enum(RISK_STATUS).optional(),
+});
+
+const amount = z.number({ message: 'Monto inválido' }).int('Monto inválido').positive('El monto debe ser mayor que cero');
+export const createExpenseSchema = z.object({
+  description: required('Describe el gasto'),
+  amountCents: amount,
+  date: calendarDateSchema,
+  category: z.enum(EXPENSE_CATEGORY),
+});
+export const updateExpenseSchema = z.object({
+  description: required('Describe el gasto').optional(),
+  amountCents: amount.optional(),
+  date: calendarDateSchema.optional(),
+  category: z.enum(EXPENSE_CATEGORY).optional(),
 });

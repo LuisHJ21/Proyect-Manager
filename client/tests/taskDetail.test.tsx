@@ -20,9 +20,12 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   predecessorIds: [],
   successorCount: 0,
   commentCount: 0,
+  stepsDone: 0,
+  stepsTotal: 0,
   waitingOn: [],
   warnings: [],
   comments: [],
+  steps: [],
   ...over,
 });
 const other: Task = { ...detail({ id: 't2', title: 'Diseño' }) };
@@ -113,6 +116,22 @@ describe('detalle de tarea', () => {
 });
 
 describe('página de detalle', () => {
+  it('el formulario limita las fechas al proyecto y muestra el error por campo', async () => {
+    mockApi({
+      ...routes(detail()),
+      'GET /api/projects/p1': { ...project, startDate: '2026-11-01', endDate: '2026-11-30' },
+      'PATCH /api/tasks/t1': apiError(400, 'validation_error', { message: 'x', fields: { dueDate: 'La fecha debe estar dentro del proyecto (2026-11-01 a 2026-11-30)' } }),
+    });
+    open();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Editar tarea' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await waitFor(() => expect(dialog.getByLabelText('Fecha límite')).toHaveAttribute('max', '2026-11-30'));
+    expect(dialog.getByLabelText('Fecha de inicio')).toHaveAttribute('min', '2026-11-01');
+    await user.click(dialog.getByRole('button', { name: 'Guardar tarea' }));
+    expect(await dialog.findByText(/dentro del proyecto/)).toBeInTheDocument();
+  });
+
   it('tiene ruta de vuelta a las tareas', async () => {
     mockApi(routes(detail()));
     open();

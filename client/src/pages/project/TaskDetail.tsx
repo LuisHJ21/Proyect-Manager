@@ -12,6 +12,7 @@ import { FormField, FormMessage } from '../../components/FormField';
 import { registerKey } from '../../components/RegisterTable';
 import { CommentList } from '../../components/tasks/CommentList';
 import { DependencyPicker } from '../../components/tasks/DependencyPicker';
+import { StepList } from '../../components/tasks/StepList';
 import { PRIORITY_TONE, STATUS_TONE, WaitingNote } from '../../components/tasks/TaskCard';
 import { TaskForm } from '../../components/tasks/TaskForm';
 import { refreshTaskData, taskKey } from '../../components/tasks/taskQueries';
@@ -26,6 +27,7 @@ const WARNINGS: Record<TaskWarning, string> = {
 
 function ProgressForm({ task }: { task: TaskDetail }) {
   const queryClient = useQueryClient();
+  const hasSteps = task.steps.length > 0;
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [progress, setProgress] = useState(String(task.progress));
   const [error, setError] = useState<string>();
@@ -36,7 +38,7 @@ function ProgressForm({ task }: { task: TaskDetail }) {
   }, [task.status, task.progress]);
 
   const save = useMutation({
-    mutationFn: () => api(`/api/tasks/${task.id}/progress`, { method: 'PATCH', body: { status, progress: Number(progress) } }),
+    mutationFn: () => api(`/api/tasks/${task.id}/progress`, { method: 'PATCH', body: hasSteps ? { status } : { status, progress: Number(progress) } }),
     onSuccess: () => refreshTaskData(queryClient, task.projectId, task.id),
     onError: (e) => setError(errorMessage(e)),
   });
@@ -58,9 +60,16 @@ function ProgressForm({ task }: { task: TaskDetail }) {
           ))}
         </select>
       </FormField>
-      <FormField label="Avance (%)">
-        <input className={inputClass} type="number" min={0} max={100} value={progress} onChange={(e) => setProgress(e.target.value)} />
-      </FormField>
+      {hasSteps ? (
+        <div>
+          <p className="text-sm font-medium text-ink-nav">Avance: {task.progress} %</p>
+          <p className="mt-0.5 text-xs text-ink-soft">Se calcula con los pasos</p>
+        </div>
+      ) : (
+        <FormField label="Avance (%)">
+          <input className={inputClass} type="number" min={0} max={100} value={progress} onChange={(e) => setProgress(e.target.value)} />
+        </FormField>
+      )}
       <FormMessage message={error} />
       <Button type="submit" className="w-full" disabled={save.isPending}>
         Guardar avance
@@ -172,6 +181,7 @@ export function TaskDetailPage() {
               <FormMessage message={deleteError} />
             </div>
           </Panel>
+          <StepList task={task} canManage={isPm} canCheck={canUpdate} />
           <Panel>
             <CommentList taskId={task.id} comments={task.comments} canComment={canUpdate} />
           </Panel>

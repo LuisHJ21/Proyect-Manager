@@ -12,7 +12,7 @@ import { taskPath } from '../../components/tasks/TaskCard';
 import { TaskList } from '../../components/tasks/TaskList';
 import { tasksKey } from '../../components/tasks/taskQueries';
 import { Timeline } from '../../components/tasks/Timeline';
-import { Skeleton } from '../../components/ui';
+import { Button, EmptyState, Skeleton } from '../../components/ui';
 import { applyQuickFilter, type QuickFilter } from '../../lib/taskFilters';
 import { useProject } from './ProjectLayout';
 
@@ -92,12 +92,19 @@ export function TasksPage() {
         <Skeleton className="h-64" />
       ) : isBlockingError(tasks) ? (
         <ErrorState message={errorMessage(tasks.error)} onRetry={() => tasks.refetch()} />
+      ) : showFilters && filter !== 'all' && visible.length === 0 ? (
+        <EmptyState>
+          <p className="mb-3">Ninguna tarea coincide con este filtro.</p>
+          <Button variant="secondary" onClick={() => setFilter('all')}>
+            Limpiar filtro
+          </Button>
+        </EmptyState>
       ) : view === 'tablero' ? (
         <KanbanBoard tasks={visible} canMove={canMove} onMove={moveTask} />
       ) : view === 'cronograma' ? (
         <Timeline tasks={visible} milestones={milestones.data ?? []} onOpen={(task) => navigate(taskPath(task))} />
       ) : (
-        <TaskList tasks={visible} emptyText={filter !== 'all' ? 'Ninguna tarea coincide con este filtro.' : isPm ? 'Aún no hay tareas. Crea la primera con «Nueva tarea».' : 'Aún no hay tareas en este proyecto.'} />
+        <TaskList tasks={visible} emptyText={isPm ? 'Aún no hay tareas. Crea la primera con «Nueva tarea».' : 'Aún no hay tareas en este proyecto.'} />
       )}
     </>
   );

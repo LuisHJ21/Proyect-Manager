@@ -1,7 +1,7 @@
 import { LABELS, ROLE, type Role } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal, Plus, Search } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { api, errorMessage, isBlockingError } from '../api/client';
 import type { UserOverview } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
@@ -15,6 +15,7 @@ import { UserDetailPanel } from '../components/users/UserDetailPanel';
 import { normalizeText } from '../lib/display';
 
 const INITIAL_FILTERS = { search: '', role: 'ALL', state: 'ACTIVE' };
+const MENU_HEIGHT = 96;
 
 function NewUserModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -121,7 +122,21 @@ function ResetPasswordModal({ target, onClose }: { target: UserOverview; onClose
 }
 
 function ActionsMenu({ target, onReset, onToggle }: { target: UserOverview; onReset: () => void; onToggle: () => void }) {
-  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<CSSProperties | null>(null);
+  const open = position !== null;
+  const setOpen = (value: boolean) => {
+    if (!value) {
+      setPosition(null);
+      return;
+    }
+    // Posición fija: la tabla recorta lo que se sale de su caja.
+    const rect = container.current!.getBoundingClientRect();
+    const flip = rect.bottom + MENU_HEIGHT > window.innerHeight;
+    setPosition({
+      right: window.innerWidth - rect.right,
+      ...(flip ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+    });
+  };
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -130,11 +145,14 @@ function ActionsMenu({ target, onReset, onToggle }: { target: UserOverview; onRe
     const onClick = (event: MouseEvent) => {
       if (!container.current?.contains(event.target as Node)) setOpen(false);
     };
+    const onScroll = () => setOpen(false);
     window.addEventListener('keydown', onKey);
     window.addEventListener('mousedown', onClick);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('mousedown', onClick);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [open]);
 
@@ -150,7 +168,7 @@ function ActionsMenu({ target, onReset, onToggle }: { target: UserOverview; onRe
         <MoreHorizontal size={16} aria-hidden="true" />
       </Button>
       {open && (
-        <div role="menu" className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-control bg-surface shadow-xl">
+        <div role="menu" style={position} className="fixed z-30 w-56 overflow-hidden rounded-lg border border-control bg-surface shadow-xl">
           <button type="button" role="menuitem" className={itemClass} onClick={choose(onReset)}>
             Restablecer contraseña
           </button>
@@ -220,9 +238,9 @@ export function UsersPage() {
     );
   } else {
     body = (
-      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+      <div className="max-h-[70vh] overflow-auto rounded-xl border border-line bg-surface">
         <table className="w-full min-w-[52rem] border-collapse text-left">
-          <thead className="sticky top-0 bg-surface text-xs font-semibold tracking-wide text-ink-soft uppercase">
+          <thead className="sticky top-0 z-10 bg-surface text-xs font-semibold tracking-wide text-ink-soft uppercase">
             <tr>
               <th scope="col" className="px-5 py-3 font-semibold">Persona</th>
               <th scope="col" className="px-3 py-3 font-semibold">Rol</th>

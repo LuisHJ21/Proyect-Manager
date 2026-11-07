@@ -20,6 +20,8 @@ const task = (over: Partial<Task> = {}): Task => ({
   predecessorIds: [],
   successorCount: 0,
   commentCount: 0,
+  stepsDone: 0,
+  stepsTotal: 0,
   waitingOn: [],
   warnings: [],
   projectName: 'Portal',

@@ -76,6 +76,13 @@ describe('tabla de proyectos del PM', () => {
     expect(main.getByRole('progressbar', { name: 'Presupuesto de Portal de clientes' }).firstElementChild).not.toHaveClass('bg-warn-fg');
   });
 
+  it('la tabla mantiene su encabezado a la vista', async () => {
+    const main = await open();
+    const wrapper = main.getByRole('table').parentElement!;
+    expect(wrapper).toHaveClass('overflow-auto');
+    expect(wrapper.className).toMatch(/max-h-/);
+  });
+
   it('sin resultados ofrece limpiar los filtros', async () => {
     const main = await open();
     const user = userEvent.setup();

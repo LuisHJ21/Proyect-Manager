@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Task } from '../../api/types';
 import { shortDate } from '../../lib/display';
 import { AvatarStack, Badge, EmptyState } from '../ui';
-import { PRIORITY_TONE, STATUS_TONE, taskPath, WaitingNote } from './TaskCard';
+import { PRIORITY_TONE, STATUS_TONE, StepCount, taskPath, WaitingNote } from './TaskCard';
 
 export function TaskList({ tasks, emptyText }: { tasks: Task[]; emptyText: string }) {
   if (tasks.length === 0) return <EmptyState>{emptyText}</EmptyState>;
@@ -28,6 +28,7 @@ export function TaskList({ tasks, emptyText }: { tasks: Task[]; emptyText: strin
                   {task.title}
                 </Link>
                 <WaitingNote task={task} />
+                {task.stepsTotal > 0 && <StepCount task={task} />}
               </td>
               <td className="px-3 py-3 align-top">
                 <AvatarStack people={task.assignees} />

@@ -22,6 +22,8 @@ const task = (over: Partial<Task> = {}): Task => ({
   predecessorIds: [],
   successorCount: 0,
   commentCount: 0,
+  stepsDone: 0,
+  stepsTotal: 0,
   waitingOn: [],
   warnings: [],
   ...over,
@@ -137,6 +139,24 @@ describe('pestaña de tareas', () => {
     expect(body.getByText('30 nov 2026')).toBeInTheDocument();
     expect(body.getByLabelText('3 comentarios')).toBeInTheDocument();
     expect(body.getByText('CV')).toBeInTheDocument();
+  });
+
+  it('muestra "2 de 5" si la tarea tiene pasos, en tablero y lista', async () => {
+    mockApi(routes(pmUser, [task({ stepsDone: 2, stepsTotal: 5 })]));
+    renderApp('/proyectos/p1/tareas?vista=tablero');
+    expect(await screen.findByText('2 de 5')).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Lista' }));
+    expect(await screen.findByText('2 de 5')).toBeInTheDocument();
+  });
+
+  it('un filtro sin resultados explica y permite limpiarlo, en tablero y lista', async () => {
+    mockApi(routes(pmUser));
+    renderApp('/proyectos/p1/tareas?vista=tablero');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Prioridad alta' }));
+    expect(await screen.findByText('Ninguna tarea coincide con este filtro.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Limpiar filtro' }));
+    expect(await screen.findByRole('link', { name: 'Diseño' })).toBeInTheDocument();
   });
 
   it('sin avance no se dibuja la barra', async () => {

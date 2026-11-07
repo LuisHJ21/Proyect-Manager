@@ -104,6 +104,8 @@ describe('editar', () => {
     await user.selectOptions(dialog.getByLabelText('Rol'), 'PM');
     expect(dialog.getByRole('status')).toHaveTextContent(/perderá sus 4 tareas abiertas/i);
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+    expect(api.calls.some((c) => c.key === 'PATCH /api/users/c1')).toBe(false);
+    await user.click(await screen.findByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(api.calls.some((c) => c.key === 'PATCH /api/users/c1')).toBe(true));
   });
 
@@ -122,6 +124,7 @@ describe('editar', () => {
     await user.selectOptions(dialog.getByLabelText('Rol'), 'COLLABORATOR');
     expect(dialog.getByRole('status')).toHaveTextContent(/perderás el acceso/i);
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+    await user.click(await screen.findByRole('button', { name: 'Confirmar' }));
     expect(await screen.findByRole('heading', { name: 'Mis tareas' })).toBeInTheDocument();
   });
 
@@ -134,7 +137,8 @@ describe('editar', () => {
     const dialog = within(screen.getByRole('dialog'));
     await user.selectOptions(dialog.getByLabelText('Rol'), 'COLLABORATOR');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
-    expect(await dialog.findByText('Debe quedar al menos un Project Manager activo')).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Confirmar' }));
+    expect(await screen.findByText('Debe quedar al menos un Project Manager activo')).toBeInTheDocument();
   });
 });
 
@@ -162,6 +166,19 @@ describe('menú Más', () => {
     await user.type(dialog.getByLabelText('Contraseña temporal'), 'temporal-nueva-1');
     await user.click(dialog.getByRole('button', { name: 'Restablecer' }));
     await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/users/c1/reset-password')?.body).toEqual({ temporaryPassword: 'temporal-nueva-1' }));
+  });
+
+  it('el menú no queda recortado por la tabla', async () => {
+    const { main, user } = await open();
+    await user.click(main.getByRole('button', { name: 'Más acciones de Carlos Vega' }));
+    expect(screen.getByRole('menu')).toHaveClass('fixed');
+  });
+
+  it('la tabla mantiene su encabezado a la vista', async () => {
+    const { main } = await open();
+    const wrapper = main.getByRole('table').parentElement!;
+    expect(wrapper).toHaveClass('overflow-auto');
+    expect(wrapper.className).toMatch(/max-h-/);
   });
 
   it('Escape cierra el menú', async () => {

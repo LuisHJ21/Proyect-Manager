@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { api, ApiError, isBlockingError } from '../api/client';
 import type { User } from '../api/types';
 
@@ -46,6 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('pm:forbidden', onForbidden);
     };
   }, [queryClient]);
+
+  // Si el rol cambia con la sesión abierta, los datos en memoria pertenecen al permiso anterior.
+  const role = me.data?.role;
+  const previousRole = useRef(role);
+  useEffect(() => {
+    if (previousRole.current && role && previousRole.current !== role) {
+      void queryClient.resetQueries({ predicate: (query) => !['me', 'setup-status'].includes(String(query.queryKey[0])) });
+    }
+    previousRole.current = role;
+  }, [role, queryClient]);
 
   // Olvida los datos de la sesión anterior. No usa clear(): este proveedor seguiría leyendo las consultas borradas.
   const setSession = useCallback(

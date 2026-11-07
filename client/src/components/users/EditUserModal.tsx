@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { api } from '../../api/client';
 import type { UserOverview } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
-import { Modal } from '../ConfirmDialog';
+import { ConfirmDialog, Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { Button, inputClass } from '../ui';
 
@@ -15,13 +15,22 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
   const [role, setRole] = useState<Role>(target.role);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const isSelf = target.id === me?.id;
   const losesOwnAccess = isSelf && target.role === 'PM' && role !== 'PM';
   const losesTasks = target.role !== 'PM' && role === 'PM' && target.openTasks > 0;
 
-  const submit = async (event: FormEvent) => {
+  const becomesPm = target.role !== 'PM' && role === 'PM';
+
+  const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (losesOwnAccess || becomesPm) setConfirming(true);
+    else void save();
+  };
+
+  const save = async () => {
+    setConfirming(false);
     setErrors(NO_ERRORS);
     setBusy(true);
     try {
@@ -72,6 +81,11 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
           </Button>
         </div>
       </form>
+      {confirming && (
+        <ConfirmDialog title={`Cambiar el rol de ${target.name}`} danger onCancel={() => setConfirming(false)} onConfirm={() => void save()}>
+          {losesOwnAccess ? 'Perderás el acceso al panel y a la gestión de usuarios y proyectos.' : 'Se quitarán todas sus asignaciones de tareas, porque un Project Manager no tiene tareas asignadas. No se puede deshacer.'}
+        </ConfirmDialog>
+      )}
     </Modal>
   );
 }

@@ -84,9 +84,9 @@ export function ProjectListPage() {
     );
   } else {
     body = (
-      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+      <div className="max-h-[70vh] overflow-auto rounded-xl border border-line bg-surface">
         <table className="w-full border-collapse text-left">
-          <thead className="sticky top-0 bg-surface text-xs tracking-wide text-ink-soft uppercase">
+          <thead className="sticky top-0 z-10 bg-surface text-xs tracking-wide text-ink-soft uppercase">
             <tr>
               <SortHeader label="Proyecto" sortKey="name" sort={sort} onSort={onSort} className="px-5" />
               {isPm && <SortHeader label="Salud" sortKey="health" sort={sort} onSort={onSort} className="px-3" />}

@@ -40,8 +40,19 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
+const projects = [
+  { id: 'p1', name: 'Portal', status: 'EXECUTING' },
+  { id: 'p2', name: 'ERP', status: 'EXECUTING' },
+  { id: 'p3', name: 'Viejo', status: 'CLOSED' },
+];
+const users = [
+  { id: 'c1', name: 'Carlos', role: 'COLLABORATOR', active: true },
+  { id: 'c2', name: 'Diana', role: 'COLLABORATOR', active: true },
+  { id: 'pm', name: 'Paula', role: 'PM', active: true },
+];
+
 const open = async (user0: object = pmUser, data: object = calendar) => {
-  const api = mockApi({ ...signedInAs(user0), 'GET /api/projects': [], 'GET /api/me/tasks': [], [NOV]: data, [DEC]: emptyCalendar });
+  const api = mockApi({ ...signedInAs(user0), 'GET /api/projects': projects, 'GET /api/users': users, 'GET /api/me/tasks': [], [NOV]: data, [DEC]: emptyCalendar });
   renderApp('/calendario');
   const main = within(await screen.findByRole('main'));
   await main.findByRole('heading', { name: 'Noviembre 2026' });
@@ -105,6 +116,26 @@ describe('calendario', () => {
     await user.click(main.getByRole('button', { name: 'Solo hitos' }));
     expect(main.queryByRole('link', { name: /Futura/ })).not.toBeInTheDocument();
     expect(main.getByRole('link', { name: /Diseño aprobado/ })).toBeInTheDocument();
+  });
+
+  it('el filtro de proyecto se mantiene visible al cambiar de mes y ofrece limpiarlo', async () => {
+    const { main, user } = await open();
+    await day(main, '2026-11-20').findByRole('link', { name: /Futura/ });
+    await waitFor(() => expect(within(main.getByLabelText('Proyecto')).getByRole('option', { name: 'ERP' })).toBeInTheDocument());
+    await user.selectOptions(main.getByLabelText('Proyecto'), 'p2');
+    await user.click(main.getByRole('button', { name: 'Mes siguiente' }));
+    await main.findByRole('heading', { name: 'Diciembre 2026' });
+    expect(main.getByLabelText('Proyecto')).toHaveValue('p2');
+    await user.click(await main.findByRole('button', { name: 'Limpiar filtros' }));
+    expect(main.getByLabelText('Proyecto')).toHaveValue('ALL');
+  });
+
+  it('las opciones incluyen proyectos activos sin actividad este mes, y a todos los colaboradores', async () => {
+    const { main } = await open(pmUser, emptyCalendar);
+    await waitFor(() => expect(within(main.getByLabelText('Proyecto')).getByRole('option', { name: 'ERP' })).toBeInTheDocument());
+    expect(within(main.getByLabelText('Proyecto')).queryByRole('option', { name: 'Viejo' })).not.toBeInTheDocument();
+    await waitFor(() => expect(within(main.getByLabelText('Persona')).getByRole('option', { name: 'Diana' })).toBeInTheDocument());
+    expect(within(main.getByLabelText('Persona')).queryByRole('option', { name: 'Paula' })).not.toBeInTheDocument();
   });
 
   it('el colaborador no ve el filtro de persona', async () => {

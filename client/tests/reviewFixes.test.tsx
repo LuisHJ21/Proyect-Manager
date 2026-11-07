@@ -105,6 +105,8 @@ describe('formulario de tarea', () => {
     predecessorIds: [],
     successorCount: 0,
     commentCount: 0,
+    stepsDone: 0,
+    stepsTotal: 0,
     waitingOn: [],
     warnings: [],
   } as Task;

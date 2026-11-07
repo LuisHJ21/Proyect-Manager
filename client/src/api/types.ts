@@ -114,12 +114,15 @@ export type Task = {
   predecessorIds: string[];
   successorCount: number;
   commentCount: number;
+  stepsDone: number;
+  stepsTotal: number;
   waitingOn: { id: string; title: string }[];
   warnings: TaskWarning[];
   projectName?: string;
 };
 export type Comment = { id: string; body: string; createdAt: string; author: PersonRef };
-export type TaskDetail = Task & { comments: Comment[] };
+export type TaskStep = { id: string; title: string; done: boolean; assignee: PersonRef | null };
+export type TaskDetail = Task & { comments: Comment[]; steps: TaskStep[] };
 
 export type Attachment = {
   id: string;

@@ -1,5 +1,5 @@
 import { LABELS, type Priority, type TaskStatus } from '@pm/shared';
-import { Calendar, MessageSquare } from 'lucide-react';
+import { Calendar, ListChecks, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Task } from '../../api/types';
 import { shortDate } from '../../lib/display';
@@ -13,6 +13,17 @@ export const taskPath = (task: { id: string; projectId: string }) => `/proyectos
 export function WaitingNote({ task }: { task: Task }) {
   if (task.waitingOn.length === 0) return null;
   return <p className="mt-1 text-xs text-warn-fg">En espera de: {task.waitingOn.map((t) => t.title).join(', ')}</p>;
+}
+
+export function StepCount({ task }: { task: Task }) {
+  return (
+    <span className="flex items-center gap-1 text-xs text-ink-soft" title="Pasos completados">
+      <ListChecks size={13} aria-hidden="true" />
+      <span>
+        {task.stepsDone} de {task.stepsTotal}
+      </span>
+    </span>
+  );
 }
 
 export function TaskCardBody({ task }: { task: Task }) {
@@ -34,6 +45,7 @@ export function TaskCardBody({ task }: { task: Task }) {
           <span className="text-xs text-ink-soft">{task.progress} %</span>
         </div>
       )}
+      {task.stepsTotal > 0 && <StepCount task={task} />}
       <div className="flex items-center gap-3 text-xs text-ink-soft">
         {task.dueDate && (
           <span className="flex items-center gap-1 whitespace-nowrap">

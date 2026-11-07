@@ -1,10 +1,10 @@
-import { localToday } from '@pm/shared';
+import { ACTIVE_PROJECT_STATUS, localToday } from '@pm/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Clock, Flag } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage, isBlockingError } from '../api/client';
-import type { CalendarData } from '../api/types';
+import type { CalendarData, Project, UserOverview } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { Modal } from '../components/ConfirmDialog';
 import { ErrorState } from '../components/ErrorState';
@@ -80,16 +80,16 @@ export function CalendarPage() {
   });
 
   const data = calendar.data;
-  const projects = useMemo(() => {
-    const found = new Map<string, string>();
-    for (const item of [...(data?.tasks ?? []), ...(data?.milestones ?? [])]) found.set(item.projectId, item.projectName);
-    return [...found].sort((a, b) => a[1].localeCompare(b[1], 'es'));
-  }, [data]);
-  const people = useMemo(() => {
-    const found = new Map<string, string>();
-    for (const task of data?.tasks ?? []) for (const person of task.assignees) found.set(person.id, person.name);
-    return [...found].sort((a, b) => a[1].localeCompare(b[1], 'es'));
-  }, [data]);
+  const projectList = useQuery({ queryKey: ['projects'], queryFn: () => api<Project[]>('/api/projects') });
+  const userList = useQuery({ queryKey: ['users'], queryFn: () => api<UserOverview[]>('/api/users'), enabled: isPm });
+  const projects = (projectList.data ?? []).filter((p) => (ACTIVE_PROJECT_STATUS as readonly string[]).includes(p.status));
+  const people = (userList.data ?? []).filter((u) => u.active && u.role === 'COLLABORATOR');
+  const filtered = projectId !== 'ALL' || personId !== 'ALL' || kind !== 'ALL';
+  const clearFilters = () => {
+    setProjectId('ALL');
+    setPersonId('ALL');
+    setKind('ALL');
+  };
 
   const days = useMemo(() => {
     const tasks = (data?.tasks ?? [])
@@ -140,18 +140,18 @@ export function CalendarPage() {
         ))}
         <select aria-label="Proyecto" className={`${inputClass} !w-auto`} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
           <option value="ALL">Proyecto: todos</option>
-          {projects.map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
             </option>
           ))}
         </select>
         {isPm && (
           <select aria-label="Persona" className={`${inputClass} !w-auto`} value={personId} onChange={(e) => setPersonId(e.target.value)}>
             <option value="ALL">Persona: todas</option>
-            {people.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
+            {people.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}
               </option>
             ))}
           </select>
@@ -168,7 +168,16 @@ export function CalendarPage() {
         <ErrorState message={errorMessage(calendar.error)} onRetry={() => calendar.refetch()} />
       ) : (
         <>
-          {inMonthDays.length === 0 && <p className="mb-3 text-sm text-ink-soft">No hay actividades en este mes</p>}
+          {inMonthDays.length === 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <p className="text-sm text-ink-soft">No hay actividades en este mes</p>
+              {filtered && (
+                <Button variant="secondary" onClick={clearFilters}>
+                  Limpiar filtros
+                </Button>
+              )}
+            </div>
+          )}
           {isMobile ? (
             <div className="space-y-4">
               {inMonthDays.map((cell) => (

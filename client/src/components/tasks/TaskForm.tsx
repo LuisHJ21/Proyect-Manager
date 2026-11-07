@@ -2,7 +2,7 @@ import { LABELS, PRIORITY, type Priority } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api } from '../../api/client';
-import type { Member, Milestone, Task } from '../../api/types';
+import type { Member, Milestone, Project, Task } from '../../api/types';
 import { Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { membersKey } from '../project/MembersPanel';
@@ -18,6 +18,8 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
     queryFn: () => api<Milestone[]>(`/api/projects/${projectId}/milestones`),
   });
 
+  const project = useQuery({ queryKey: ['project', projectId, 'detail'], queryFn: () => api<Project>(`/api/projects/${projectId}`) });
+  const limits = { min: project.data?.startDate ?? undefined, max: project.data?.endDate ?? undefined };
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
   const [priority, setPriority] = useState<Priority>(task?.priority ?? 'MEDIUM');
@@ -71,10 +73,10 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
           </FormField>
         </div>
         <FormField label="Fecha de inicio" error={errors.fields.startDate}>
-          <input className={inputClass} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <input className={inputClass} type="date" {...limits} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </FormField>
         <FormField label="Fecha límite" error={errors.fields.dueDate}>
-          <input className={inputClass} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <input className={inputClass} type="date" {...limits} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </FormField>
         <FormField label="Prioridad" error={errors.fields.priority}>
           <select className={inputClass} value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>

@@ -70,6 +70,19 @@ describe('navegación por rol', () => {
     expect(await screen.findByRole('heading', { name: 'Mis tareas' })).toBeInTheDocument();
   });
 
+  it('al cambiar de rol, la barra deja de mostrar proyectos a los que ya no tiene acceso', async () => {
+    const api = mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [project('a', 'Ajeno')], 'GET /api/me/tasks': [] });
+    api.routes['GET /api/users'] = () => {
+      api.routes['GET /api/auth/me'] = collaborator;
+      api.routes['GET /api/projects'] = [];
+      return apiError(403, 'forbidden', { message: 'Sin permiso' });
+    };
+    renderApp('/usuarios');
+    await screen.findByRole('heading', { name: 'Mis tareas' });
+    const links = await nav();
+    await waitFor(() => expect(links.queryByRole('link', { name: 'Ajeno' })).not.toBeInTheDocument());
+  });
+
   it('cerrar sesión sigue disponible', async () => {
     mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'POST /api/auth/logout': { ok: true } });
     renderApp('/proyectos');

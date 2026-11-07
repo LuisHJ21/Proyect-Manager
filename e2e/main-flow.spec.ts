@@ -98,6 +98,15 @@ test('flujo principal', async ({ browser }) => {
   await pm.getByRole('link', { name: 'Calendario' }).click();
   await expect(pm.getByTestId(`day-${todayText}`).getByRole('link', { name: 'Diseño' })).toBeVisible();
 
+  // Pasos: el Project Manager añade dos a la tarea de Carlos.
+  await pm.goto(`${projectUrl}/tareas`);
+  await pm.getByRole('main').getByRole('link', { name: 'Construcción' }).click();
+  for (const step of ['Base', 'Pantallas']) {
+    await pm.getByLabel('Nuevo paso', { exact: true }).fill(step);
+    await pm.getByRole('button', { name: 'Añadir paso' }).click();
+    await expect(pm.getByRole('checkbox', { name: step })).toBeVisible();
+  }
+
   // 3. Carlos entra e intenta iniciar su tarea: la app lo bloquea e indica qué falta.
   const carlos = await signInFirstTime(browser, 'carlos@x.com');
   await carlos.getByRole('link', { name: 'Construcción' }).click();
@@ -136,6 +145,15 @@ test('flujo principal', async ({ browser }) => {
   await expect(carlos.getByRole('main').getByText('En curso', { exact: true }).first()).toBeVisible();
   await expect(carlos.getByRole('alert')).toHaveCount(0);
 
+  // No puede terminarla con pasos pendientes; al completarlos, sí.
+  await carlos.getByLabel('Estado').selectOption({ label: 'Hecha' });
+  await carlos.getByRole('button', { name: 'Guardar avance' }).click();
+  await expect(carlos.getByRole('alert')).toContainText('Faltan 2 pasos');
+  await carlos.getByRole('checkbox', { name: 'Base' }).click();
+  await expect(carlos.getByText('1 de 2 completados')).toBeVisible();
+  await expect(carlos.getByText('Avance: 50 %')).toBeVisible();
+  await carlos.getByLabel('Estado').selectOption({ label: 'En curso' });
+
   await carlos.getByRole('link', { name: 'Tareas del proyecto' }).click();
   await carlos.getByRole('link', { name: 'Diseño' }).click();
   const downloadPromise = carlos.waitForEvent('download');
@@ -145,7 +163,7 @@ test('flujo principal', async ({ browser }) => {
 
   // 7. El PM ve el avance actualizado.
   await pm.goto(`${projectUrl}/resumen`);
-  await expect(pm.getByTestId('indicator-progress')).toHaveText('50 %');
+  await expect(pm.getByTestId('indicator-progress')).toHaveText('75 %');
 
   // El panel refleja el proyecto.
   await pm.getByRole('link', { name: 'Inicio' }).click();

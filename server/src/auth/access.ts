@@ -23,6 +23,7 @@ export async function requireProjectPm(req: FastifyRequest, projectId: string): 
 }
 
 export function toProjectDto(project: Project, isPm: boolean) {
-  const { plannedBudgetCents, currency, ...visible } = project;
+  // lastChangeNumber es un dato interno del registro de cambios: no se envía a nadie.
+  const { plannedBudgetCents, currency, lastChangeNumber: _lastChangeNumber, ...visible } = project;
   return isPm ? { ...visible, plannedBudgetCents: Number(plannedBudgetCents), currency } : visible;
 }

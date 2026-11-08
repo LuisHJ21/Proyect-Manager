@@ -166,3 +166,43 @@ describe('salud con valor ganado', () => {
     expect(dashboard.projects.find((p: { name: string }) => p.name === 'Portal').health).toBe('ATTENTION');
   });
 });
+
+describe('límites de la curva S', () => {
+  let ctx: TestCtx;
+  afterEach(() => ctx.close());
+
+  it('un año mal escrito no genera cientos de miles de días', async () => {
+    ctx = await createTestApp();
+    ctx.clock.set('2026-11-05T10:00:00');
+    const pm = await ctx.makeUser({ role: 'PM' });
+    const project = await ctx.makeProject();
+    const task = await ctx.makeTask(project.id, { title: 'Typo', startDate: '0126-11-01', dueDate: '2026-11-10' });
+    await ctx.prisma.task.update({ where: { id: task.id }, data: { plannedCostCents: 100000 } });
+    await ctx.as(pm).post(`/api/projects/${project.id}/baselines`, {});
+    const started = Date.now();
+    const { series } = (await ctx.as(pm).get(`/api/projects/${project.id}/performance`)).json();
+    expect(Date.now() - started).toBeLessThan(3000);
+    expect(series.length).toBeLessThanOrEqual(732);
+    expect(series[0].date).toBe('0126-11-01');
+    expect(series.at(-1).date).toBe('2026-11-10');
+    expect(series.some((p: { date: string }) => p.date === '2026-11-05')).toBe(true);
+  });
+});
+
+describe('datos de control y colaboradores', () => {
+  let ctx: TestCtx;
+  afterEach(() => ctx.close());
+
+  it('el colaborador no recibe el contador de cambios del proyecto', async () => {
+    ctx = await createTestApp();
+    const pm = await ctx.makeUser({ role: 'PM' });
+    const ana = await ctx.makeUser({ role: 'COLLABORATOR' });
+    const project = await ctx.makeProject({ members: [ana] });
+    await ctx.as(pm).post(`/api/projects/${project.id}/change-requests`, { title: 'X' });
+    const detail = (await ctx.as(ana).get(`/api/projects/${project.id}`)).json();
+    const list = (await ctx.as(ana).get('/api/projects')).json();
+    expect(detail).not.toHaveProperty('lastChangeNumber');
+    expect(list[0]).not.toHaveProperty('lastChangeNumber');
+    expect((await ctx.as(pm).get(`/api/projects/${project.id}`)).json()).not.toHaveProperty('lastChangeNumber');
+  });
+});

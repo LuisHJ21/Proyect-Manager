@@ -42,7 +42,8 @@ export function SCurve({ series, today, currency }: { series: Point[]; today: st
   }, []);
   if (series.length === 0) return null;
 
-  const max = Math.max(1, ...series.flatMap((p) => [p.pvCents, p.evCents ?? 0, p.acCents ?? 0]));
+  // Un bucle en lugar de Math.max(...): con muchos puntos, pasar todos como argumentos desborda la pila.
+  const max = series.reduce((m, p) => Math.max(m, p.pvCents, p.evCents ?? 0, p.acCents ?? 0), 1);
   const innerW = WIDTH - PAD.left - PAD.right;
   const innerH = HEIGHT - PAD.top - PAD.bottom;
   const x = (i: number) => PAD.left + (series.length === 1 ? innerW / 2 : (i / (series.length - 1)) * innerW);

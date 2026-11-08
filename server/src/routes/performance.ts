@@ -1,10 +1,12 @@
-import { addDays, baselineSchema, localToday } from '@pm/shared';
+import { addDays, baselineSchema, diffDays, localToday } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { computeEvm, plannedValueAt, type EvmInput } from '../domain/evm';
 import { AppError, fieldError } from '../errors';
+
+const MAX_SERIES_POINTS = 730;
 
 const baselineInclude = {
   createdBy: { select: { id: true, name: true } },
@@ -123,8 +125,14 @@ export async function performanceRoutes(app: FastifyInstance) {
     const lastDue = baseTasks.reduce((max, t) => (t.dueDate > max ? t.dueDate : max), baseTasks[0]?.dueDate ?? today);
     const from = today < first ? today : first;
     const to = today > lastDue ? today : lastDue;
+    // Como mucho unos MAX_SERIES_POINTS días muestreados, más hoy, el último día y los días con foto:
+    // una fecha mal escrita (por ejemplo, el año 0026) no puede generar cientos de miles de puntos.
+    const step = Math.max(1, Math.ceil((diffDays(from, to) + 1) / MAX_SERIES_POINTS));
+    const dates = new Set<string>([today, to]);
+    for (let date = from; date <= to; date = addDays(date, step)) dates.add(date);
+    for (const date of snapshots.keys()) if (date >= from && date <= to) dates.add(date);
     const series = [];
-    for (let date = from; date <= to; date = addDays(date, 1)) {
+    for (const date of [...dates].sort()) {
       const snap = snapshots.get(date);
       series.push({
         date,

@@ -31,6 +31,9 @@ export type RiskStatus = (typeof RISK_STATUS)[number];
 export type Health = (typeof HEALTH)[number];
 export type ExpenseCategory = (typeof EXPENSE_CATEGORY)[number];
 
+export const CHANGE_STATUS = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+export type ChangeStatus = (typeof CHANGE_STATUS)[number];
+
 export const LABELS = {
   role: { PM: 'Project Manager', COLLABORATOR: 'Colaborador' },
   projectStatus: {
@@ -43,6 +46,7 @@ export const LABELS = {
   approach: { PREDICTIVE: 'Predictivo', AGILE: 'Ágil', HYBRID: 'Híbrido' },
   health: { AT_RISK: 'En riesgo', ATTENTION: 'Atención', ON_TRACK: 'Al día' },
   charterStatus: { DRAFT: 'Borrador', APPROVED: 'Aprobada' },
+  changeStatus: { PENDING: 'Pendiente', APPROVED: 'Aprobada', REJECTED: 'Rechazada' },
   objectiveStatus: { PENDING: 'Pendiente', MET: 'Cumplido', NOT_MET: 'No cumplido' },
   milestoneStatus: { PENDING: 'Pendiente', REACHED: 'Alcanzado' },
   taskStatus: { TODO: 'Por hacer', IN_PROGRESS: 'En curso', BLOCKED: 'Bloqueada', DONE: 'Hecha' },

@@ -206,12 +206,14 @@ export const createExpenseSchema = z.object({
   amountCents: amount,
   date: calendarDateSchema,
   category: z.enum(EXPENSE_CATEGORY),
+  taskId: z.string().nullable().optional(),
 });
 export const updateExpenseSchema = z.object({
   description: required('Describe el gasto').optional(),
   amountCents: amount.optional(),
   date: calendarDateSchema.optional(),
   category: z.enum(EXPENSE_CATEGORY).optional(),
+  taskId: z.string().nullable().optional(),
 });
 
 const taskCommonFields = {
@@ -220,6 +222,7 @@ const taskCommonFields = {
   startDate: optionalDateSchema,
   dueDate: optionalDateSchema,
   milestoneId: z.string().nullable().optional(),
+  plannedCostCents: budgetAmount.optional(),
 };
 export const TASK_DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la fecha límite';
 export const createTaskSchema = z
@@ -273,3 +276,36 @@ export const updateStepSchema = z.object({
 });
 export const commentSchema = z.object({ body: required('Escribe un comentario') });
 export const dependencySchema = z.object({ predecessorId: required('Selecciona una tarea') });
+
+export const baselineSchema = z.object({
+  reason: z.string().trim().default(''),
+  changeRequestId: z.string().nullable().optional(),
+});
+
+const changeRequestFields = {
+  title: required('Escribe el título'),
+  description: z.string().default(''),
+  requestedBy: z.string().default(''),
+  scopeImpact: z.string().default(''),
+  scheduleImpactDays: z.number({ message: 'Usa un número entero de días' }).int('Usa un número entero de días').nullable().optional(),
+  costImpactCents: z
+    .number({ message: 'Monto inválido' })
+    .int('Monto inválido')
+    .min(-MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE)
+    .max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE)
+    .nullable()
+    .optional(),
+};
+export const changeRequestSchema = z.object(changeRequestFields);
+export const updateChangeRequestSchema = z.object({
+  title: changeRequestFields.title.optional(),
+  description: z.string().optional(),
+  requestedBy: z.string().optional(),
+  scopeImpact: z.string().optional(),
+  scheduleImpactDays: changeRequestFields.scheduleImpactDays,
+  costImpactCents: changeRequestFields.costImpactCents,
+});
+export const decisionSchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED']),
+  note: required('Escribe la nota de la decisión'),
+});

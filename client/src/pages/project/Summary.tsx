@@ -9,6 +9,7 @@ import { IndicatorCards } from '../../components/project/IndicatorCards';
 import { MembersPanel } from '../../components/project/MembersPanel';
 import { MilestonesPanel, ObjectivesPanel } from '../../components/project/PlanningPanels';
 import { ProjectForm } from '../../components/project/ProjectForm';
+import { RichTextView } from '../../components/richText/RichTextView';
 import { useToast } from '../../components/Toast';
 import { Button, Card, inputClass } from '../../components/ui';
 import { LABELS } from '@pm/shared';
@@ -73,7 +74,7 @@ export function SummaryPage() {
           ) : undefined
         }
       >
-        <p className="text-sm whitespace-pre-wrap text-ink-nav">{project.description || 'Sin descripción.'}</p>
+        <RichTextView html={project.description} empty="Sin descripción." />
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-xs text-ink-soft">Enfoque de desarrollo</dt>

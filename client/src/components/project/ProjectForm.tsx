@@ -5,6 +5,7 @@ import type { Project } from '../../api/types';
 import { Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { INVALID_MONEY_MESSAGE, MoneyInput } from '../MoneyInput';
+import { RichTextEditor } from '../richText/RichTextEditor';
 import { Button, inputClass } from '../ui';
 
 export function ProjectForm({ project, onSaved, onClose }: { project?: Project; onSaved: (project: Project) => void; onClose: () => void }) {
@@ -62,7 +63,7 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
         </div>
         <div className="sm:col-span-2">
           <FormField label="Descripción" error={errors.fields.description}>
-            <textarea className={inputClass} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <RichTextEditor label="Descripción" value={description} onChange={setDescription} />
           </FormField>
         </div>
         <FormField label="Estado" error={errors.fields.status}>

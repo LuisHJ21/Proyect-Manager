@@ -5,6 +5,8 @@ import { api, errorMessage, isBlockingError } from '../../api/client';
 import type { Charter } from '../../api/types';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../../components/FormField';
+import { RichTextEditor } from '../../components/richText/RichTextEditor';
+import { RichTextView } from '../../components/richText/RichTextView';
 import { Badge, Button, Card, inputClass } from '../../components/ui';
 import { useProject } from './ProjectLayout';
 
@@ -45,7 +47,9 @@ function CharterReadOnly({ charter }: { charter: Charter }) {
         {FIELDS.map((field) => (
           <div key={field.name}>
             <dt className="text-xs font-medium text-ink-soft">{field.label}</dt>
-            <dd className="mt-0.5 text-sm whitespace-pre-wrap text-ink">{charter[field.name] || '—'}</dd>
+            <dd className="mt-0.5">
+              {field.rows === 1 ? <span className="text-sm text-ink">{charter[field.name] || '—'}</span> : <RichTextView html={charter[field.name]} />}
+            </dd>
           </div>
         ))}
       </dl>
@@ -109,11 +113,11 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
             {field.rows === 1 ? (
               <input className={inputClass} value={draft[field.name]} onChange={(e) => setDraft({ ...draft, [field.name]: e.target.value })} />
             ) : (
-              <textarea
-                className={inputClass}
-                rows={field.rows}
+              <RichTextEditor
+                label={field.label}
                 value={draft[field.name]}
-                onChange={(e) => setDraft({ ...draft, [field.name]: e.target.value })}
+                minHeight={field.rows >= 4 ? 'md' : 'sm'}
+                onChange={(html) => setDraft((current) => ({ ...current, [field.name]: html }))}
               />
             )}
           </FormField>

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Task } from '../src/api/types';
 import { TaskForm } from '../src/components/tasks/TaskForm';
-import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs, wrap } from './helpers';
+import { apiError, collaborator, mockApi, pmUser, renderApp, setRichText, signedInAs, wrap } from './helpers';
 
 const project = { id: 'p1', name: 'Portal', description: '', status: 'PLANNING', approach: 'AGILE', startDate: null, endDate: null };
 const charter = {
@@ -36,7 +36,8 @@ describe('fallos al volver a la ventana', () => {
     const api = mockApi({ ...signedInAs(pmUser), 'GET /api/projects/p1': project, 'GET /api/projects/p1/charter': charter });
     renderApp('/proyectos/p1/acta');
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText('Justificación'), 'Texto sin guardar');
+    await screen.findByRole('textbox', { name: 'Justificación' });
+    await setRichText('Justificación', '<p>Texto sin guardar</p>');
 
     for (const key of ['GET /api/setup/status', 'GET /api/auth/me', 'GET /api/projects/p1', 'GET /api/projects/p1/charter']) {
       api.routes[key] = down;
@@ -48,7 +49,7 @@ describe('fallos al volver a la ventana', () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
 
-    expect(screen.getByLabelText('Justificación')).toHaveValue('Texto sin guardar');
+    expect(screen.getByRole('textbox', { name: 'Justificación' })).toHaveTextContent('Texto sin guardar');
     expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
   });
 

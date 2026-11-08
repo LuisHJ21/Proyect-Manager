@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
+import { apiError, collaborator, mockApi, pmUser, renderApp, setRichText, signedInAs } from './helpers';
 
 const project = {
   id: 'p1',
@@ -63,6 +63,18 @@ describe('pestañas del proyecto', () => {
     expect(await screen.findByTestId('indicator-progress')).toHaveTextContent('50 %');
     expect(screen.queryByText('Presupuesto gastado')).not.toBeInTheDocument();
   });
+
+  it('la descripción del proyecto se ve con formato', async () => {
+    mockApi({ ...signedInAs(collaborator), ...summaryRoutes, 'GET /api/projects/p1': { ...project, description: '<p><em>Sitio</em> nuevo</p>' } });
+    renderApp('/proyectos/p1/resumen');
+    expect((await screen.findByText('Sitio')).tagName).toBe('EM');
+  });
+
+  it('un proyecto sin descripción lo indica', async () => {
+    mockApi({ ...signedInAs(collaborator), ...summaryRoutes, 'GET /api/projects/p1': { ...project, description: '' } });
+    renderApp('/proyectos/p1/resumen');
+    expect(await screen.findByText('Sin descripción.')).toBeInTheDocument();
+  });
 });
 
 describe('lista de proyectos', () => {
@@ -84,6 +96,20 @@ describe('lista de proyectos', () => {
     await waitFor(() => {
       const call = api.calls.find((c) => c.key === 'POST /api/projects');
       expect((call?.body as { plannedBudgetCents: number }).plannedBudgetCents).toBe(123450);
+    });
+  });
+
+  it('la descripción se escribe con formato', async () => {
+    const api = mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'POST /api/projects': project });
+    renderApp('/proyectos');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Nuevo proyecto' }));
+    await user.type(screen.getByLabelText('Nombre'), 'Portal');
+    await setRichText('Descripción', '<p>Hola</p>');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => {
+      const call = api.calls.find((c) => c.key === 'POST /api/projects');
+      expect((call?.body as { description: string }).description).toBe('<p>Hola</p>');
     });
   });
 

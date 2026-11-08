@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
+import { apiError, collaborator, mockApi, pmUser, renderApp, setRichText, signedInAs } from './helpers';
 
 const project = { id: 'p1', name: 'Portal', description: '', status: 'PLANNING', approach: 'AGILE', startDate: null, endDate: null };
 const draft = {
@@ -42,10 +42,11 @@ describe('acta', () => {
     });
     renderApp('/proyectos/p1/acta');
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText('Justificación'), 'Mi justificación');
+    await screen.findByRole('textbox', { name: 'Justificación' });
+    await setRichText('Justificación', '<p>Mi justificación</p>');
     await user.click(screen.getByRole('button', { name: 'Aprobar acta' }));
     expect(await screen.findByText('Este campo es obligatorio para aprobar el acta')).toBeInTheDocument();
-    expect(screen.getByLabelText('Justificación')).toHaveValue('Mi justificación');
+    expect(screen.getByRole('textbox', { name: 'Justificación' })).toHaveTextContent('Mi justificación');
   });
 
   it('aprobar guarda antes los cambios pendientes', async () => {
@@ -58,7 +59,8 @@ describe('acta', () => {
     });
     renderApp('/proyectos/p1/acta');
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText('Justificación'), 'Texto');
+    await screen.findByRole('textbox', { name: 'Justificación' });
+    await setRichText('Justificación', '<p>Texto</p>');
     await user.click(screen.getByRole('button', { name: 'Aprobar acta' }));
     await waitFor(() => expect(api.calls.some((c) => c.key.endsWith('/approve'))).toBe(true));
     const order = api.calls.map((c) => c.key);
@@ -82,5 +84,32 @@ describe('acta', () => {
     expect(screen.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Aprobar acta' })).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('el acta con formato se ve con formato en solo lectura', async () => {
+    mockApi({
+      ...signedInAs(collaborator),
+      ...routes,
+      'GET /api/projects/p1/charter': { ...approved, justification: '<p><strong>Porque sí</strong></p><ul><li>Uno</li></ul>' },
+    });
+    renderApp('/proyectos/p1/acta');
+    expect((await screen.findByText('Porque sí')).tagName).toBe('STRONG');
+    expect(screen.getByText('Uno').tagName).toBe('LI');
+  });
+
+  it('abrir un acta antigua no la marca como modificada', async () => {
+    mockApi({ ...signedInAs(pmUser), ...routes, 'GET /api/projects/p1/charter': { ...approved, justification: ['Línea 1', 'Línea 2'].join('\n') } });
+    renderApp('/proyectos/p1/acta');
+    const textbox = await screen.findByRole('textbox', { name: 'Justificación' });
+    expect(textbox.querySelectorAll('p')).toHaveLength(2);
+    expect(screen.queryByText(/volverá a Borrador/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+  });
+
+  it('el PM edita el acta con barra de formato', async () => {
+    mockApi({ ...signedInAs(pmUser), ...routes, 'GET /api/projects/p1/charter': draft });
+    renderApp('/proyectos/p1/acta');
+    expect(await screen.findByRole('toolbar', { name: 'Formato de Justificación' })).toBeInTheDocument();
+    expect(screen.queryByRole('toolbar', { name: 'Formato de Patrocinador' })).not.toBeInTheDocument();
   });
 });

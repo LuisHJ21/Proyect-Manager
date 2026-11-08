@@ -24,6 +24,10 @@
   --color-info-fg: #a9bbff;
   --color-danger: #b91c1c;
   --color-danger-hover: #991b1b;
+  /* Series de la curva S: paleta categórica validada sobre --color-surface (CVD ΔE 9,4, contraste ≥ 3:1). */
+  --color-series-pv: #3987e5;
+  --color-series-ev: #199e70;
+  --color-series-ac: #d95926;
   --font-sans: 'Inter Variable', system-ui, sans-serif;
   --font-display: 'Space Grotesk Variable', 'Inter Variable', system-ui, sans-serif;
 }

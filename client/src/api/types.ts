@@ -169,3 +169,46 @@ export type ChangeRequest = {
   decidedBy: PersonRef | null;
   createdAt: string;
 };
+
+export type BaselineInfo = {
+  version: number;
+  reason: string;
+  bacCents: number;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  createdBy: PersonRef;
+  changeRequest: { id: string; number: number; title: string } | null;
+};
+export type EvmTaskState = 'LATE' | 'ON_TIME' | 'OUTSIDE' | 'DELETED';
+export type Performance = {
+  baseline: BaselineInfo | null;
+  history: BaselineInfo[];
+  metrics: {
+    pvCents: number;
+    evCents: number;
+    acCents: number;
+    bacCents: number;
+    cpi: number | null;
+    spi: number | null;
+    cvCents: number;
+    svCents: number;
+    eacCents: number;
+    etcCents: number;
+    vacCents: number;
+    percentComplete: number;
+    reserveCents: number;
+  } | null;
+  tasks: {
+    taskId: string;
+    title: string;
+    baselineCostCents: number | null;
+    progress: number | null;
+    evCents: number | null;
+    linkedCostCents: number;
+    finishVarianceDays: number | null;
+    state: EvmTaskState;
+  }[];
+  outsideBaseline: number;
+  series: { date: string; pvCents: number; evCents: number | null; acCents: number | null }[];
+};

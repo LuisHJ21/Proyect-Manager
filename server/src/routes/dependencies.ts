@@ -16,7 +16,7 @@ export async function dependencyRoutes(app: FastifyInstance) {
     return task;
   };
   const loadDto = async (taskId: string) =>
-    toTaskDto(await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude }));
+    toTaskDto(await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude }), true);
 
   app.post<{ Params: { id: string } }>('/api/tasks/:id/dependencies', async (req, reply) => {
     const successor = await requireTaskPm(req, req.params.id);

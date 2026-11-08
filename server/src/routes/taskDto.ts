@@ -10,8 +10,9 @@ export const taskInclude = {
 export type TaskWithRelations = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
 export type TaskWarning = 'predecessor_not_done' | 'starts_before_predecessor_due';
 
-export function toTaskDto(task: TaskWithRelations) {
-  const { assignees, predecessors, steps, _count, ...fields } = task;
+/** El costo planeado solo se envía al Project Manager, y como número: un BigInt no se puede convertir a JSON. */
+export function toTaskDto(task: TaskWithRelations, includeCost: boolean) {
+  const { assignees, predecessors, steps, _count, plannedCostCents, ...fields } = task;
   const waitingOn = predecessors
     .filter((p) => p.predecessor.status !== 'DONE')
     .map((p) => ({ id: p.predecessor.id, title: p.predecessor.title }));
@@ -27,6 +28,7 @@ export function toTaskDto(task: TaskWithRelations) {
 
   return {
     ...fields,
+    ...(includeCost ? { plannedCostCents: Number(plannedCostCents) } : {}),
     assignees: assignees.map((a) => a.user),
     predecessorIds: predecessors.map((p) => p.predecessorId),
     successorCount: _count.successors,

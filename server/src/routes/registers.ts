@@ -66,5 +66,10 @@ export async function registerRoutes(app: FastifyInstance) {
     updateSchema: updateExpenseSchema,
     readAccess: 'pm',
     toDto: (expense) => ({ ...expense, amountCents: Number(expense.amountCents) }),
+    validate: async (expense, project) => {
+      if (!expense.taskId) return;
+      const task = await prisma.task.findFirst({ where: { id: expense.taskId, projectId: project.id }, select: { id: true } });
+      if (!task) throw fieldError('taskId', 'La tarea no pertenece al proyecto');
+    },
   });
 }

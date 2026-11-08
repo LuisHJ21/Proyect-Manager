@@ -34,8 +34,8 @@ export async function getTaskAccess(req: FastifyRequest, taskId: string) {
 export async function taskRoutes(app: FastifyInstance) {
   const { prisma } = app;
 
-  const loadDto = async (taskId: string) =>
-    toTaskDto(await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude }));
+  const loadDto = async (taskId: string, includeCost: boolean) =>
+    toTaskDto(await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude }), includeCost);
 
   const requireTaskPm = async (req: FastifyRequest, taskId: string) => {
     const { task, isPm } = await getTaskAccess(req, taskId);
@@ -69,13 +69,13 @@ export async function taskRoutes(app: FastifyInstance) {
   };
 
   app.get<TaskParams>('/api/projects/:id/tasks', async (req) => {
-    const { project } = await getProjectAccess(req, req.params.id);
+    const { project, isPm } = await getProjectAccess(req, req.params.id);
     const tasks = await prisma.task.findMany({
       where: { projectId: project.id },
       include: taskInclude,
       orderBy: { createdAt: 'asc' },
     });
-    return tasks.map(toTaskDto);
+    return tasks.map((task) => toTaskDto(task, isPm));
   });
 
   app.post<TaskParams>('/api/projects/:id/tasks', async (req, reply) => {
@@ -88,7 +88,7 @@ export async function taskRoutes(app: FastifyInstance) {
       data: { ...input, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
       include: taskInclude,
     });
-    return reply.status(201).send(toTaskDto(task));
+    return reply.status(201).send(toTaskDto(task, true));
   });
 
   app.get('/api/me/tasks', async (req) => {
@@ -98,11 +98,11 @@ export async function taskRoutes(app: FastifyInstance) {
       include: { ...taskInclude, project: { select: { name: true } } },
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
     });
-    return tasks.map(({ project, ...task }) => ({ ...toTaskDto(task), projectName: project.name }));
+    return tasks.map(({ project, ...task }) => ({ ...toTaskDto(task, false), projectName: project.name }));
   });
 
   app.get<TaskParams>('/api/tasks/:id', async (req) => {
-    const { task } = await getTaskAccess(req, req.params.id);
+    const { task, isPm } = await getTaskAccess(req, req.params.id);
     const comments = await prisma.taskComment.findMany({
       where: { taskId: task.id },
       include: { author: { select: { id: true, name: true } } },
@@ -114,7 +114,7 @@ export async function taskRoutes(app: FastifyInstance) {
       orderBy: { createdAt: 'asc' },
     });
     return {
-      ...(await loadDto(task.id)),
+      ...(await loadDto(task.id, isPm)),
       comments,
       steps: steps.map((s) => ({ id: s.id, title: s.title, done: s.done, assignee: s.assignee })),
     };
@@ -143,7 +143,7 @@ export async function taskRoutes(app: FastifyInstance) {
           ]
         : []),
     ]);
-    return loadDto(task.id);
+    return loadDto(task.id, true);
   });
 
   app.delete<TaskParams>('/api/tasks/:id', async (req) => {
@@ -163,7 +163,7 @@ export async function taskRoutes(app: FastifyInstance) {
       prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),
       prisma.taskStep.updateMany({ where: { taskId: task.id, assigneeId: { notIn: userIds } }, data: { assigneeId: null } }),
     ]);
-    return loadDto(task.id);
+    return loadDto(task.id, true);
   });
 
   app.patch<TaskParams>('/api/tasks/:id/progress', async (req) => {
@@ -196,7 +196,7 @@ export async function taskRoutes(app: FastifyInstance) {
       }
       await tx.task.update({ where: { id: task.id }, data });
     });
-    return loadDto(task.id);
+    return loadDto(task.id, isPm);
   });
 
   app.post<TaskParams>('/api/tasks/:id/comments', async (req, reply) => {

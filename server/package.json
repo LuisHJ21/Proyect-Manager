@@ -8,7 +8,8 @@
     "build": "tsup",
     "start": "node scripts/start.mjs",
     "test": "vitest run",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "reset-password": "tsx scripts/reset-password.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.0",

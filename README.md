@@ -46,6 +46,16 @@ Para cambiar el puerto o la carpeta de datos, usa las variables de entorno `PORT
 3. Crea un proyecto y añade a tus colaboradores al equipo desde la pestaña **Resumen**. Solo verán los proyectos de los que son miembros.
 4. Crea tareas y asígnalas a los colaboradores del proyecto.
 
+## Olvidé mi contraseña
+
+Si el Project Manager olvida su contraseña, en el equipo que aloja la aplicación abre una terminal en la carpeta del proyecto y ejecuta:
+
+```bash
+npm run reset-password -- tu-correo@ejemplo.com
+```
+
+La consola muestra una contraseña temporal. Al entrar con ella, la aplicación pide cambiarla. Sin correo, el comando lista los Project Managers registrados. Un colaborador también puede pedirle al Project Manager que le restablezca la contraseña desde **Usuarios**.
+
 ## Permitir el acceso desde otros equipos (Windows)
 
 Abre PowerShell como administrador y permite el puerto en el firewall:

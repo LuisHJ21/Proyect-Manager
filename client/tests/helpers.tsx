@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
@@ -62,3 +62,12 @@ export function wrap(children: ReactNode, path = '/') {
 }
 
 export const renderApp = (path: string) => wrap(<AppRoutes />, path);
+
+/** Escribe en un editor con formato a través de su instancia de Tiptap, que jsdom no permite teclear. */
+export async function setRichText(label: string, html: string) {
+  const element = screen.getByRole('textbox', { name: label }) as HTMLElement & { editor?: { commands: { setContent: (c: string, o: object) => void } } };
+  if (!element.editor) throw new Error(`El campo ${label} no es un editor con formato`);
+  await act(async () => {
+    element.editor!.commands.setContent(html, { emitUpdate: true });
+  });
+}

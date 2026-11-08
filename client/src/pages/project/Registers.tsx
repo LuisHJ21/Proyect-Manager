@@ -1,11 +1,12 @@
 import { EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api/client';
 import type { Expense, Indicators, Member, Risk, Stakeholder } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { membersKey } from '../../components/project/MembersPanel';
+import { RaciMatrix, raciKey } from '../../components/raci/RaciMatrix';
 import { DetailList, RegisterTable, type Option, type Values } from '../../components/RegisterTable';
 import { RichTextClamp, RichTextView } from '../../components/richText/RichTextView';
 import { Badge, Card } from '../../components/ui';
@@ -21,34 +22,39 @@ const responseOptions = (type: RiskType): Option[] =>
 
 export function StakeholdersPage() {
   const { project } = useProject();
+  const queryClient = useQueryClient();
   return (
-    <RegisterTable<Stakeholder>
-      projectId={project.id}
-      path="stakeholders"
-      title="Registro de interesados"
-      singular="interesado"
-      canEdit
-      emptyText="Aún no hay interesados registrados."
-      itemLabel={(item) => item.name}
-      defaults={{ name: '', organization: '', position: '', contact: '', influence: 'MEDIUM', interest: 'MEDIUM', strategy: '' }}
-      columns={[
-        { header: 'Nombre', cell: (item) => <span className="font-medium text-ink">{item.name}</span> },
-        { header: 'Organización y cargo', cell: (item) => [item.organization, item.position].filter(Boolean).join(' · ') },
-        { header: 'Contacto', cell: (item) => item.contact },
-        { header: 'Influencia', cell: (item) => <Badge>{LABELS.level[item.influence]}</Badge> },
-        { header: 'Interés', cell: (item) => <Badge>{LABELS.level[item.interest]}</Badge> },
-        { header: 'Estrategia', cell: (item) => item.strategy },
-      ]}
-      fields={[
-        { name: 'name', label: 'Nombre', type: 'text' },
-        { name: 'organization', label: 'Organización', type: 'text' },
-        { name: 'position', label: 'Cargo', type: 'text' },
-        { name: 'contact', label: 'Contacto', type: 'text' },
-        { name: 'influence', label: 'Influencia', type: 'select', options: options(LEVEL, LABELS.level) },
-        { name: 'interest', label: 'Interés', type: 'select', options: options(LEVEL, LABELS.level) },
-        { name: 'strategy', label: 'Estrategia de gestión', type: 'textarea' },
-      ]}
-    />
+    <div className="space-y-6">
+      <RegisterTable<Stakeholder>
+        projectId={project.id}
+        path="stakeholders"
+        title="Registro de interesados"
+        singular="interesado"
+        canEdit
+        emptyText="Aún no hay interesados registrados."
+        itemLabel={(item) => item.name}
+        defaults={{ name: '', organization: '', position: '', contact: '', influence: 'MEDIUM', interest: 'MEDIUM', strategy: '' }}
+        columns={[
+          { header: 'Nombre', cell: (item) => <span className="font-medium text-ink">{item.name}</span> },
+          { header: 'Organización y cargo', cell: (item) => [item.organization, item.position].filter(Boolean).join(' · ') },
+          { header: 'Contacto', cell: (item) => item.contact },
+          { header: 'Influencia', cell: (item) => <Badge>{LABELS.level[item.influence]}</Badge> },
+          { header: 'Interés', cell: (item) => <Badge>{LABELS.level[item.interest]}</Badge> },
+          { header: 'Estrategia', cell: (item) => item.strategy },
+        ]}
+        fields={[
+          { name: 'name', label: 'Nombre', type: 'text' },
+          { name: 'organization', label: 'Organización', type: 'text' },
+          { name: 'position', label: 'Cargo', type: 'text' },
+          { name: 'contact', label: 'Contacto', type: 'text' },
+          { name: 'influence', label: 'Influencia', type: 'select', options: options(LEVEL, LABELS.level) },
+          { name: 'interest', label: 'Interés', type: 'select', options: options(LEVEL, LABELS.level) },
+          { name: 'strategy', label: 'Estrategia de gestión', type: 'textarea' },
+        ]}
+        onChanged={() => void queryClient.invalidateQueries({ queryKey: raciKey(project.id) })}
+      />
+      <RaciMatrix projectId={project.id} />
+    </div>
   );
 }
 

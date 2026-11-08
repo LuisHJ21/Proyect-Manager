@@ -143,3 +143,11 @@ export type Indicators = {
   budget?: { plannedCents: number; spentCents: number; differenceCents: number };
   highRisks?: number;
 };
+
+export type RaciParty = { id: string; name: string };
+export type RaciMatrixData = {
+  activities: { id: string; title: string; description: string; warnings: import('@pm/shared').RaciWarning[] }[];
+  members: RaciParty[];
+  stakeholders: RaciParty[];
+  cells: { activityId: string; kind: import('@pm/shared').RaciPartyKind; partyId: string; role: import('@pm/shared').RaciRole }[];
+};

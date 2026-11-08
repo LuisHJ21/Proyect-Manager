@@ -26,6 +26,7 @@ model User {
   ownedRisks       Risk[]
   approvedCharters Charter[]
   taskSteps        TaskStep[]
+  raciCells        RaciCell[]
 }
 
 model Session {
@@ -54,15 +55,16 @@ model Project {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  members      ProjectMember[]
-  charter      Charter?
-  objectives   Objective[]
-  milestones   Milestone[]
-  tasks        Task[]
-  attachments  Attachment[]
-  stakeholders Stakeholder[]
-  risks        Risk[]
-  expenses     Expense[]
+  members        ProjectMember[]
+  charter        Charter?
+  objectives     Objective[]
+  milestones     Milestone[]
+  tasks          Task[]
+  attachments    Attachment[]
+  stakeholders   Stakeholder[]
+  risks          Risk[]
+  expenses       Expense[]
+  raciActivities RaciActivity[]
 }
 
 model ProjectMember {
@@ -243,7 +245,8 @@ model Stakeholder {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  raciCells RaciCell[]
 
   @@index([projectId])
 }
@@ -281,4 +284,37 @@ model Expense {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+}
+
+model RaciActivity {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cells   RaciCell[]
+
+  @@index([projectId])
+}
+
+model RaciCell {
+  id            String   @id @default(cuid())
+  activityId    String
+  stakeholderId String?
+  userId        String?
+  role          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  activity    RaciActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  stakeholder Stakeholder? @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, userId])
+  @@unique([activityId, stakeholderId])
+  @@index([stakeholderId])
+  @@index([userId])
 }

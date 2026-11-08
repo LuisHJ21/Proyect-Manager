@@ -29,7 +29,7 @@ z.setErrorMap((issue, ctx) => {
 export const calendarDateSchema = z.string().refine(isValidCalendarDate, 'Fecha inválida');
 export const optionalDateSchema = calendarDateSchema.nullable().optional();
 
-const required = (message = 'Este campo es obligatorio') => z.string().trim().min(1, message);
+export const required = (message = 'Este campo es obligatorio') => z.string().trim().min(1, message);
 
 export const emailSchema = z.string().trim().toLowerCase().email('Correo inválido');
 export const passwordSchema = z.string().min(10, 'La contraseña debe tener al menos 10 caracteres');

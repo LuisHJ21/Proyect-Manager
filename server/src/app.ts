@@ -17,6 +17,7 @@ import { memberRoutes } from './routes/members';
 import { projectRoutes } from './routes/projects';
 import { registerRoutes } from './routes/registers';
 import { raciRoutes } from './routes/raci';
+import { changeRequestRoutes } from './routes/changeRequests';
 import { taskStepRoutes } from './routes/taskSteps';
 import { taskRoutes } from './routes/tasks';
 import { userRoutes } from './routes/users';
@@ -56,6 +57,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await charterRoutes(app);
   await registerRoutes(app);
   await raciRoutes(app);
+  await changeRequestRoutes(app);
   await taskRoutes(app);
   await taskStepRoutes(app);
   await dependencyRoutes(app);

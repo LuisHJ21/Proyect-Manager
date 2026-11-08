@@ -54,6 +54,8 @@ model Project {
   endDate            String?
   plannedBudgetCents BigInt   @default(0)
   currency           String   @default("USD")
+  /// Último número de solicitud de cambio usado; los números no se reutilizan aunque se borre una solicitud.
+  lastChangeNumber   Int      @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

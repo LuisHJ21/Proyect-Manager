@@ -81,6 +81,23 @@ DROP TABLE "Expense";
 ALTER TABLE "new_Expense" RENAME TO "Expense";
 CREATE INDEX "Expense_projectId_idx" ON "Expense"("projectId");
 CREATE INDEX "Expense_taskId_idx" ON "Expense"("taskId");
+CREATE TABLE "new_Project" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL DEFAULT '',
+    "status" TEXT NOT NULL DEFAULT 'PLANNING',
+    "approach" TEXT NOT NULL DEFAULT 'PREDICTIVE',
+    "startDate" TEXT,
+    "endDate" TEXT,
+    "plannedBudgetCents" BIGINT NOT NULL DEFAULT 0,
+    "currency" TEXT NOT NULL DEFAULT 'USD',
+    "lastChangeNumber" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+INSERT INTO "new_Project" ("approach", "createdAt", "currency", "description", "endDate", "id", "name", "plannedBudgetCents", "startDate", "status", "updatedAt") SELECT "approach", "createdAt", "currency", "description", "endDate", "id", "name", "plannedBudgetCents", "startDate", "status", "updatedAt" FROM "Project";
+DROP TABLE "Project";
+ALTER TABLE "new_Project" RENAME TO "Project";
 CREATE TABLE "new_Task" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "projectId" TEXT NOT NULL,

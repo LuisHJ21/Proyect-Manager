@@ -71,11 +71,29 @@ test('flujo principal', async ({ browser }) => {
   const projectUrl = pm.url().replace(/\/resumen$/, '');
 
   await pm.getByRole('link', { name: 'Acta' }).click();
-  await pm.getByLabel('Justificación').fill('Modernizar el sitio');
-  await pm.getByLabel('Alcance incluido').fill('Sitio público');
-  await pm.getByLabel('Criterios de éxito').fill('Lanzado en marzo');
+  await pm.getByRole('textbox', { name: 'Justificación' }).click();
+  await pm.keyboard.type('Modernizar el sitio');
+  // El alcance se escribe como lista con la barra de formato.
+  await pm.getByRole('textbox', { name: 'Alcance incluido' }).click();
+  await pm.getByRole('toolbar', { name: 'Formato de Alcance incluido' }).getByRole('button', { name: 'Lista con viñetas' }).click();
+  await pm.keyboard.type('Sitio público');
+  await pm.keyboard.press('Enter');
+  await pm.keyboard.type('Blog');
+  await pm.getByRole('textbox', { name: 'Criterios de éxito' }).fill('Lanzado en marzo');
   await pm.getByRole('button', { name: 'Aprobar acta' }).click();
   await expect(pm.getByText(/Aprobada por Paula/)).toBeVisible();
+  await pm.reload();
+  await expect(pm.getByRole('textbox', { name: 'Alcance incluido' }).locator('li')).toHaveCount(2);
+
+  // Matriz RACI: una actividad con un responsable que aprueba y otro que la hace.
+  await pm.getByRole('link', { name: 'Interesados' }).click();
+  await pm.getByRole('button', { name: 'Añadir actividad' }).click();
+  await pm.getByRole('dialog').getByLabel('Actividad').fill('Aprobar diseño');
+  await pm.getByRole('dialog').getByRole('button', { name: 'Guardar' }).click();
+  await expect(pm.getByText('Falta A')).toBeVisible();
+  await pm.getByLabel('Aprobar diseño — Beatriz').selectOption('A');
+  await pm.getByLabel('Aprobar diseño — Carlos').selectOption('R');
+  await expect(pm.getByText('Completa')).toBeVisible();
 
   // 2. Crea dos tareas dependientes, cada una asignada a una persona.
   await pm.getByRole('link', { name: 'Tareas', exact: true }).click();
@@ -120,6 +138,8 @@ test('flujo principal', async ({ browser }) => {
   const tabs = carlos.getByRole('navigation', { name: 'Secciones del proyecto' });
   await expect(tabs.getByRole('link', { name: 'Riesgos' })).toHaveCount(0);
   await expect(tabs.getByRole('link', { name: 'Presupuesto' })).toHaveCount(0);
+  await carlos.goto(`${projectUrl}/acta`);
+  await expect(carlos.getByRole('listitem').filter({ hasText: 'Blog' })).toBeVisible();
   await carlos.goto(`${projectUrl}/presupuesto`);
   await expect(carlos).toHaveURL(/\/resumen$/);
   await expect(carlos.getByText('Presupuesto planificado')).toHaveCount(0);

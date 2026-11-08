@@ -9,6 +9,11 @@ Aplicación web para gestionar proyectos según PMBOK 7 en una red local. Incluy
 
 Ambos roles tienen un calendario con las actividades por fecha límite. El Project Manager ve todas las de los proyectos activos, y el colaborador, las suyas y los hitos de sus proyectos.
 
+## Textos con formato y matriz RACI
+
+- **Textos con formato:** el acta, la descripción del proyecto, los objetivos y los riesgos se escriben con negrita, cursiva, títulos de sección y listas. Al guardar se elimina cualquier otro formato, como enlaces, imágenes o código. Los textos escritos antes de este cambio se muestran tal cual, con un párrafo por línea.
+- **Matriz RACI:** en la pestaña **Interesados** de cada proyecto, el Project Manager define actividades y, para cada miembro del equipo o interesado, si hace el trabajo (R), rinde cuentas (A), se le consulta (C) o se le informa (I). Cada fila avisa si le falta una A, si tiene más de una o si le falta una R. Los colaboradores no ven la matriz.
+
 ## Requisitos
 
 - Node.js 24
@@ -27,6 +32,8 @@ npm run build
 ```bash
 npm start
 ```
+
+**Antes de actualizar** a una versión nueva, detén la aplicación y copia la carpeta `data/`: al arrancar, la base de datos se actualiza sola y no se puede deshacer sin esa copia.
 
 Al arrancar, la consola muestra las direcciones de acceso, por ejemplo `http://192.168.1.20:3080`. La base de datos se crea o actualiza sola.
 

@@ -3,6 +3,8 @@ import { averageProgress, HIGH_RISK_SCORE } from './indicators';
 
 const AT_RISK_OVERDUE_TASKS = 3;
 const ATTENTION_BUDGET_RATIO = 0.9;
+/** Con línea base, un CPI o SPI bajo este valor pide atención. */
+const ATTENTION_EVM_INDEX = 0.9;
 
 export type HealthInput = {
   status: string;
@@ -11,6 +13,9 @@ export type HealthInput = {
   spentCents: number;
   overdueTasks: number;
   highRisks: number;
+  /** Índices de valor ganado; solo existen si el proyecto tiene línea base. */
+  cpi?: number | null;
+  spi?: number | null;
 };
 
 export const isActiveProject = (status: string) => (ACTIVE_PROJECT_STATUS as readonly string[]).includes(status);
@@ -30,7 +35,8 @@ export function computeHealth(input: HealthInput, today: string): Health | null 
     return 'AT_RISK';
   }
   const nearBudget = hasBudget && input.spentCents >= input.plannedBudgetCents * ATTENTION_BUDGET_RATIO;
-  if (input.overdueTasks > 0 || input.highRisks > 0 || nearBudget) return 'ATTENTION';
+  const lowIndex = [input.cpi, input.spi].some((value) => value !== null && value !== undefined && value < ATTENTION_EVM_INDEX);
+  if (input.overdueTasks > 0 || input.highRisks > 0 || nearBudget || lowIndex) return 'ATTENTION';
   return 'ON_TRACK';
 }
 
@@ -39,7 +45,16 @@ export type SummaryTask = { status: string; dueDate: string | null; progress: nu
 export type SummaryRisk = { probability: number; impact: number; status: string };
 export type SummaryExpense = { amountCents: number };
 
-export function summarizeProject(project: SummaryProject, tasks: SummaryTask[], risks: SummaryRisk[], expenses: SummaryExpense[], today: string) {
+export type EvmIndexes = { cpi: number | null; spi: number | null };
+
+export function summarizeProject(
+  project: SummaryProject,
+  tasks: SummaryTask[],
+  risks: SummaryRisk[],
+  expenses: SummaryExpense[],
+  today: string,
+  evm?: EvmIndexes,
+) {
   const overdueTasks = tasks.filter((t) => isOverdue(t, today)).length;
   const highRisks = risks.filter(isHighRisk).length;
   const spentCents = expenses.reduce((sum, e) => sum + e.amountCents, 0);
@@ -48,7 +63,7 @@ export function summarizeProject(project: SummaryProject, tasks: SummaryTask[], 
     overdueTasks,
     highRisks,
     spentCents,
-    health: computeHealth({ ...project, spentCents, overdueTasks, highRisks }, today),
+    health: computeHealth({ ...project, spentCents, overdueTasks, highRisks, cpi: evm?.cpi, spi: evm?.spi }, today),
   };
 }
 

@@ -143,3 +143,26 @@ describe('líneas base y desempeño', () => {
     expect(res.json().metrics).toMatchObject({ evCents: 0, cpi: null, eacCents: 400000 });
   });
 });
+
+describe('salud con valor ganado', () => {
+  let ctx: TestCtx;
+  afterEach(() => ctx.close());
+
+  it('la lista de proyectos y el panel usan CPI', async () => {
+    ctx = await createTestApp();
+    ctx.clock.set('2026-11-05T10:00:00');
+    const pm = await ctx.makeUser({ role: 'PM' });
+    const project = await ctx.makeProject({ name: 'Portal', plannedBudgetCents: 10_000_000 });
+    const task = await ctx.makeTask(project.id, { title: 'Diseño', startDate: '2026-11-01', dueDate: '2026-11-10', progress: 50 });
+    await ctx.prisma.task.update({ where: { id: task.id }, data: { plannedCostCents: 100000 } });
+    const before = (await ctx.as(pm).get('/api/projects')).json();
+    expect(before[0].health).toBe('ON_TRACK');
+    await ctx.as(pm).post(`/api/projects/${project.id}/baselines`, {});
+    // EV 50 000 y AC 100 000: CPI 0,5. SPI = 50 000 / 50 000 = 1.
+    await ctx.prisma.expense.create({ data: { projectId: project.id, description: 'G', amountCents: 100000, date: '2026-11-04', category: 'OTHER' } });
+    const list = (await ctx.as(pm).get('/api/projects')).json();
+    expect(list[0].health).toBe('ATTENTION');
+    const dashboard = (await ctx.as(pm).get('/api/dashboard')).json();
+    expect(dashboard.projects.find((p: { name: string }) => p.name === 'Portal').health).toBe('ATTENTION');
+  });
+});

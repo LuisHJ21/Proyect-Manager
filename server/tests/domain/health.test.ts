@@ -50,3 +50,16 @@ describe('isHighRisk e isOverdue', () => {
     expect(isOverdue({ status: 'TODO', dueDate: null }, '2026-11-07')).toBe(false);
   });
 });
+
+describe('computeHealth con valor ganado', () => {
+  it('CPI o SPI bajo 0,9 lleva a atención; 0,9 y null no', () => {
+    expect(health({ cpi: 0.85 })).toBe('ATTENTION');
+    expect(health({ spi: 0.89 })).toBe('ATTENTION');
+    expect(health({ cpi: 0.9, spi: 0.9 })).toBe('ON_TRACK');
+    expect(health({ cpi: null, spi: null })).toBe('ON_TRACK');
+  });
+  it('no rebaja un proyecto en riesgo', () => {
+    expect(health({ endDate: '2026-11-06', cpi: 1.2 })).toBe('AT_RISK');
+    expect(health({ overdueTasks: 3, cpi: 0.5 })).toBe('AT_RISK');
+  });
+});

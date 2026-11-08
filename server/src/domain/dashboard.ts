@@ -1,5 +1,5 @@
 import { addDays, toPlainText, type Health } from '@pm/shared';
-import { isActiveProject, isHighRisk, isOverdue, summarizeProject } from './health';
+import { isActiveProject, isHighRisk, isOverdue, summarizeProject, type EvmIndexes } from './health';
 
 const MAX_ATTENTION_ITEMS = 8;
 const UPCOMING_MILESTONE_DAYS = 14;
@@ -7,7 +7,7 @@ const HEALTH_ORDER: Record<Health, number> = { AT_RISK: 0, ATTENTION: 1, ON_TRAC
 
 export type Person = { id: string; name: string };
 export type DashboardInput = {
-  projects: { id: string; name: string; status: string; endDate: string | null; plannedBudgetCents: number; team: Person[] }[];
+  projects: { id: string; name: string; status: string; endDate: string | null; plannedBudgetCents: number; team: Person[]; evm?: EvmIndexes }[];
   tasks: {
     id: string;
     title: string;
@@ -47,6 +47,7 @@ export function buildDashboard(input: DashboardInput, today: string) {
       risks.filter((r) => r.projectId === project.id),
       expenses.filter((e) => e.projectId === project.id),
       today,
+      project.evm,
     ),
   }));
 

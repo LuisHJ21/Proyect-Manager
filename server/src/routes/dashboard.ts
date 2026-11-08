@@ -2,6 +2,7 @@ import { ACTIVE_PROJECT_STATUS, localToday } from '@pm/shared';
 import type { FastifyInstance } from 'fastify';
 import { requirePm } from '../auth/guards';
 import { buildDashboard } from '../domain/dashboard';
+import { loadEvmIndexes } from './evmLoader';
 
 export async function dashboardRoutes(app: FastifyInstance) {
   const { prisma } = app;
@@ -22,6 +23,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
       prisma.expense.findMany({ where }),
       prisma.milestone.findMany({ where }),
     ]);
+    const today = localToday(app.now());
+    const evm = await loadEvmIndexes(prisma, projects.map((p) => p.id), today);
 
     return buildDashboard(
       {
@@ -32,13 +35,14 @@ export async function dashboardRoutes(app: FastifyInstance) {
           endDate: p.endDate,
           plannedBudgetCents: Number(p.plannedBudgetCents),
           team: p.members.map((m) => m.user),
+          evm: evm.get(p.id),
         })),
         tasks: tasks.map((t) => ({ ...t, assignees: t.assignees.map((a) => a.user) })),
         risks,
         expenses: expenses.map((e) => ({ projectId: e.projectId, amountCents: Number(e.amountCents) })),
         milestones,
       },
-      localToday(app.now()),
+      today,
     );
   });
 }

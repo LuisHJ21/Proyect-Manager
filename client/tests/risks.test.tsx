@@ -1,7 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { mockApi, pmUser, renderApp, signedInAs } from './helpers';
+import { mockApi, pmUser, renderApp, setRichText, signedInAs } from './helpers';
 
 const project = { id: 'p1', name: 'Portal', description: '', status: 'PLANNING', approach: 'AGILE', startDate: null, endDate: null, plannedBudgetCents: 0, currency: 'USD' };
 const risk = {
@@ -36,12 +36,44 @@ describe('riesgos', () => {
     expect(response).toHaveTextContent('Explotar');
     expect(response).not.toHaveTextContent('Mitigar');
 
-    await user.type(screen.getByLabelText('Descripción'), 'Ahorro');
+    await setRichText('Descripción', '<p>Ahorro</p>');
     await user.click(screen.getByRole('button', { name: 'Guardar' }));
     await waitFor(() => {
       const call = api.calls.find((c) => c.key === 'POST /api/projects/p1/risks');
-      expect(call?.body).toMatchObject({ type: 'OPPORTUNITY', response: 'EXPLOIT', probability: 3, impact: 3 });
+      expect(call?.body).toMatchObject({ type: 'OPPORTUNITY', response: 'EXPLOIT', probability: 3, impact: 3, description: '<p>Ahorro</p>' });
     });
+  });
+
+  const formatted = { ...risk, description: '<p><strong>Retraso</strong> del proveedor</p>', responsePlan: '<ul><li>Llamar</li></ul>' };
+
+  it('la tabla muestra el riesgo en texto plano recortado', async () => {
+    mockApi({ ...routes, 'GET /api/projects/p1/risks': [formatted] });
+    renderApp('/proyectos/p1/riesgos');
+    const cell = await screen.findByText('Retraso del proveedor');
+    expect(cell).toHaveClass('line-clamp-2');
+    expect(screen.getByRole('table').querySelector('strong')).toBeNull();
+  });
+
+  it('las acciones y la confirmación usan texto plano', async () => {
+    mockApi({ ...routes, 'GET /api/projects/p1/risks': [formatted] });
+    renderApp('/proyectos/p1/riesgos');
+    const user = userEvent.setup();
+    expect(await screen.findByRole('button', { name: 'Editar Retraso del proveedor' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Eliminar Retraso del proveedor' }));
+    expect(within(screen.getByRole('dialog')).getByText(/«Retraso del proveedor»/)).toBeInTheDocument();
+  });
+
+  it('Ver riesgo muestra descripción y plan con formato', async () => {
+    mockApi({ ...routes, 'GET /api/projects/p1/risks': [formatted, { ...risk, id: 'r2', description: '<p>Sin plan</p>', responsePlan: '' }] });
+    renderApp('/proyectos/p1/riesgos');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Ver Retraso del proveedor' }));
+    const dialog = screen.getByRole('dialog', { name: 'Detalle del riesgo' });
+    expect(within(dialog).getByText('Retraso').tagName).toBe('STRONG');
+    expect(within(dialog).getByText('Llamar').tagName).toBe('LI');
+    await user.click(within(dialog).getByRole('button', { name: 'Cerrar' }));
+    await user.click(screen.getByRole('button', { name: 'Ver Sin plan' }));
+    expect(within(screen.getByRole('dialog', { name: 'Detalle del riesgo' })).getByText('Sin plan de respuesta.')).toBeInTheDocument();
   });
 
   it('muestra el puntaje y destaca los de 15 o más', async () => {

@@ -1,6 +1,7 @@
-import { LABELS, MILESTONE_STATUS, OBJECTIVE_STATUS } from '@pm/shared';
+import { LABELS, MILESTONE_STATUS, OBJECTIVE_STATUS, toPlainText } from '@pm/shared';
 import type { Milestone, Objective } from '../../api/types';
-import { RegisterTable, type Option } from '../RegisterTable';
+import { DetailList, RegisterTable, type Option } from '../RegisterTable';
+import { RichTextClamp, RichTextView } from '../richText/RichTextView';
 import { Badge } from '../ui';
 
 const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
@@ -15,10 +16,23 @@ export function ObjectivesPanel({ projectId, canEdit }: { projectId: string; can
       singular="objetivo"
       canEdit={canEdit}
       emptyText="Aún no hay objetivos."
-      itemLabel={(item) => item.description}
+      itemLabel={(item) => toPlainText(item.description)}
       defaults={{ description: '', metric: '', target: '', status: 'PENDING' }}
+      detail={{
+        title: () => 'Detalle del objetivo',
+        render: (item) => (
+          <DetailList
+            rows={[
+              { label: 'Objetivo', value: <RichTextView html={item.description} /> },
+              { label: 'Métrica', value: item.metric || '—' },
+              { label: 'Meta', value: item.target || '—' },
+              { label: 'Estado', value: LABELS.objectiveStatus[item.status] },
+            ]}
+          />
+        ),
+      }}
       columns={[
-        { header: 'Objetivo', cell: (item) => item.description },
+        { header: 'Objetivo', cell: (item) => <RichTextClamp html={item.description} /> },
         { header: 'Métrica', cell: (item) => item.metric },
         { header: 'Meta', cell: (item) => item.target },
         {
@@ -31,7 +45,7 @@ export function ObjectivesPanel({ projectId, canEdit }: { projectId: string; can
         },
       ]}
       fields={[
-        { name: 'description', label: 'Objetivo', type: 'textarea' },
+        { name: 'description', label: 'Objetivo', type: 'richtext' },
         { name: 'metric', label: 'Métrica', type: 'text' },
         { name: 'target', label: 'Meta', type: 'text' },
         { name: 'status', label: 'Estado', type: 'select', options: options(OBJECTIVE_STATUS, LABELS.objectiveStatus) },

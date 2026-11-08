@@ -1,4 +1,4 @@
-import { EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, type RiskType } from '@pm/shared';
+import { EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api/client';
 import type { Expense, Indicators, Member, Risk, Stakeholder } from '../../api/types';
@@ -6,7 +6,8 @@ import { useAuth } from '../../auth/AuthProvider';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { membersKey } from '../../components/project/MembersPanel';
-import { RegisterTable, type Option, type Values } from '../../components/RegisterTable';
+import { DetailList, RegisterTable, type Option, type Values } from '../../components/RegisterTable';
+import { RichTextClamp, RichTextView } from '../../components/richText/RichTextView';
 import { Badge, Card } from '../../components/ui';
 import { useProject } from './ProjectLayout';
 
@@ -69,11 +70,27 @@ export function RisksPage() {
       singular="riesgo"
       canEdit
       emptyText="Aún no hay riesgos registrados."
-      itemLabel={(item) => item.description}
+      itemLabel={(item) => toPlainText(item.description)}
       normalize={normalize}
+      detail={{
+        title: () => 'Detalle del riesgo',
+        render: (item) => (
+          <DetailList
+            rows={[
+              { label: 'Descripción', value: <RichTextView html={item.description} /> },
+              { label: 'Plan de respuesta', value: <RichTextView html={item.responsePlan} empty="Sin plan de respuesta." /> },
+              { label: 'Tipo', value: LABELS.riskType[item.type] },
+              { label: 'Puntaje', value: `${item.score} (${item.probability} × ${item.impact})` },
+              { label: 'Respuesta', value: LABELS.riskResponse[item.response as keyof typeof LABELS.riskResponse] },
+              { label: 'Responsable', value: memberName(item.ownerId) },
+              { label: 'Estado', value: LABELS.riskStatus[item.status] },
+            ]}
+          />
+        ),
+      }}
       defaults={{ description: '', type: 'THREAT', probability: 3, impact: 3, response: 'MITIGATE', responsePlan: '', ownerId: null, status: 'OPEN' }}
       columns={[
-        { header: 'Riesgo', cell: (item) => <span className="font-medium text-ink">{item.description}</span> },
+        { header: 'Riesgo', cell: (item) => <span className="font-medium text-ink"><RichTextClamp html={item.description} /></span> },
         { header: 'Tipo', cell: (item) => LABELS.riskType[item.type] },
         { header: 'Prob. × Impacto', cell: (item) => `${item.probability} × ${item.impact}` },
         {
@@ -86,12 +103,12 @@ export function RisksPage() {
         { header: 'Estado', cell: (item) => LABELS.riskStatus[item.status] },
       ]}
       fields={[
-        { name: 'description', label: 'Descripción', type: 'textarea' },
+        { name: 'description', label: 'Descripción', type: 'richtext' },
         { name: 'type', label: 'Tipo', type: 'select', options: options(RISK_TYPE, LABELS.riskType) },
         { name: 'probability', label: 'Probabilidad (1 a 5)', type: 'select', numeric: true, options: SCALE },
         { name: 'impact', label: 'Impacto (1 a 5)', type: 'select', numeric: true, options: SCALE },
         { name: 'response', label: 'Respuesta', type: 'select', options: (values) => responseOptions(values.type) },
-        { name: 'responsePlan', label: 'Plan de respuesta', type: 'textarea' },
+        { name: 'responsePlan', label: 'Plan de respuesta', type: 'richtext' },
         {
           name: 'ownerId',
           label: 'Responsable',

@@ -5,6 +5,7 @@ import { ConfirmDialog, Modal } from './ConfirmDialog';
 import { ErrorState, Loading } from './ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from './FormField';
 import { INVALID_MONEY_MESSAGE, MoneyInput } from './MoneyInput';
+import { RichTextEditor } from './richText/RichTextEditor';
 import { useToast } from './Toast';
 import { Button, Card, EmptyState, inputClass } from './ui';
 
@@ -14,7 +15,7 @@ export type Values = Record<string, any>;
 export type FieldDef = {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'date' | 'select' | 'money';
+  type: 'text' | 'textarea' | 'richtext' | 'date' | 'select' | 'money';
   options?: Option[] | ((values: Values) => Option[]);
   /** El valor del select se convierte a número al guardar. */
   numeric?: boolean;
@@ -23,6 +24,20 @@ export type FieldDef = {
 };
 
 export type Column<T> = { header: string; cell: (item: T) => ReactNode };
+
+/** Filas de un detalle: etiqueta y contenido. */
+export function DetailList({ rows }: { rows: { label: string; value: ReactNode }[] }) {
+  return (
+    <dl className="space-y-4">
+      {rows.map((row) => (
+        <div key={row.label}>
+          <dt className="text-xs font-medium text-ink-soft">{row.label}</dt>
+          <dd className="mt-0.5 text-sm text-ink">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 type Props<T extends { id: string }> = {
   projectId: string;
@@ -38,6 +53,8 @@ type Props<T extends { id: string }> = {
   normalize?: (values: Values) => Values;
   itemLabel: (item: T) => string;
   onChanged?: () => void;
+  /** Si existe, cada fila tiene un botón Ver que abre este detalle en una ventana. */
+  detail?: { title: (item: T) => string; render: (item: T) => ReactNode };
 };
 
 export const registerKey = (projectId: string, path: string) => ['project', projectId, path];
@@ -109,6 +126,8 @@ function RegisterForm({
                   </option>
                 ))}
               </select>
+            ) : field.type === 'richtext' ? (
+              <RichTextEditor label={field.label} value={values[field.name] ?? ''} onChange={(html) => setField(field.name, html)} />
             ) : field.type === 'textarea' ? (
               <textarea className={inputClass} rows={3} value={values[field.name] ?? ''} onChange={(e) => setField(field.name, e.target.value)} />
             ) : (
@@ -136,7 +155,7 @@ function RegisterForm({
 
 /** Lista con alta, edición y baja para los registros de un proyecto. */
 export function RegisterTable<T extends { id: string }>(props: Props<T>) {
-  const { projectId, path, title, singular, canEdit, columns, fields, defaults, emptyText, normalize, itemLabel, onChanged } = props;
+  const { projectId, path, title, singular, canEdit, columns, fields, defaults, emptyText, normalize, itemLabel, onChanged, detail } = props;
   const queryClient = useQueryClient();
   const toast = useToast();
   const key = registerKey(projectId, path);
@@ -144,6 +163,8 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
   const list = useQuery({ queryKey: key, queryFn: () => api<T[]>(base) });
   const [editing, setEditing] = useState<T | 'new' | null>(null);
   const [deleting, setDeleting] = useState<T | null>(null);
+  const [viewing, setViewing] = useState<T | null>(null);
+  const showActions = canEdit || Boolean(detail);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
@@ -185,7 +206,7 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
                     {column.header}
                   </th>
                 ))}
-                {canEdit && (
+                {showActions && (
                   <th className="py-2 font-medium">
                     <span className="sr-only">Acciones</span>
                   </th>
@@ -200,14 +221,23 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
                       {column.cell(item)}
                     </td>
                   ))}
-                  {canEdit && (
+                  {showActions && (
                     <td className="py-1 text-right whitespace-nowrap">
-                      <Button variant="ghost" aria-label={`Editar ${itemLabel(item)}`} onClick={() => setEditing(item)}>
-                        Editar
-                      </Button>
-                      <Button variant="ghost" aria-label={`Eliminar ${itemLabel(item)}`} onClick={() => setDeleting(item)}>
-                        Eliminar
-                      </Button>
+                      {detail && (
+                        <Button variant="ghost" aria-label={`Ver ${itemLabel(item)}`} onClick={() => setViewing(item)}>
+                          Ver
+                        </Button>
+                      )}
+                      {canEdit && (
+                        <>
+                          <Button variant="ghost" aria-label={`Editar ${itemLabel(item)}`} onClick={() => setEditing(item)}>
+                            Editar
+                          </Button>
+                          <Button variant="ghost" aria-label={`Eliminar ${itemLabel(item)}`} onClick={() => setDeleting(item)}>
+                            Eliminar
+                          </Button>
+                        </>
+                      )}
                     </td>
                   )}
                 </tr>
@@ -225,6 +255,16 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
           onSubmit={save}
           onClose={() => setEditing(null)}
         />
+      )}
+      {viewing && detail && (
+        <Modal title={detail.title(viewing)} onClose={() => setViewing(null)} wide>
+          {detail.render(viewing)}
+          <div className="mt-6 flex justify-end">
+            <Button variant="secondary" onClick={() => setViewing(null)}>
+              Cerrar
+            </Button>
+          </div>
+        </Modal>
       )}
       {deleting && (
         <ConfirmDialog title={`Eliminar ${singular}`} danger confirmLabel="Eliminar" onCancel={() => setDeleting(null)} onConfirm={() => remove.mutate(deleting)}>

@@ -14,6 +14,20 @@ Ambos roles tienen un calendario con las actividades por fecha límite. El Proje
 - **Textos con formato:** el acta, la descripción del proyecto, los objetivos y los riesgos se escriben con negrita, cursiva, títulos de sección y listas. Al guardar se elimina cualquier otro formato, como enlaces, imágenes o código. Los textos escritos antes de este cambio se muestran tal cual, con un párrafo por línea.
 - **Matriz RACI:** en la pestaña **Interesados** de cada proyecto, el Project Manager define actividades y, para cada miembro del equipo o interesado, si hace el trabajo (R), rinde cuentas (A), se le consulta (C) o se le informa (I). Cada fila avisa si le falta una A, si tiene más de una o si le falta una R. Los colaboradores no ven la matriz.
 
+## Línea base, valor ganado y cambios
+
+Solo el Project Manager ve estas secciones.
+
+- **Costo planeado:** cada tarea puede tener un costo planeado, y cada gasto puede ligarse a una tarea.
+- **Línea base:** en la pestaña **Desempeño**, "Fijar línea base" guarda una foto de las tareas con costo y sus fechas. Se puede volver a fijar con un motivo, y cada versión queda en el historial.
+- **Indicadores:**
+  - **CPI** (eficiencia de costo): valor ganado entre costo real. Menos de 1 significa que se gasta más de lo que se avanza.
+  - **SPI** (eficiencia de plazo): valor ganado entre valor planeado. Menos de 1 significa atraso.
+  - **EAC** (costo final estimado): lo que costará el proyecto si sigue igual.
+  - **VAC** (variación al terminar): presupuesto planeado menos EAC. Negativo significa sobrecosto.
+- **Salud:** con línea base, un CPI o SPI bajo 0,9 marca el proyecto como "Atención".
+- **Cambios:** la pestaña **Cambios** registra cada solicitud con su impacto en alcance, plazo y costo, y su decisión con una nota. Una nueva línea base puede citar un cambio aprobado.
+
 ## Requisitos
 
 - Node.js 24

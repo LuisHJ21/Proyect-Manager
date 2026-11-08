@@ -116,6 +116,63 @@ test('flujo principal', async ({ browser }) => {
   await pm.getByRole('link', { name: 'Calendario' }).click();
   await expect(pm.getByTestId(`day-${todayText}`).getByRole('link', { name: 'Diseño' })).toBeVisible();
 
+  // Línea base y valor ganado: costos planeados, línea base, un gasto ligado y un cambio aprobado.
+  const later = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 10);
+  const laterText = `${later.getFullYear()}-${String(later.getMonth() + 1).padStart(2, '0')}-${String(later.getDate()).padStart(2, '0')}`;
+  const planTask = async (title: string, cost: string, due: string) => {
+    await pm.goto(`${projectUrl}/tareas`);
+    await pm.getByRole('main').getByRole('link', { name: title }).click();
+    await pm.getByRole('button', { name: 'Editar tarea' }).click();
+    const dialog = pm.getByRole('dialog');
+    await dialog.getByLabel('Fecha de inicio').fill(todayText);
+    await dialog.getByLabel('Fecha límite').fill(due);
+    await dialog.getByLabel('Costo planeado').fill(cost);
+    await dialog.getByRole('button', { name: 'Guardar tarea' }).click();
+    await expect(pm.getByRole('dialog')).toHaveCount(0);
+  };
+  await planTask('Diseño', '1.000', todayText);
+  await planTask('Construcción', '3.000', laterText);
+  await pm.goto(`${projectUrl}/desempeno`);
+  await expect(pm.getByText('2 tareas con costo planeado.')).toBeVisible();
+  await pm.getByRole('button', { name: 'Fijar línea base' }).click();
+  await expect(pm.getByText('Versión 1').first()).toBeVisible();
+
+  await pm.getByRole('link', { name: 'Presupuesto' }).click();
+  await pm.getByRole('button', { name: 'Añadir gasto' }).click();
+  const expenseDialog = pm.getByRole('dialog');
+  await expenseDialog.getByLabel('Descripción').fill('Bocetos');
+  await expenseDialog.getByLabel('Monto').fill('500');
+  await expenseDialog.getByLabel('Fecha').fill(todayText);
+  await expenseDialog.getByLabel('Tarea (opcional)').selectOption({ label: 'Diseño' });
+  await expenseDialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(pm.getByRole('dialog')).toHaveCount(0);
+
+  await pm.getByRole('link', { name: 'Desempeño' }).click();
+  const cpiCard = pm.getByRole('region', { name: 'Indicadores de valor ganado' }).locator('[data-card]').filter({ hasText: 'CPI' });
+  await expect(cpiCard).toContainText('Sobre el costo');
+
+  await pm.getByRole('link', { name: 'Cambios' }).click();
+  await pm.getByRole('button', { name: 'Añadir cambio' }).click();
+  const changeDialog = pm.getByRole('dialog');
+  await changeDialog.getByLabel('Título').fill('Agregar blog');
+  await changeDialog.getByLabel('Impacto en plazo (días)').fill('5');
+  await changeDialog.getByLabel('Impacto en costo').fill('800');
+  await changeDialog.getByRole('button', { name: 'Guardar' }).click();
+  await pm.getByRole('button', { name: 'Aprobar CR-1' }).click();
+  await pm.getByRole('dialog').getByLabel('Nota de la decisión').fill('Lo pide la dirección');
+  await pm.getByRole('dialog').getByRole('button', { name: 'Aprobar' }).click();
+  await expect(pm.getByRole('main').getByText('Aprobada')).toBeVisible();
+
+  await pm.getByRole('link', { name: 'Desempeño' }).click();
+  await pm.getByRole('button', { name: 'Fijar nueva línea base' }).click();
+  const baselineDialog = pm.getByRole('dialog');
+  await baselineDialog.getByLabel('Motivo').fill('Cambio aprobado');
+  await baselineDialog.getByLabel('Cambio aprobado (opcional)').selectOption({ label: 'CR-1 · Agregar blog' });
+  await baselineDialog.getByRole('button', { name: 'Fijar' }).click();
+  await expect(pm.getByRole('dialog')).toHaveCount(0);
+  await expect(pm.getByText('Versión 2').first()).toBeVisible();
+  await expect(pm.getByText('Cambio: CR-1 · Agregar blog').first()).toBeVisible();
+
   // Pasos: el Project Manager añade dos a la tarea de Carlos.
   await pm.goto(`${projectUrl}/tareas`);
   await pm.getByRole('main').getByRole('link', { name: 'Construcción' }).click();

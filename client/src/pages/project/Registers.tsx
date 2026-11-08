@@ -1,12 +1,13 @@
 import { EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api/client';
-import type { Expense, Indicators, Member, Risk, Stakeholder } from '../../api/types';
+import type { Expense, Indicators, Member, Risk, Stakeholder, Task } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { membersKey } from '../../components/project/MembersPanel';
 import { RaciMatrix, raciKey } from '../../components/raci/RaciMatrix';
+import { tasksKey } from '../../components/tasks/taskQueries';
 import { DetailList, RegisterTable, type Option, type Values } from '../../components/RegisterTable';
 import { RichTextClamp, RichTextView } from '../../components/richText/RichTextView';
 import { Badge, Card } from '../../components/ui';
@@ -164,6 +165,8 @@ function BudgetTotals({ projectId, currency }: { projectId: string; currency: st
 export function BudgetPage() {
   const { project } = useProject();
   const currency = project.currency ?? 'USD';
+  const tasks = useQuery({ queryKey: tasksKey(project.id), queryFn: () => api<Task[]>(`/api/projects/${project.id}/tasks`) });
+  const taskTitle = (id: string | null) => (id ? (tasks.data?.find((t) => t.id === id)?.title ?? '—') : '—');
   return (
     <div className="space-y-6">
       <BudgetTotals projectId={project.id} currency={currency} />
@@ -175,11 +178,12 @@ export function BudgetPage() {
         canEdit
         emptyText="Aún no hay gastos registrados."
         itemLabel={(item) => item.description}
-        defaults={{ description: '', amountCents: null, date: '', category: 'LABOR' }}
+        defaults={{ description: '', amountCents: null, date: '', category: 'LABOR', taskId: null }}
         columns={[
           { header: 'Fecha', cell: (item) => item.date },
           { header: 'Descripción', cell: (item) => <span className="font-medium text-ink">{item.description}</span> },
           { header: 'Categoría', cell: (item) => LABELS.expenseCategory[item.category] },
+          { header: 'Tarea', cell: (item) => taskTitle(item.taskId) },
           { header: 'Monto', cell: (item) => formatMoney(item.amountCents, currency) },
         ]}
         fields={[
@@ -187,6 +191,14 @@ export function BudgetPage() {
           { name: 'amountCents', label: 'Monto', type: 'money' },
           { name: 'date', label: 'Fecha', type: 'date' },
           { name: 'category', label: 'Categoría', type: 'select', options: options(EXPENSE_CATEGORY, LABELS.expenseCategory) },
+          {
+            name: 'taskId',
+            label: 'Tarea (opcional)',
+            type: 'select',
+            nullable: true,
+            emptyLabel: 'Sin tarea',
+            options: tasks.data?.map((t) => ({ value: t.id, label: t.title })) ?? [],
+          },
         ]}
       />
     </div>

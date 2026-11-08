@@ -6,6 +6,7 @@ import type { Member, Milestone, Project, Task } from '../../api/types';
 import { Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { membersKey } from '../project/MembersPanel';
+import { INVALID_MONEY_MESSAGE, MoneyInput } from '../MoneyInput';
 import { registerKey } from '../RegisterTable';
 import { Button, inputClass } from '../ui';
 import { refreshTaskData } from './taskQueries';
@@ -26,6 +27,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const [startDate, setStartDate] = useState(task?.startDate ?? '');
   const [dueDate, setDueDate] = useState(task?.dueDate ?? '');
   const [milestoneId, setMilestoneId] = useState(task?.milestoneId ?? '');
+  const [plannedCostCents, setPlannedCostCents] = useState<number | null>(task?.plannedCostCents ?? 0);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(task?.assignees.map((a) => a.id) ?? []);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
@@ -38,9 +40,13 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (plannedCostCents === null) {
+      setErrors({ fields: { plannedCostCents: INVALID_MONEY_MESSAGE } });
+      return;
+    }
     setErrors(NO_ERRORS);
     setBusy(true);
-    const fields = { title, description, priority, startDate: startDate || null, dueDate: dueDate || null, milestoneId: milestoneId || null };
+    const fields = { title, description, priority, startDate: startDate || null, dueDate: dueDate || null, milestoneId: milestoneId || null, plannedCostCents };
     try {
       if (task) {
         await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: { ...fields, assigneeIds } });
@@ -96,6 +102,9 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
               </option>
             ))}
           </select>
+        </FormField>
+        <FormField label="Costo planeado" error={errors.fields.plannedCostCents} hint="Para el valor ganado. Déjalo vacío si la tarea no tiene costo.">
+          <MoneyInput value={plannedCostCents} onChange={setPlannedCostCents} blankIsZero />
         </FormField>
         <fieldset className="sm:col-span-2">
           <legend className="mb-1 text-sm font-medium text-ink-nav">Asignados</legend>

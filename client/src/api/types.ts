@@ -96,7 +96,7 @@ export type Risk = {
   ownerId: string | null;
   status: RiskStatus;
 };
-export type Expense = { id: string; description: string; amountCents: number; date: string; category: ExpenseCategory };
+export type Expense = { id: string; description: string; amountCents: number; date: string; category: ExpenseCategory; taskId: string | null };
 
 export type TaskWarning = 'predecessor_not_done' | 'starts_before_predecessor_due';
 export type Task = {
@@ -119,6 +119,8 @@ export type Task = {
   waitingOn: { id: string; title: string }[];
   warnings: TaskWarning[];
   projectName?: string;
+  /** Solo llega al Project Manager. */
+  plannedCostCents?: number;
 };
 export type Comment = { id: string; body: string; createdAt: string; author: PersonRef };
 export type TaskStep = { id: string; title: string; done: boolean; assignee: PersonRef | null };

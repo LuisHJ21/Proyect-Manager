@@ -1,9 +1,9 @@
-import { LABELS, TASK_STATUS, type TaskStatus } from '@pm/shared';
+import { formatMoney, LABELS, TASK_STATUS, type TaskStatus } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, errorMessage, isBlockingError } from '../../api/client';
-import type { Milestone, TaskDetail, TaskWarning } from '../../api/types';
+import type { Expense, Milestone, TaskDetail, TaskWarning } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -83,6 +83,20 @@ function Panel({ title, children }: { title?: string; children: ReactNode }) {
     <section className="rounded-xl border border-line bg-surface p-5">
       {title && <h2 className="mb-3 text-lg font-semibold text-ink">{title}</h2>}
       {children}
+    </section>
+  );
+}
+
+/** Costo planeado y gasto ligado de la tarea. Solo para el Project Manager. */
+function TaskCosts({ projectId, currency, task }: { projectId: string; currency: string; task: TaskDetail }) {
+  const expenses = useQuery({ queryKey: registerKey(projectId, 'expenses'), queryFn: () => api<Expense[]>(`/api/projects/${projectId}/expenses`) });
+  const linked = expenses.data?.filter((e) => e.taskId === task.id).reduce((sum, e) => sum + e.amountCents, 0);
+  return (
+    <section aria-label="Costos de la tarea" className="rounded-xl border border-line bg-surface p-5">
+      <dl>
+        <Property label="Costo planeado">{formatMoney(task.plannedCostCents ?? 0, currency)}</Property>
+        <Property label="Gasto ligado">{linked === undefined ? '…' : formatMoney(linked, currency)}</Property>
+      </dl>
     </section>
   );
 }
@@ -217,6 +231,7 @@ export function TaskDetailPage() {
               <Property label="Hito">{milestone?.name ?? '—'}</Property>
             </dl>
           </Panel>
+          {isPm && <TaskCosts projectId={project.id} currency={project.currency ?? 'USD'} task={task} />}
           <Panel>
             <DependencyPicker task={task} canEdit={isPm} />
           </Panel>

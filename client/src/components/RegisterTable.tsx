@@ -21,6 +21,8 @@ export type FieldDef = {
   numeric?: boolean;
   /** Admite dejar el select vacío; se guarda como null. */
   nullable?: boolean;
+  /** Texto de la opción vacía de un select nullable. */
+  emptyLabel?: string;
 };
 
 export type Column<T> = { header: string; cell: (item: T) => ReactNode };
@@ -119,7 +121,7 @@ function RegisterForm({
                   setField(field.name, field.numeric ? Number(raw) : field.nullable && raw === '' ? null : raw);
                 }}
               >
-                {field.nullable && <option value="">Sin asignar</option>}
+                {field.nullable && <option value="">{field.emptyLabel ?? 'Sin asignar'}</option>}
                 {(typeof field.options === 'function' ? field.options(values) : (field.options ?? [])).map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}

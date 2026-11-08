@@ -35,3 +35,11 @@ export function shortDate(date: string | null | undefined): string {
   const [year, month, day] = date.split('-').map(Number);
   return `${day} ${MONTHS[month! - 1]} ${year}`;
 }
+
+/** Días con signo: "+3 días", "−2 días", "0 días", "+1 día"; "—" sin valor. */
+export function signedDays(days: number | null | undefined): string {
+  if (days === null || days === undefined) return '—';
+  const sign = days > 0 ? '+' : days < 0 ? '−' : '';
+  const abs = Math.abs(days);
+  return `${sign}${abs} ${abs === 1 ? 'día' : 'días'}`;
+}

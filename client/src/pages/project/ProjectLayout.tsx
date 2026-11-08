@@ -23,6 +23,7 @@ const TABS = [
   { to: 'interesados', label: 'Interesados', pmOnly: true },
   { to: 'riesgos', label: 'Riesgos', pmOnly: true },
   { to: 'presupuesto', label: 'Presupuesto', pmOnly: true },
+  { to: 'cambios', label: 'Cambios', pmOnly: true },
 ];
 
 export const projectKey = (id: string) => ['project', id, 'detail'];

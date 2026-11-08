@@ -153,3 +153,19 @@ export type RaciMatrixData = {
   stakeholders: RaciParty[];
   cells: { activityId: string; kind: import('@pm/shared').RaciPartyKind; partyId: string; role: import('@pm/shared').RaciRole }[];
 };
+
+export type ChangeRequest = {
+  id: string;
+  number: number;
+  title: string;
+  description: string;
+  requestedBy: string;
+  scopeImpact: string;
+  scheduleImpactDays: number | null;
+  costImpactCents: number | null;
+  status: import('@pm/shared').ChangeStatus;
+  decisionNote: string;
+  decidedAt: string | null;
+  decidedBy: PersonRef | null;
+  createdAt: string;
+};

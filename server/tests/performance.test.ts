@@ -1,0 +1,145 @@
+import type { Project, Task, User } from '@prisma/client';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createTestApp, type TestCtx } from './helpers/testApp';
+
+describe('líneas base y desempeño', () => {
+  let ctx: TestCtx;
+  let pm: User;
+  let ana: User;
+  let project: Project;
+  let design: Task;
+  let build: Task;
+  const perf = (id = project.id) => `/api/projects/${id}/performance`;
+  const baselines = (id = project.id) => `/api/projects/${id}/baselines`;
+  const costed = async (title: string, cost: number, startDate: string | undefined, dueDate: string) => {
+    const task = await ctx.makeTask(project.id, { title, startDate, dueDate });
+    return ctx.prisma.task.update({ where: { id: task.id }, data: { plannedCostCents: cost } });
+  };
+  const approvedChange = async (projectId = project.id) => {
+    const cr = (await ctx.as(pm).post(`/api/projects/${projectId}/change-requests`, { title: 'Agregar blog' })).json();
+    await ctx.as(pm).post(`/api/projects/${projectId}/change-requests/${cr.id}/decision`, { status: 'APPROVED', note: 'Ok' });
+    return cr;
+  };
+
+  beforeEach(async () => {
+    ctx = await createTestApp();
+    ctx.clock.set('2026-11-05T10:00:00');
+    pm = await ctx.makeUser({ role: 'PM', name: 'Paula' });
+    ana = await ctx.makeUser({ role: 'COLLABORATOR' });
+    project = await ctx.makeProject({ members: [ana], plannedBudgetCents: 500000 });
+    design = await costed('Diseño', 100000, '2026-11-01', '2026-11-10');
+    build = await costed('Construcción', 300000, '2026-11-11', '2026-11-30');
+  });
+  afterEach(() => ctx.close());
+
+  it('colaborador 403 y no miembro 404', async () => {
+    const outsider = await ctx.makeUser({ role: 'COLLABORATOR' });
+    expect((await ctx.as(ana).get(perf())).statusCode).toBe(403);
+    expect((await ctx.as(ana).post(baselines(), {})).statusCode).toBe(403);
+    expect((await ctx.as(outsider).get(perf())).statusCode).toBe(404);
+    expect((await ctx.as(outsider).post(baselines(), {})).statusCode).toBe(404);
+  });
+
+  it('sin línea base devuelve vacío', async () => {
+    const body = (await ctx.as(pm).get(perf())).json();
+    expect(body).toEqual({ baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, series: [] });
+    expect(await ctx.prisma.evmSnapshot.count()).toBe(0);
+  });
+
+  it('ninguna tarea con costo responde baseline_empty', async () => {
+    await ctx.prisma.task.updateMany({ data: { plannedCostCents: 0 } });
+    const res = await ctx.as(pm).post(baselines(), {});
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('baseline_empty');
+  });
+
+  it('tareas con costo sin fechas responden baseline_missing_dates con la lista', async () => {
+    await ctx.prisma.task.update({ where: { id: design.id }, data: { startDate: null } });
+    const res = await ctx.as(pm).post(baselines(), {});
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('baseline_missing_dates');
+    expect(res.json().error.details.tasks).toEqual([{ id: design.id, title: 'Diseño' }]);
+  });
+
+  it('versión 1 sin motivo, versión 2 exige motivo', async () => {
+    const first = await ctx.as(pm).post(baselines(), {});
+    expect(first.statusCode).toBe(201);
+    expect(first.json()).toMatchObject({ version: 1, reason: '', bacCents: 400000 });
+    const noReason = await ctx.as(pm).post(baselines(), { reason: '  ' });
+    expect(noReason.statusCode).toBe(400);
+    expect(noReason.json().error.fields.reason).toBeTruthy();
+    expect((await ctx.as(pm).post(baselines(), { reason: 'Replan' })).json().version).toBe(2);
+    const body = (await ctx.as(pm).get(perf())).json();
+    expect(body.history.map((h: { version: number }) => h.version)).toEqual([2, 1]);
+    expect(body.baseline).toMatchObject({ version: 2, reason: 'Replan', createdBy: { id: pm.id, name: 'Paula' }, changeRequest: null });
+  });
+
+  it('cambio ligado debe estar aprobado y ser del proyecto', async () => {
+    const pending = (await ctx.as(pm).post(`/api/projects/${project.id}/change-requests`, { title: 'Pendiente' })).json();
+    const res = await ctx.as(pm).post(baselines(), { changeRequestId: pending.id });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.fields.changeRequestId).toBeTruthy();
+    const other = await ctx.makeProject();
+    const foreign = await approvedChange(other.id);
+    expect((await ctx.as(pm).post(baselines(), { changeRequestId: foreign.id })).statusCode).toBe(400);
+    const own = await approvedChange();
+    expect((await ctx.as(pm).post(baselines(), { changeRequestId: own.id })).statusCode).toBe(201);
+    expect((await ctx.as(pm).get(perf())).json().baseline.changeRequest).toEqual({ id: own.id, number: own.number, title: 'Agregar blog' });
+  });
+
+  it('la base no cambia al editar o borrar tareas', async () => {
+    await ctx.as(pm).post(baselines(), {});
+    await ctx.prisma.task.update({ where: { id: design.id }, data: { dueDate: '2026-11-13', plannedCostCents: 1 } });
+    await ctx.prisma.task.delete({ where: { id: build.id } });
+    await costed('Blog', 50000, '2026-11-12', '2026-11-20');
+    const body = (await ctx.as(pm).get(perf())).json();
+    expect(body.baseline.bacCents).toBe(400000);
+    expect(body.outsideBaseline).toBe(1);
+    const byTitle = Object.fromEntries(body.tasks.map((t: { title: string }) => [t.title, t]));
+    expect(byTitle['Diseño']).toMatchObject({ state: 'LATE', finishVarianceDays: 3, baselineCostCents: 100000 });
+    expect(byTitle['Construcción']).toMatchObject({ state: 'DELETED' });
+    expect(byTitle['Blog']).toMatchObject({ state: 'OUTSIDE' });
+  });
+
+  it('calcula las métricas con avance y gastos', async () => {
+    await ctx.as(pm).post(baselines(), {});
+    await ctx.prisma.task.update({ where: { id: design.id }, data: { progress: 40 } });
+    await ctx.prisma.expense.create({ data: { projectId: project.id, description: 'G', amountCents: 50000, date: '2026-11-04', category: 'OTHER', taskId: design.id } });
+    const { metrics } = (await ctx.as(pm).get(perf())).json();
+    expect(metrics).toMatchObject({ pvCents: 50000, evCents: 40000, acCents: 50000, bacCents: 400000, cpi: 0.8, spi: 0.8, reserveCents: 100000 });
+  });
+
+  it('la foto diaria es única y se actualiza, y series la usa', async () => {
+    await ctx.as(pm).post(baselines(), {});
+    await ctx.as(pm).get(perf());
+    await ctx.prisma.expense.create({ data: { projectId: project.id, description: 'G', amountCents: 7000, date: '2026-11-05', category: 'OTHER' } });
+    await ctx.as(pm).get(perf());
+    const snaps = await ctx.prisma.evmSnapshot.findMany();
+    expect(snaps).toHaveLength(1);
+    expect(Number(snaps[0]!.acCents)).toBe(7000);
+    ctx.clock.set('2026-11-06T10:00:00');
+    const { series } = (await ctx.as(pm).get(perf())).json();
+    expect(await ctx.prisma.evmSnapshot.count()).toBe(2);
+    expect(series[0]).toMatchObject({ date: '2026-11-01', evCents: null, acCents: null });
+    expect(series.at(-1).date).toBe('2026-11-30');
+    expect(series).toHaveLength(30);
+    const day = (date: string) => series.find((p: { date: string }) => p.date === date);
+    expect(day('2026-11-05')).toMatchObject({ pvCents: 50000, acCents: 7000 });
+    expect(day('2026-11-06').acCents).toBe(7000);
+  });
+
+  it('series incluye hoy aunque caiga fuera de la base', async () => {
+    await ctx.as(pm).post(baselines(), {});
+    ctx.clock.set('2026-12-05T10:00:00');
+    const { series } = (await ctx.as(pm).get(perf())).json();
+    expect(series.at(-1)).toMatchObject({ date: '2026-12-05', pvCents: 400000 });
+  });
+
+  it('base con todas sus tareas borradas responde 200 con EV 0', async () => {
+    await ctx.as(pm).post(baselines(), {});
+    await ctx.prisma.task.deleteMany({ where: { projectId: project.id } });
+    const res = await ctx.as(pm).get(perf());
+    expect(res.statusCode).toBe(200);
+    expect(res.json().metrics).toMatchObject({ evCents: 0, cpi: null, eacCents: 400000 });
+  });
+});

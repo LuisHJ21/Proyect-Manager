@@ -62,7 +62,7 @@ function TaskTable({ rows, currency }: { rows: Performance['tasks']; currency: s
         <tbody className="divide-y divide-line">
           {rows.map((row) => (
             <tr key={row.taskId}>
-              <td className="py-2 pr-4 font-medium text-ink [overflow-wrap:anywhere]">{row.title}</td>
+              <td className="min-w-40 py-2 pr-4 font-medium text-ink [overflow-wrap:break-word]">{row.title}</td>
               <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">{money(row.baselineCostCents)}</td>
               <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">{row.progress === null ? '—' : `${row.progress} %`}</td>
               <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">{money(row.evCents)}</td>

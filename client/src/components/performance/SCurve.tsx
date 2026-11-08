@@ -1,5 +1,5 @@
 import { formatMoney } from '@pm/shared';
-import { useState, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { Performance } from '../../api/types';
 import { shortDate } from '../../lib/display';
 
@@ -12,7 +12,7 @@ const SERIES: { key: Key; label: string; color: string; dash?: string }[] = [
   { key: 'acCents', label: 'Costo real (AC)', color: 'var(--color-series-ac)' },
 ];
 
-const WIDTH = 640;
+const DEFAULT_WIDTH = 640;
 const HEIGHT = 240;
 const PAD = { top: 12, right: 16, bottom: 28, left: 72 };
 
@@ -27,6 +27,19 @@ const compact = (cents: number, currency: string) => {
 /** Curva S: valor planeado, valor ganado y costo real a lo largo del tiempo. */
 export function SCurve({ series, today, currency }: { series: Point[]; today: string; currency: string }) {
   const [hover, setHover] = useState<number | null>(null);
+  // El viewBox sigue al ancho real de la caja para que el texto conserve su tamaño en móvil.
+  const box = useRef<HTMLDivElement>(null);
+  const [WIDTH, setWidth] = useState(DEFAULT_WIDTH);
+  useEffect(() => {
+    const element = box.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = Math.round(entry!.contentRect.width);
+      if (width > 0) setWidth(width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   if (series.length === 0) return null;
 
   const max = Math.max(1, ...series.flatMap((p) => [p.pvCents, p.evCents ?? 0, p.acCents ?? 0]));
@@ -70,7 +83,7 @@ export function SCurve({ series, today, currency }: { series: Point[]; today: st
           </li>
         ))}
       </ul>
-      <div className="relative">
+      <div ref={box} className="relative">
         <svg
           role="img"
           aria-label={label}
@@ -104,6 +117,14 @@ export function SCurve({ series, today, currency }: { series: Point[]; today: st
           {SERIES.map((s) => (
             <path key={s.key} d={path(s.key)} fill="none" stroke={s.color} strokeWidth="2" strokeDasharray={s.dash} strokeLinejoin="round" strokeLinecap="round" />
           ))}
+          {/* Cada día con foto lleva un punto: con una sola foto la línea no se vería. */}
+          {SERIES.filter((s) => s.key !== 'pvCents').map((s) =>
+            series.map((p, i) =>
+              p[s.key] === null ? null : (
+                <circle key={`${s.key}-${p.date}`} data-series={s.key} cx={x(i)} cy={y(p[s.key]!)} r="4" fill={s.color} stroke="var(--color-surface)" strokeWidth="2" />
+              ),
+            ),
+          )}
           {hovered && (
             <g>
               <line x1={x(hover!)} x2={x(hover!)} y1={PAD.top} y2={PAD.top + innerH} stroke="var(--color-control)" strokeWidth="1" />

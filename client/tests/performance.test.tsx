@@ -113,6 +113,15 @@ describe('pestaña Desempeño', () => {
     for (const text of ['Valor planeado (PV)', 'Valor ganado (EV)', 'Costo real (AC)']) expect(within(legend).getByText(text)).toBeInTheDocument();
   });
 
+  it('la curva marca cada día con foto, aunque haya uno solo', async () => {
+    const single = { ...withBaseline, series: withBaseline.series.map((p) => (p.date === '2026-11-05' ? p : { ...p, evCents: null, acCents: null })) };
+    mockApi({ ...base, 'GET /api/projects/p1/performance': single });
+    open();
+    const chart = await screen.findByRole('img', { name: /Valor planeado/ });
+    expect(chart.querySelectorAll('circle[data-series="evCents"]')).toHaveLength(1);
+    expect(chart.querySelectorAll('circle[data-series="acCents"]')).toHaveLength(1);
+  });
+
   it('la tabla por tarea muestra estado y desvío', async () => {
     mockApi({ ...base, 'GET /api/projects/p1/performance': withBaseline });
     open();

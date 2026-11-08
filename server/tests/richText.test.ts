@@ -15,6 +15,16 @@ describe('sanitizeRichText', () => {
   it('convierte el texto plano en párrafos escapados', () => {
     expect(sanitizeRichText('uno < dos\ntres')).toBe('<p>uno &lt; dos</p><p>tres</p>');
   });
+  it('conserva el texto antiguo con algo parecido a una etiqueta', () => {
+    expect(sanitizeRichText('Contacto: Juan <juan@empresa.com> & equipo')).toBe('<p>Contacto: Juan &lt;juan@empresa.com&gt; &amp; equipo</p>');
+  });
+  it.each(['Contacto: Juan <juan@empresa.com> & equipo', '<b>hola</b>', '<p>a<br>b</p>', ['uno', 'dos'].join('\n'),'<ul><li>x</li></ul>', '<div>a</div><p>b</p>'])(
+    'limpiar dos veces da lo mismo que una: %j',
+    (input) => {
+      const once = sanitizeRichText(input);
+      expect(sanitizeRichText(once)).toBe(once);
+    },
+  );
   it.each(['<p></p>', '<p> </p>', '<p><br></p>', '   '])('guarda %j como vacío', (input) => {
     expect(sanitizeRichText(input)).toBe('');
   });

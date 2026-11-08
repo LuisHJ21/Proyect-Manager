@@ -106,6 +106,23 @@ describe('acta', () => {
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
   });
 
+  it('tras guardar no quedan cambios pendientes aunque el servidor devuelva el HTML con otra forma', async () => {
+    mockApi({
+      ...signedInAs(pmUser),
+      ...routes,
+      'GET /api/projects/p1/charter': draft,
+      'PUT /api/projects/p1/charter': { ...draft, justification: '<p>a<br />b</p>' },
+    });
+    renderApp('/proyectos/p1/acta');
+    const user = userEvent.setup();
+    await screen.findByRole('textbox', { name: 'Justificación' });
+    await setRichText('Justificación', '<p>a<br>b</p>');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect(await screen.findByText('Cambios guardados.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Justificación' })).toHaveTextContent('ab');
+  });
+
   it('el PM edita el acta con barra de formato', async () => {
     mockApi({ ...signedInAs(pmUser), ...routes, 'GET /api/projects/p1/charter': draft });
     renderApp('/proyectos/p1/acta');

@@ -12,9 +12,10 @@ export const CHARTER_RICH_FIELDS = [
   'successCriteria',
 ] as const;
 
-const TAG = /<\/?[a-z][a-z0-9]*\b[^>]*>/i;
+// Solo cuentan las etiquetas permitidas: un correo como <ana@x.com> o una marca como <nombre> es texto plano.
+const TAG = new RegExp(`</?(${RICH_TEXT_TAGS.join('|')})\\b[^>]*>`, 'i');
 
-/** Verdadero si el texto contiene algo con forma de etiqueta HTML. */
+/** Verdadero si el texto contiene alguna de las etiquetas permitidas. */
 export const hasHtmlTags = (text: string) => TAG.test(text);
 
 const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };

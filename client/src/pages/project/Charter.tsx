@@ -81,7 +81,10 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
       if (dirty) result = await api<Charter>(url, { method: 'PUT', body: draft });
       if (action === 'approve') result = await api<Charter>(`${url}/approve`, { method: 'POST' });
       queryClient.setQueryData(['project', projectId, 'charter'], result);
+      // El servidor devuelve el HTML ya limpio, que puede diferir del del editor (por ejemplo <br /> frente a <br>).
+      // El borrador toma lo guardado para que no queden cambios pendientes falsos.
       setSaved(toDraft(result));
+      setDraft(toDraft(result));
       setNotice(action === 'approve' ? 'Acta aprobada.' : 'Cambios guardados.');
     } catch (error) {
       applyFieldErrors(error, setErrors);

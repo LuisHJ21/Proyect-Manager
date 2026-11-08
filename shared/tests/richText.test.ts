@@ -23,6 +23,11 @@ describe('texto con formato', () => {
     expect(hasHtmlTags('a < b')).toBe(false);
     expect(hasHtmlTags('<p>a</p>')).toBe(true);
   });
+  it('hasHtmlTags no toma por HTML un correo o una marca entre < >', () => {
+    expect(hasHtmlTags('Juan <juan@empresa.com>')).toBe(false);
+    expect(hasHtmlTags('Usar <placeholder> aquí')).toBe(false);
+    expect(hasHtmlTags('<strong>x</strong>')).toBe(true);
+  });
   it('CHARTER_RICH_FIELDS no incluye al patrocinador', () => {
     expect(CHARTER_RICH_FIELDS).toHaveLength(7);
     expect(CHARTER_RICH_FIELDS).not.toContain('sponsor');

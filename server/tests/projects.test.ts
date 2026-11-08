@@ -112,7 +112,7 @@ describe('proyectos y miembros', () => {
       data: { projectId: p.id, description: 'R', type: 'THREAT', probability: 1, impact: 1, response: 'ACCEPT', ownerId: member.id },
     });
     const url = `/api/projects/${p.id}/members/${member.id}`;
-    expect((await ctx.as(pm).get(`${url}/impact`)).json()).toEqual({ tasks: 1, risks: 1 });
+    expect((await ctx.as(pm).get(`${url}/impact`)).json()).toEqual({ tasks: 1, risks: 1, raciCells: 0 });
     expect((await ctx.as(pm).delete(url)).statusCode).toBe(200);
     expect(await ctx.prisma.taskAssignee.count({ where: { taskId: task.id } })).toBe(0);
     expect((await ctx.prisma.risk.findUniqueOrThrow({ where: { id: risk.id } })).ownerId).toBeNull();

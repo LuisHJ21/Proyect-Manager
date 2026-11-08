@@ -1,8 +1,8 @@
-import { raciActivitySchema, updateRaciActivitySchema } from '@pm/shared';
+import { raciActivitySchema, raciCellSchema, updateRaciActivitySchema } from '@pm/shared';
 import type { FastifyInstance } from 'fastify';
 import { requireProjectPm } from '../auth/access';
 import { raciWarnings } from '../domain/raci';
-import { notFound } from '../errors';
+import { fieldError, notFound } from '../errors';
 
 type ActivityParams = { id: string; activityId: string };
 
@@ -55,6 +55,29 @@ export async function raciRoutes(app: FastifyInstance) {
     const activity = await findActivity(project.id, req.params.activityId);
     const input = updateRaciActivitySchema.parse(req.body);
     return toActivityDto(await prisma.raciActivity.update({ where: { id: activity.id }, data: input }));
+  });
+
+  app.put<{ Params: { id: string } }>('/api/projects/:id/raci/cells', async (req) => {
+    const project = await requireProjectPm(req, req.params.id);
+    const input = raciCellSchema.parse(req.body);
+    const activity = await findActivity(project.id, input.activityId);
+    const party =
+      input.kind === 'member'
+        ? await prisma.projectMember.findUnique({ where: { projectId_userId: { projectId: project.id, userId: input.partyId } } })
+        : await prisma.stakeholder.findFirst({ where: { id: input.partyId, projectId: project.id } });
+    if (!party) throw fieldError('partyId', 'El participante no pertenece al proyecto');
+
+    const owner = input.kind === 'member' ? { userId: input.partyId } : { stakeholderId: input.partyId };
+    if (input.role === null) {
+      await prisma.raciCell.deleteMany({ where: { activityId: activity.id, ...owner } });
+    } else {
+      const where =
+        input.kind === 'member'
+          ? { activityId_userId: { activityId: activity.id, userId: input.partyId } }
+          : { activityId_stakeholderId: { activityId: activity.id, stakeholderId: input.partyId } };
+      await prisma.raciCell.upsert({ where, update: { role: input.role }, create: { activityId: activity.id, role: input.role, ...owner } });
+    }
+    return { ok: true };
   });
 
   app.delete<{ Params: ActivityParams }>('/api/projects/:id/raci/activities/:activityId', async (req) => {

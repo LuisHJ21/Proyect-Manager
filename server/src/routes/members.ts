@@ -60,11 +60,12 @@ export async function memberRoutes(app: FastifyInstance) {
   app.get<{ Params: MemberParams }>('/api/projects/:id/members/:userId/impact', async (req) => {
     const project = await requireProjectPm(req, req.params.id);
     const member = await findMember(project.id, req.params.userId);
-    const [tasks, risks] = await Promise.all([
+    const [tasks, risks, raciCells] = await Promise.all([
       prisma.taskAssignee.count({ where: { userId: member.userId, task: { projectId: project.id } } }),
       prisma.risk.count({ where: { ownerId: member.userId, projectId: project.id } }),
+      prisma.raciCell.count({ where: { userId: member.userId, activity: { projectId: project.id } } }),
     ]);
-    return { tasks, risks };
+    return { tasks, risks, raciCells };
   });
 
   app.delete<{ Params: MemberParams }>('/api/projects/:id/members/:userId', async (req) => {
@@ -74,6 +75,7 @@ export async function memberRoutes(app: FastifyInstance) {
       prisma.taskAssignee.deleteMany({ where: { userId: member.userId, task: { projectId: project.id } } }),
       prisma.taskStep.updateMany({ where: { assigneeId: member.userId, task: { projectId: project.id } }, data: { assigneeId: null } }),
       prisma.risk.updateMany({ where: { ownerId: member.userId, projectId: project.id }, data: { ownerId: null } }),
+      prisma.raciCell.deleteMany({ where: { userId: member.userId, activity: { projectId: project.id } } }),
       prisma.projectMember.delete({ where: { id: member.id } }),
     ]);
     return { ok: true };

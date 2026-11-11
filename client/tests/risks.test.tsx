@@ -97,3 +97,28 @@ describe('riesgos', () => {
     expect(screen.getByText('Bajo')).toBeInTheDocument();
   });
 });
+
+describe('riesgo a incidente', () => {
+  const linked = { ...risk, incidents: [{ id: 'i1', number: 1, title: 'Retraso', status: 'OPEN' }] };
+
+  it('Pasar a incidente crea INC y lo avisa', async () => {
+    const api = mockApi({
+      ...routes,
+      'GET /api/projects/p1/risks': [{ ...risk, incidents: [] }],
+      'POST /api/projects/p1/risks/r1/incident': { id: 'i1', number: 1, title: 'Retraso' },
+    });
+    renderApp('/proyectos/p1/riesgos');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Ver Retraso' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Pasar a incidente' }));
+    expect(await screen.findByText('Se creó INC-1')).toBeInTheDocument();
+    expect(api.calls.some((c) => c.key === 'POST /api/projects/p1/risks/r1/incident')).toBe(true);
+  });
+
+  it('el detalle lista los incidentes del riesgo', async () => {
+    mockApi({ ...routes, 'GET /api/projects/p1/risks': [linked] });
+    renderApp('/proyectos/p1/riesgos');
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Ver Retraso' }));
+    expect(within(screen.getByRole('dialog')).getByText(/INC-1 · Retraso · Abierto/)).toBeInTheDocument();
+  });
+});

@@ -17,7 +17,7 @@ function RemoveMemberDialog({ projectId, member, onClose }: { projectId: string;
   const base = `/api/projects/${projectId}/members/${member.userId}`;
   const impact = useQuery({
     queryKey: ['member-impact', projectId, member.userId],
-    queryFn: () => api<{ tasks: number; risks: number; raciCells: number }>(`${base}/impact`),
+    queryFn: () => api<{ tasks: number; risks: number; raciCells: number; incidents: number }>(`${base}/impact`),
   });
   const remove = useMutation({
     mutationFn: () => api(base, { method: 'DELETE' }),
@@ -38,7 +38,7 @@ function RemoveMemberDialog({ projectId, member, onClose }: { projectId: string;
     >
       {impact.data ? (
         <p>
-          Dejará de estar asignado a {impact.data.tasks} tarea(s), de ser responsable de {impact.data.risks} riesgo(s) y de {impact.data.raciCells} celda(s) RACI.
+          Dejará de estar asignado a {impact.data.tasks} tarea(s), de ser responsable de {impact.data.risks} riesgo(s) y de {impact.data.raciCells} celda(s) RACI, y será responsable de {impact.data.incidents} incidente(s) menos.
         </p>
       ) : (
         <p>Comprobando sus asignaciones…</p>

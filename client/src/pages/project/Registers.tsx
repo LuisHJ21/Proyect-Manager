@@ -1,16 +1,19 @@
 import { EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../../api/client';
 import type { Expense, Indicators, Member, Risk, Stakeholder, Task } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
 import { ErrorState, Loading } from '../../components/ErrorState';
+import { incidentsKey } from '../../components/incidents/IncidentForm';
 import { membersKey } from '../../components/project/MembersPanel';
 import { RaciMatrix, raciKey } from '../../components/raci/RaciMatrix';
 import { tasksKey } from '../../components/tasks/taskQueries';
-import { DetailList, RegisterTable, type Option, type Values } from '../../components/RegisterTable';
+import { DetailList, RegisterTable, registerKey, type Option, type Values } from '../../components/RegisterTable';
 import { RichTextClamp, RichTextView } from '../../components/richText/RichTextView';
-import { Badge, Card } from '../../components/ui';
+import { useToast } from '../../components/Toast';
+import { Badge, Button, Card } from '../../components/ui';
 import { useProject } from './ProjectLayout';
 
 const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
@@ -59,6 +62,41 @@ export function StakeholdersPage() {
   );
 }
 
+/** Incidentes de un riesgo y el botón para pasarlo a incidente. */
+function RiskIncidents({ projectId, risk }: { projectId: string; risk: Risk }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const create = useMutation({
+    mutationFn: () => api<{ number: number }>(`/api/projects/${projectId}/risks/${risk.id}/incident`, { method: 'POST' }),
+    onSuccess: (incident) => {
+      toast.success(`Se creó INC-${incident.number}`);
+      void queryClient.invalidateQueries({ queryKey: registerKey(projectId, 'risks') });
+      void queryClient.invalidateQueries({ queryKey: incidentsKey(projectId) });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+  return (
+    <div className="space-y-2">
+      {risk.incidents && risk.incidents.length > 0 ? (
+        <ul className="space-y-1">
+          {risk.incidents.map((i) => (
+            <li key={i.id}>
+              <Link className="text-link hover:underline" to={`/proyectos/${projectId}/incidentes`}>
+                {`INC-${i.number} · ${i.title} · ${LABELS.incidentStatus[i.status]}`}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-ink-soft">Sin incidentes.</p>
+      )}
+      <Button variant="secondary" disabled={create.isPending} onClick={() => create.mutate()}>
+        Pasar a incidente
+      </Button>
+    </div>
+  );
+}
+
 export function RisksPage() {
   const { project } = useProject();
   const members = useQuery({ queryKey: membersKey(project.id), queryFn: () => api<Member[]>(`/api/projects/${project.id}/members`) });
@@ -91,6 +129,7 @@ export function RisksPage() {
               { label: 'Respuesta', value: LABELS.riskResponse[item.response as keyof typeof LABELS.riskResponse] },
               { label: 'Responsable', value: memberName(item.ownerId) },
               { label: 'Estado', value: LABELS.riskStatus[item.status] },
+              { label: 'Incidentes', value: <RiskIncidents projectId={project.id} risk={item} /> },
             ]}
           />
         ),

@@ -51,6 +51,7 @@ export type Dashboard = {
   attention: (
     | { kind: 'task'; id: string; title: string; projectId: string; projectName: string; dueDate: string; score?: undefined }
     | { kind: 'risk'; id: string; title: string; projectId: string; projectName: string; score: number; dueDate?: undefined }
+    | { kind: 'incident'; id: string; number: number; title: string; projectId: string; projectName: string; priority: Priority; dueDate: string | null; overdue: boolean; score?: undefined }
   )[];
   workload: { userId: string; name: string; openTasks: number; overdueTasks: number }[];
   upcomingMilestones: { id: string; name: string; dueDate: string; projectId: string; projectName: string }[];
@@ -95,6 +96,7 @@ export type Risk = {
   responsePlan: string;
   ownerId: string | null;
   status: RiskStatus;
+  incidents?: IncidentRef[];
 };
 export type Expense = { id: string; description: string; amountCents: number; date: string; category: ExpenseCategory; taskId: string | null };
 
@@ -232,4 +234,16 @@ export type Incident = {
   task: { id: string; title: string } | null;
   risk: { id: string; title: string } | null;
   can: { edit: boolean; changeStatus: boolean; close: boolean };
+};
+
+export type DecisionRecord = {
+  id: string;
+  number: number;
+  title: string;
+  rationale: string;
+  decidedBy: string;
+  decidedOn: string;
+  changeRequest: { id: string; number: number; title: string } | null;
+  incident: { id: string; number: number; title: string } | null;
+  createdAt: string;
 };

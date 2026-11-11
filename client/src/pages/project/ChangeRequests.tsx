@@ -7,6 +7,7 @@ import { ConfirmDialog, Modal } from '../../components/ConfirmDialog';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../../components/FormField';
 import { INVALID_MONEY_MESSAGE } from '../../components/MoneyInput';
+import { DecisionsCard } from '../../components/decisions/DecisionsCard';
 import { DetailList } from '../../components/RegisterTable';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, EmptyState, inputClass, type Tone } from '../../components/ui';
@@ -217,66 +218,69 @@ export function ChangeRequestsPage() {
   );
 
   return (
-    <Card title="Solicitudes de cambio" actions={<Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir cambio</Button>}>
-      {list.isPending ? (
-        <Loading />
-      ) : list.isError ? (
-        <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} />
-      ) : list.data.length === 0 ? (
-        <EmptyState>Aún no hay solicitudes de cambio.</EmptyState>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs text-ink-soft uppercase">
-              <tr>
-                <th className="py-2 pr-4 font-medium">Número</th>
-                <th className="py-2 pr-4 font-medium">Cambio</th>
-                <th className="py-2 pr-4 font-medium">Plazo</th>
-                <th className="py-2 pr-4 font-medium">Costo</th>
-                <th className="py-2 pr-4 font-medium">Estado</th>
-                <th className="py-2 pr-4 font-medium">Fecha</th>
-                <th className="py-2 font-medium">
-                  <span className="sr-only">Acciones</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {list.data.map((item) => (
-                <tr key={item.id}>
-                  <td className="py-2 pr-4 align-top font-medium whitespace-nowrap text-ink">{code(item)}</td>
-                  <td className="py-2 pr-4 align-top text-ink [overflow-wrap:anywhere]">{item.title}</td>
-                  <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{signedDays(item.scheduleImpactDays)}</td>
-                  <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{signedMoney(item.costImpactCents, currency)}</td>
-                  <td className="py-2 pr-4 align-top">
-                    <Badge tone={STATUS_TONE[item.status]}>{LABELS.changeStatus[item.status]}</Badge>
-                  </td>
-                  <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{new Date(item.createdAt).toLocaleDateString('es')}</td>
-                  <td className="py-1 text-right whitespace-nowrap">
-                    {action('Ver', item, () => setDialog({ kind: 'view', item }))}
-                    {item.status === 'PENDING' && (
-                      <>
-                        {action('Aprobar', item, () => setDialog({ kind: 'decide', item, status: 'APPROVED' }))}
-                        {action('Rechazar', item, () => setDialog({ kind: 'decide', item, status: 'REJECTED' }))}
-                        {action('Editar', item, () => setDialog({ kind: 'edit', item }))}
-                        {action('Eliminar', item, () => setDialog({ kind: 'delete', item }))}
-                      </>
-                    )}
-                  </td>
+    <div className="space-y-6">
+      <Card title="Solicitudes de cambio" actions={<Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir cambio</Button>}>
+        {list.isPending ? (
+          <Loading />
+        ) : list.isError ? (
+          <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} />
+        ) : list.data.length === 0 ? (
+          <EmptyState>Aún no hay solicitudes de cambio.</EmptyState>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs text-ink-soft uppercase">
+                <tr>
+                  <th className="py-2 pr-4 font-medium">Número</th>
+                  <th className="py-2 pr-4 font-medium">Cambio</th>
+                  <th className="py-2 pr-4 font-medium">Plazo</th>
+                  <th className="py-2 pr-4 font-medium">Costo</th>
+                  <th className="py-2 pr-4 font-medium">Estado</th>
+                  <th className="py-2 pr-4 font-medium">Fecha</th>
+                  <th className="py-2 font-medium">
+                    <span className="sr-only">Acciones</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {dialog?.kind === 'new' && <ChangeForm projectId={project.id} onClose={close} />}
-      {dialog?.kind === 'edit' && <ChangeForm projectId={project.id} item={dialog.item} onClose={close} />}
-      {dialog?.kind === 'view' && <ChangeDetail item={dialog.item} currency={currency} onClose={close} />}
-      {dialog?.kind === 'decide' && <DecisionDialog projectId={project.id} item={dialog.item} status={dialog.status} onClose={close} />}
-      {dialog?.kind === 'delete' && (
-        <ConfirmDialog title="Eliminar cambio" danger confirmLabel="Eliminar" onCancel={close} onConfirm={() => remove.mutate(dialog.item)}>
-          Se eliminará «{code(dialog.item)} · {dialog.item.title}» de forma permanente.
-        </ConfirmDialog>
-      )}
-    </Card>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {list.data.map((item) => (
+                  <tr key={item.id}>
+                    <td className="py-2 pr-4 align-top font-medium whitespace-nowrap text-ink">{code(item)}</td>
+                    <td className="py-2 pr-4 align-top text-ink [overflow-wrap:anywhere]">{item.title}</td>
+                    <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{signedDays(item.scheduleImpactDays)}</td>
+                    <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{signedMoney(item.costImpactCents, currency)}</td>
+                    <td className="py-2 pr-4 align-top">
+                      <Badge tone={STATUS_TONE[item.status]}>{LABELS.changeStatus[item.status]}</Badge>
+                    </td>
+                    <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{new Date(item.createdAt).toLocaleDateString('es')}</td>
+                    <td className="py-1 text-right whitespace-nowrap">
+                      {action('Ver', item, () => setDialog({ kind: 'view', item }))}
+                      {item.status === 'PENDING' && (
+                        <>
+                          {action('Aprobar', item, () => setDialog({ kind: 'decide', item, status: 'APPROVED' }))}
+                          {action('Rechazar', item, () => setDialog({ kind: 'decide', item, status: 'REJECTED' }))}
+                          {action('Editar', item, () => setDialog({ kind: 'edit', item }))}
+                          {action('Eliminar', item, () => setDialog({ kind: 'delete', item }))}
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {dialog?.kind === 'new' && <ChangeForm projectId={project.id} onClose={close} />}
+        {dialog?.kind === 'edit' && <ChangeForm projectId={project.id} item={dialog.item} onClose={close} />}
+        {dialog?.kind === 'view' && <ChangeDetail item={dialog.item} currency={currency} onClose={close} />}
+        {dialog?.kind === 'decide' && <DecisionDialog projectId={project.id} item={dialog.item} status={dialog.status} onClose={close} />}
+        {dialog?.kind === 'delete' && (
+          <ConfirmDialog title="Eliminar cambio" danger confirmLabel="Eliminar" onCancel={close} onConfirm={() => remove.mutate(dialog.item)}>
+            Se eliminará «{code(dialog.item)} · {dialog.item.title}» de forma permanente.
+          </ConfirmDialog>
+        )}
+      </Card>
+      <DecisionsCard projectId={project.id} />
+    </div>
   );
 }

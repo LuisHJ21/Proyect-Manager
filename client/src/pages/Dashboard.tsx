@@ -1,6 +1,6 @@
 import { diffDays, localToday } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
-import { CircleAlert, Clock, Flag } from 'lucide-react';
+import { CircleAlert, Clock, Flag, Siren } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage, isBlockingError } from '../api/client';
@@ -45,6 +45,23 @@ function AttentionList({ items, today }: { items: Dashboard['attention']; today:
       {items.map((item) => {
         const isTask = item.kind === 'task';
         const days = isTask ? diffDays(item.dueDate!, today) : 0;
+        if (item.kind === 'incident') {
+          return (
+            <li key={`incident-${item.id}`}>
+              <Link to={`/proyectos/${item.projectId}/incidentes`} className="flex gap-2.5 px-5 py-3 transition-colors duration-150 hover:bg-raised">
+                <Siren size={16} className="mt-0.5 shrink-0 text-risk-fg" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block font-medium text-ink">
+                    INC-{item.number} · {item.title}
+                  </span>
+                  <span className="block text-xs text-ink-soft">
+                    {item.overdue ? 'Vencido' : 'Prioridad alta'} · {item.projectName}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          );
+        }
         return (
           <li key={`${item.kind}-${item.id}`}>
             <Link

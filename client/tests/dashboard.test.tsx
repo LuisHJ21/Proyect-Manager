@@ -94,3 +94,18 @@ describe('panel general', () => {
     expect(screen.getByText('Diseño aprobado')).toBeInTheDocument();
   });
 });
+
+describe('incidentes en el panel', () => {
+  it('requiere atención muestra incidentes', async () => {
+    mockApi(
+      routes({
+        ...dashboard,
+        attention: [{ kind: 'incident', id: 'i2', number: 2, title: 'Caída', projectId: 'p1', projectName: 'Portal', priority: 'MEDIUM', dueDate: '2026-11-01', overdue: true }],
+      }),
+    );
+    renderApp('/');
+    const link = await screen.findByRole('link', { name: /INC-2 · Caída/ });
+    expect(link).toHaveAttribute('href', '/proyectos/p1/incidentes');
+    expect(link).toHaveTextContent('Vencido');
+  });
+});

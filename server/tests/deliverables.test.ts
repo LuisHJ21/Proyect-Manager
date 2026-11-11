@@ -62,6 +62,13 @@ describe('API de entregables', () => {
     expect(full.reviews).toEqual([]);
   });
 
+  it('los criterios iniciales respetan el límite de 300 caracteres', async () => {
+    const res = await ctx.as(pm).post(base(), { name: 'X', criteria: ['ok', 'x'.repeat(301)] });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.fields['criteria.1']).toBe('Máximo 300 caracteres');
+    expect(await ctx.prisma.deliverable.count()).toBe(0);
+  });
+
   it('numeración', async () => {
     await create();
     await create();

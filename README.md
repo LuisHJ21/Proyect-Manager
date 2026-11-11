@@ -45,7 +45,7 @@ Esta función es solo para el Project Manager; los colaboradores no ven la pesta
   - Para rechazar hay que escribir el motivo.
   - Como evidencia se puede elegir un archivo de **Anexos**, por ejemplo el acta firmada. Conviene subirlo antes.
 - **Historial:** cada revisión queda guardada con la fecha, el interesado, la nota, el anexo y cómo estaban los criterios en ese momento.
-  - Si después se borra el interesado o el anexo, el historial conserva el nombre.
+  - Si después se borra el interesado o el anexo, el historial conserva su nombre (el anexo aparece como "Anexo eliminado" con el nombre que tenía).
   - Un entregable aceptado se puede reabrir; el historial no se pierde.
   - Mientras está aceptado, sus criterios no se pueden cambiar.
 - **Panel:** los entregables vencidos (pasada la fecha comprometida y sin aceptar) aparecen en "Requiere atención".

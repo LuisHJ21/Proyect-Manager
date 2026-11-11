@@ -23,6 +23,9 @@ export function DeliverableForm({ projectId, item, onClose }: { projectId: strin
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
+  // El servidor señala un criterio concreto (criteria.N) o la lista entera (criteria).
+  const criteriaError = errors.fields.criteria ?? Object.entries(errors.fields).find(([key]) => key.startsWith('criteria.'))?.[1];
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setErrors(NO_ERRORS);
@@ -97,7 +100,7 @@ export function DeliverableForm({ projectId, item, onClose }: { projectId: strin
                 </div>
               ))}
             </div>
-            {errors.fields.criteria && <p className="mt-1 text-sm text-danger">{errors.fields.criteria}</p>}
+            {criteriaError && <p className="mt-1 text-sm text-danger">{criteriaError}</p>}
             <div className="mt-2">
               <Button variant="secondary" onClick={() => setCriteria([...criteria, ''])}>
                 Añadir criterio

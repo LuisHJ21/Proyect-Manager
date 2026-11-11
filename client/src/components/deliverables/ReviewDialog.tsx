@@ -1,7 +1,7 @@
 import { localToday, type ReviewOutcome } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { api } from '../../api/client';
+import { api, ApiError } from '../../api/client';
 import type { Attachment, DeliverableDetail, Stakeholder } from '../../api/types';
 import { Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
@@ -15,12 +15,15 @@ export function ReviewDialog({
   deliverable,
   outcome,
   onDone,
+  onConflict,
   onClose,
 }: {
   projectId: string;
   deliverable: DeliverableDetail;
   outcome: ReviewOutcome;
   onDone: (updated: DeliverableDetail) => void;
+  /** El entregable cambió en otra ventana: se avisa y se vuelve al detalle recargado. */
+  onConflict: (message: string) => void;
   onClose: () => void;
 }) {
   const stakeholders = useQuery({ queryKey: registerKey(projectId, 'stakeholders'), queryFn: () => api<Stakeholder[]>(`/api/projects/${projectId}/stakeholders`) });
@@ -48,6 +51,10 @@ export function ReviewDialog({
       });
       onDone(updated);
     } catch (error) {
+      if (error instanceof ApiError && (error.status === 409 || error.status === 404 || error.fields?.criteria)) {
+        onConflict(error.fields?.criteria ?? error.message);
+        return;
+      }
       applyFieldErrors(error, setErrors);
     } finally {
       setBusy(false);
@@ -74,7 +81,7 @@ export function ReviewDialog({
           <input type="date" className={inputClass} value={reviewedOn} onChange={(e) => setReviewedOn(e.target.value)} />
         </FormField>
         <div className="sm:col-span-2">
-          <FormField label="Nota" error={errors.fields.note ?? errors.fields.criteria}>
+          <FormField label="Nota" error={errors.fields.note}>
             <textarea className={inputClass} rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
           </FormField>
         </div>

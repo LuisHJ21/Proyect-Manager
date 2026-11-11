@@ -362,7 +362,7 @@ export const deliverableSchema = z.object({
   description: z.string().default(''),
   milestoneId: optionalId,
   dueDate: optionalDateSchema,
-  criteria: z.array(z.string()).optional(),
+  criteria: z.array(z.string().max(300, 'Máximo 300 caracteres')).max(50, 'Máximo 50 criterios').optional(),
 });
 export const updateDeliverableSchema = z.object({
   name: deliverableName.optional(),

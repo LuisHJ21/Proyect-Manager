@@ -42,7 +42,7 @@ function ReviewHistory({ reviews }: { reviews: DeliverableReview[] }) {
                     {r.attachment.originalName}
                   </a>
                 ) : r.attachmentName ? (
-                  <span>Anexo eliminado</span>
+                  <span>{`Anexo eliminado (${r.attachmentName})`}</span>
                 ) : (
                   '—'
                 )}
@@ -139,6 +139,12 @@ export function DeliverableDetailDialog({ projectId, id, onClose }: { projectId:
         outcome={step.outcome}
         onDone={(updated) => {
           applied(updated);
+          setStep({ kind: 'view' });
+        }}
+        onConflict={(message) => {
+          toast.error(message);
+          void query.refetch();
+          void refreshList();
           setStep({ kind: 'view' });
         }}
         onClose={() => setStep({ kind: 'view' })}

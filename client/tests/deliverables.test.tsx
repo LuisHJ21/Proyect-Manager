@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { localToday } from '@pm/shared';
 import { describe, expect, it } from 'vitest';
-import { collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
+import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
 
 export const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'AGILE', startDate: null, endDate: null, plannedBudgetCents: 0, currency: 'USD' };
 export const row = (over: object = {}) => ({
@@ -182,7 +182,7 @@ describe('detalle de un entregable', () => {
     mockApi(detailRoutes(full({ reviews: [review({ id: 'r2', outcome: 'ACCEPTED', note: '', attachment: { id: 'a1', originalName: 'acta.pdf' } }), review({})] })));
     const dialog = await openDetail();
     const history = within(await dialog.findByRole('region', { name: 'Revisiones' }));
-    expect(history.getByText('Anexo eliminado')).toBeInTheDocument();
+    expect(history.getByText('Anexo eliminado (acta.pdf)')).toBeInTheDocument();
     expect(history.getByRole('link', { name: 'acta.pdf' })).toHaveAttribute('href', '/api/attachments/a1/download');
     expect(history.getAllByText(/Cliente SA/)).toHaveLength(2);
     expect(history.getByText('Falta el manual')).toBeInTheDocument();
@@ -195,5 +195,48 @@ describe('detalle de un entregable', () => {
     const edit = within(screen.getByRole('dialog', { name: 'Editar ENT-2' }));
     expect(edit.getByLabelText('Nombre')).toHaveValue('Portal publicado');
     expect(edit.queryByText('Criterios de aceptación')).not.toBeInTheDocument();
+  });
+});
+
+describe('errores de entregables', () => {
+  it('el alta muestra el error de un criterio demasiado largo', async () => {
+    mockApi({
+      ...baseRoutes(),
+      [`GET ${url}`]: [],
+      [`POST ${url}`]: apiError(400, 'validation_error', { message: 'Revisa los datos ingresados', fields: { 'criteria.0': 'Máximo 300 caracteres' } }),
+    });
+    renderApp('/proyectos/p1/entregables');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Añadir entregable' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Añadir entregable' }));
+    await user.type(dialog.getByLabelText('Nombre'), 'Portal');
+    await user.type(dialog.getByLabelText('Criterio 1', { exact: true }), 'Largo');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+    expect(await dialog.findByText('Máximo 300 caracteres')).toBeInTheDocument();
+  });
+
+  it('si el estado cambió en otra ventana, la revisión avisa, vuelve al detalle y lo recarga', async () => {
+    const api = mockApi({
+      ...detailRoutes(full({ criteria: allMet })),
+      [`POST ${url}/d2/reviews`]: apiError(409, 'not_in_review', { message: 'El entregable no está en revisión' }),
+    });
+    const dialog = await openDetail();
+    const user = userEvent.setup();
+    await user.click(await dialog.findByRole('button', { name: 'Aceptar' }));
+    await user.click(within(screen.getByRole('dialog', { name: 'Aceptar ENT-2' })).getByRole('button', { name: 'Aceptar' }));
+    expect(await screen.findByText('El entregable no está en revisión')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'ENT-2 · Portal publicado' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Aceptar ENT-2' })).not.toBeInTheDocument();
+    await waitFor(() => expect(api.calls.filter((c) => c.key === `GET ${url}/d2`).length).toBeGreaterThanOrEqual(2));
+  });
+
+  it('el historial muestra el nombre del anexo eliminado', async () => {
+    const review = {
+      id: 'r1', outcome: 'ACCEPTED', stakeholder: null, stakeholderName: '', reviewedOn: '2026-11-09', note: '',
+      attachment: null, attachmentName: 'acta.pdf', criteria: [], createdAt: '2026-11-09T10:00:00.000Z',
+    };
+    mockApi(detailRoutes(full({ reviews: [review] })));
+    const dialog = await openDetail();
+    expect(await within(await dialog.findByRole('region', { name: 'Revisiones' })).findByText('Anexo eliminado (acta.pdf)')).toBeInTheDocument();
   });
 });

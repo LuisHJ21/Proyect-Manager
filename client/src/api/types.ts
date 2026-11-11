@@ -247,3 +247,30 @@ export type DecisionRecord = {
   incident: { id: string; number: number; title: string } | null;
   createdAt: string;
 };
+
+export type DeliverableRow = {
+  id: string;
+  number: number;
+  name: string;
+  status: import('@pm/shared').DeliverableStatus;
+  dueDate: string | null;
+  overdue: boolean;
+  milestone: { id: string; name: string } | null;
+  criteriaMet: number;
+  criteriaTotal: number;
+  lastReview: { outcome: import('@pm/shared').ReviewOutcome; reviewedOn: string; stakeholderName: string } | null;
+};
+export type DeliverableCriterion = { id: string; text: string; met: boolean; position: number };
+export type DeliverableReview = {
+  id: string;
+  outcome: import('@pm/shared').ReviewOutcome;
+  stakeholder: { id: string; name: string } | null;
+  stakeholderName: string;
+  reviewedOn: string;
+  note: string;
+  attachment: { id: string; originalName: string } | null;
+  attachmentName: string;
+  criteria: { text: string; met: boolean }[];
+  createdAt: string;
+};
+export type DeliverableDetail = DeliverableRow & { description: string; criteria: DeliverableCriterion[]; reviews: DeliverableReview[] };

@@ -15,6 +15,7 @@ import { checkProgressChange } from '../domain/dependencies';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { removeStoredFiles } from '../files';
+import { incidentAccess } from '../domain/incidents';
 import { taskInclude, toTaskDto } from './taskDto';
 
 type TaskParams = { Params: { id: string } };
@@ -103,6 +104,16 @@ export async function taskRoutes(app: FastifyInstance) {
 
   app.get<TaskParams>('/api/tasks/:id', async (req) => {
     const { task, isPm } = await getTaskAccess(req, req.params.id);
+    const viewer = { userId: requireUser(req).id, isPm };
+    const incidents = (
+      await prisma.incident.findMany({
+        where: { taskId: task.id },
+        select: { id: true, number: true, title: true, status: true, reportedById: true, ownerId: true },
+        orderBy: { number: 'asc' },
+      })
+    )
+      .filter((i) => incidentAccess(i, viewer).view)
+      .map(({ id, number, title, status }) => ({ id, number, title, status }));
     const comments = await prisma.taskComment.findMany({
       where: { taskId: task.id },
       include: { author: { select: { id: true, name: true } } },
@@ -117,6 +128,7 @@ export async function taskRoutes(app: FastifyInstance) {
       ...(await loadDto(task.id, isPm)),
       comments,
       steps: steps.map((s) => ({ id: s.id, title: s.title, done: s.done, assignee: s.assignee })),
+      incidents,
     };
   });
 

@@ -24,6 +24,7 @@ import { decisionRoutes } from './routes/decisions';
 import { deliverableRoutes } from './routes/deliverables';
 import { deliverableReviewRoutes } from './routes/deliverableReviews';
 import { closureRoutes } from './routes/closure';
+import { registerClosedGuard } from './closedGuard';
 import { taskStepRoutes } from './routes/taskSteps';
 import { taskRoutes } from './routes/tasks';
 import { userRoutes } from './routes/users';
@@ -56,6 +57,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: MAX_FILE_BYTES, files: 1 }, throwFileSizeLimit: false });
   registerAuthHook(app);
+  registerClosedGuard(app);
   await authRoutes(app);
   await userRoutes(app);
   await projectRoutes(app);

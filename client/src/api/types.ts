@@ -124,7 +124,7 @@ export type Task = {
 };
 export type Comment = { id: string; body: string; createdAt: string; author: PersonRef };
 export type TaskStep = { id: string; title: string; done: boolean; assignee: PersonRef | null };
-export type TaskDetail = Task & { comments: Comment[]; steps: TaskStep[] };
+export type TaskDetail = Task & { comments: Comment[]; steps: TaskStep[]; incidents?: IncidentRef[] };
 
 export type Attachment = {
   id: string;
@@ -211,4 +211,25 @@ export type Performance = {
   }[];
   outsideBaseline: number;
   series: { date: string; pvCents: number; evCents: number | null; acCents: number | null }[];
+};
+
+export type IncidentRef = { id: string; number: number; title: string; status: import('@pm/shared').IncidentStatus };
+export type Incident = {
+  id: string;
+  number: number;
+  title: string;
+  description: string;
+  priority: Priority;
+  dueDate: string | null;
+  status: import('@pm/shared').IncidentStatus;
+  resolution: string;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  createdAt: string;
+  overdue: boolean;
+  reportedBy: PersonRef;
+  owner: PersonRef | null;
+  task: { id: string; title: string } | null;
+  risk: { id: string; title: string } | null;
+  can: { edit: boolean; changeStatus: boolean; close: boolean };
 };

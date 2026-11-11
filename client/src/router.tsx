@@ -10,6 +10,7 @@ import { CharterPage } from './pages/project/Charter';
 import { ProjectLayout, ProjectPmOnly } from './pages/project/ProjectLayout';
 import { ProjectListPage } from './pages/project/ProjectList';
 import { ChangeRequestsPage } from './pages/project/ChangeRequests';
+import { IncidentsPage } from './pages/project/Incidents';
 import { PerformancePage } from './pages/project/Performance';
 import { AttachmentsPage, BudgetPage, RisksPage, StakeholdersPage } from './pages/project/Registers';
 import { SummaryPage } from './pages/project/Summary';
@@ -33,6 +34,7 @@ export function AppRoutes() {
             <Route path="tareas" element={<TasksPage />} />
             <Route path="tareas/:taskId" element={<TaskDetailPage />} />
             <Route path="anexos" element={<AttachmentsPage />} />
+            <Route path="incidentes" element={<IncidentsPage />} />
             <Route element={<ProjectPmOnly />}>
               <Route path="interesados" element={<StakeholdersPage />} />
               <Route path="riesgos" element={<RisksPage />} />

@@ -20,6 +20,7 @@ const TABS = [
   { to: 'acta', label: 'Acta' },
   { to: 'tareas', label: 'Tareas' },
   { to: 'anexos', label: 'Anexos' },
+  { to: 'incidentes', label: 'Incidentes' },
   { to: 'interesados', label: 'Interesados', pmOnly: true },
   { to: 'riesgos', label: 'Riesgos', pmOnly: true },
   { to: 'presupuesto', label: 'Presupuesto', pmOnly: true },

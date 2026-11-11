@@ -14,6 +14,7 @@ import { CommentList } from '../../components/tasks/CommentList';
 import { DependencyPicker } from '../../components/tasks/DependencyPicker';
 import { StepList } from '../../components/tasks/StepList';
 import { PRIORITY_TONE, STATUS_TONE, WaitingNote } from '../../components/tasks/TaskCard';
+import { IncidentForm } from '../../components/incidents/IncidentForm';
 import { TaskForm } from '../../components/tasks/TaskForm';
 import { refreshTaskData, taskKey } from '../../components/tasks/taskQueries';
 import { Avatar, Badge, Button, inputClass } from '../../components/ui';
@@ -124,6 +125,7 @@ export function TaskDetailPage() {
     queryFn: () => api<Milestone[]>(`/api/projects/${project.id}/milestones`),
   });
   const [editing, setEditing] = useState(false);
+  const [reportingIncident, setReportingIncident] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string>();
 
@@ -196,6 +198,28 @@ export function TaskDetailPage() {
             </div>
           </Panel>
           <StepList task={task} canManage={isPm} canCheck={canUpdate} />
+          <section aria-label="Incidentes de la tarea" className="rounded-xl border border-line bg-surface p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-ink">Incidentes</h2>
+              <Button variant="secondary" onClick={() => setReportingIncident(true)}>
+                Reportar incidente
+              </Button>
+            </div>
+            {task.incidents && task.incidents.length > 0 ? (
+              <ul className="space-y-1.5 text-sm">
+                {task.incidents.map((i) => (
+                  <li key={i.id}>
+                    <Link className="text-link hover:underline" to={`/proyectos/${project.id}/incidentes`}>
+                      INC-{i.number} · {i.title}
+                    </Link>{' '}
+                    <span className="text-ink-soft">· {LABELS.incidentStatus[i.status]}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-ink-soft">Sin incidentes.</p>
+            )}
+          </section>
           <Panel>
             <CommentList taskId={task.id} comments={task.comments} canComment={canUpdate} />
           </Panel>
@@ -242,6 +266,7 @@ export function TaskDetailPage() {
       </div>
 
       {editing && <TaskForm projectId={project.id} task={task} onClose={() => setEditing(false)} />}
+      {reportingIncident && <IncidentForm projectId={project.id} isPm={isPm} initialTaskId={task.id} onClose={() => setReportingIncident(false)} />}
       {deleting && (
         <ConfirmDialog title="Eliminar tarea" danger confirmLabel="Eliminar" onCancel={() => setDeleting(false)} onConfirm={() => remove.mutate()}>
           {task.successorCount > 0 && <p className="font-medium">{task.successorCount} tarea(s) dependen de esta y dejarán de esperarla.</p>}

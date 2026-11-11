@@ -35,6 +35,10 @@ export const CHANGE_STATUS = ['PENDING', 'APPROVED', 'REJECTED'] as const;
 export const INCIDENT_STATUS = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
 export type IncidentStatus = (typeof INCIDENT_STATUS)[number];
 export type ChangeStatus = (typeof CHANGE_STATUS)[number];
+export const DELIVERABLE_STATUS = ['PENDING', 'IN_REVIEW', 'ACCEPTED', 'REJECTED'] as const;
+export type DeliverableStatus = (typeof DELIVERABLE_STATUS)[number];
+export const REVIEW_OUTCOME = ['ACCEPTED', 'REJECTED'] as const;
+export type ReviewOutcome = (typeof REVIEW_OUTCOME)[number];
 
 export const LABELS = {
   role: { PM: 'Project Manager', COLLABORATOR: 'Colaborador' },
@@ -50,6 +54,8 @@ export const LABELS = {
   charterStatus: { DRAFT: 'Borrador', APPROVED: 'Aprobada' },
   changeStatus: { PENDING: 'Pendiente', APPROVED: 'Aprobada', REJECTED: 'Rechazada' },
   incidentStatus: { OPEN: 'Abierto', IN_PROGRESS: 'En curso', RESOLVED: 'Resuelto', CLOSED: 'Cerrado' },
+  deliverableStatus: { PENDING: 'Pendiente', IN_REVIEW: 'En revisión', ACCEPTED: 'Aceptado', REJECTED: 'Rechazado' },
+  reviewOutcome: { ACCEPTED: 'Aceptado', REJECTED: 'Rechazado' },
   objectiveStatus: { PENDING: 'Pendiente', MET: 'Cumplido', NOT_MET: 'No cumplido' },
   milestoneStatus: { PENDING: 'Pendiente', REACHED: 'Alcanzado' },
   taskStatus: { TODO: 'Por hacer', IN_PROGRESS: 'En curso', BLOCKED: 'Bloqueada', DONE: 'Hecha' },

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { diffDays, isValidCalendarDate } from './dates';
 import {
   APPROACH,
+  DELIVERABLE_STATUS,
   EXPENSE_CATEGORY,
   INCIDENT_STATUS,
   LEVEL,
@@ -9,6 +10,7 @@ import {
   OBJECTIVE_STATUS,
   PRIORITY,
   PROJECT_STATUS,
+  REVIEW_OUTCOME,
   RISK_RESPONSE,
   RISK_STATUS,
   RISK_TYPE,
@@ -352,4 +354,31 @@ export const updateDecisionRecordSchema = z.object({
   decidedOn: calendarDateSchema.optional(),
   changeRequestId: optionalId,
   incidentId: optionalId,
+});
+
+const deliverableName = required('Escribe el nombre').max(200, 'Máximo 200 caracteres');
+export const deliverableSchema = z.object({
+  name: deliverableName,
+  description: z.string().default(''),
+  milestoneId: optionalId,
+  dueDate: optionalDateSchema,
+  criteria: z.array(z.string()).optional(),
+});
+export const updateDeliverableSchema = z.object({
+  name: deliverableName.optional(),
+  description: z.string().optional(),
+  milestoneId: optionalId,
+  dueDate: optionalDateSchema,
+  status: z.enum(DELIVERABLE_STATUS).optional(),
+});
+const criterionText = required('Escribe el criterio').max(300, 'Máximo 300 caracteres');
+export const criterionSchema = z.object({ text: criterionText });
+export const updateCriterionSchema = z.object({ text: criterionText.optional(), met: z.boolean().optional() });
+export const criteriaOrderSchema = z.object({ ids: z.array(z.string().min(1)).min(1) });
+export const deliverableReviewSchema = z.object({
+  outcome: z.enum(REVIEW_OUTCOME),
+  stakeholderId: optionalId,
+  attachmentId: optionalId,
+  reviewedOn: calendarDateSchema,
+  note: z.string().default(''),
 });

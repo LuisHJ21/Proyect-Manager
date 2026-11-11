@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { diffDays, isValidCalendarDate } from './dates';
 import {
   APPROACH,
+  CLOSED_PROJECT_STATUS,
+  LESSON_CATEGORY,
+  LESSON_TYPE,
   DELIVERABLE_STATUS,
   EXPENSE_CATEGORY,
   INCIDENT_STATUS,
@@ -69,10 +72,13 @@ export const MAX_AMOUNT_CENTS = 99_999_999_999_999;
 const AMOUNT_TOO_LARGE = 'El monto es demasiado grande';
 const budgetAmount = z.number({ message: 'Monto inválido' }).int('Monto inválido').min(0, 'Monto inválido').max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE);
 
+const CLOSE_VIA_TAB = 'Para cerrar el proyecto usa la pestaña Cierre';
+const openProjectStatus = z.enum(PROJECT_STATUS).refine((s) => !(CLOSED_PROJECT_STATUS as readonly string[]).includes(s), CLOSE_VIA_TAB);
+
 const projectFields = {
   name: required('Escribe el nombre del proyecto'),
   description: z.string().default(''),
-  status: z.enum(PROJECT_STATUS).default('PLANNING'),
+  status: openProjectStatus.default('PLANNING'),
   approach: z.enum(APPROACH).default('PREDICTIVE'),
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
@@ -89,7 +95,7 @@ export const createProjectSchema = z.object(projectFields).superRefine((value, c
 export const updateProjectSchema = z.object({
   name: projectFields.name.optional(),
   description: z.string().optional(),
-  status: z.enum(PROJECT_STATUS).optional(),
+  status: openProjectStatus.optional(),
   approach: z.enum(APPROACH).optional(),
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
@@ -381,4 +387,24 @@ export const deliverableReviewSchema = z.object({
   attachmentId: optionalId,
   reviewedOn: calendarDateSchema,
   note: z.string().default(''),
+});
+
+export const closeProjectSchema = z.object({
+  finalStatus: z.enum(CLOSED_PROJECT_STATUS),
+  summary: z.string().default(''),
+  pendingReason: z.string().default(''),
+});
+export const reopenProjectSchema = z.object({ reason: required('Escribe el motivo') });
+const lessonText = z.string().max(2000, 'Máximo 2000 caracteres');
+export const lessonSchema = z.object({
+  type: z.enum(LESSON_TYPE),
+  category: z.enum(LESSON_CATEGORY),
+  situation: required('Describe la situación').max(2000, 'Máximo 2000 caracteres'),
+  recommendation: lessonText.default(''),
+});
+export const updateLessonSchema = z.object({
+  type: z.enum(LESSON_TYPE).optional(),
+  category: z.enum(LESSON_CATEGORY).optional(),
+  situation: required('Describe la situación').max(2000, 'Máximo 2000 caracteres').optional(),
+  recommendation: lessonText.optional(),
 });

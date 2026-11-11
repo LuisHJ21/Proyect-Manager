@@ -15,6 +15,13 @@ export const RISK_RESPONSE = {
 } as const;
 export const HEALTH = ['AT_RISK', 'ATTENTION', 'ON_TRACK'] as const;
 export const ACTIVE_PROJECT_STATUS = ['PLANNING', 'EXECUTING', 'PAUSED'] as const;
+export const CLOSED_PROJECT_STATUS = ['CLOSED', 'CANCELLED'] as const;
+export const LESSON_TYPE = ['WORKED_WELL', 'TO_IMPROVE'] as const;
+export const LESSON_CATEGORY = ['SCOPE', 'SCHEDULE', 'COST', 'QUALITY', 'TEAM', 'COMMUNICATION', 'RISK', 'STAKEHOLDERS', 'PROCUREMENT', 'OTHER'] as const;
+export const CLOSURE_PENDING_KIND = ['deliverables', 'incidents', 'risks', 'tasks', 'objectives', 'charter'] as const;
+export type LessonType = (typeof LESSON_TYPE)[number];
+export type LessonCategory = (typeof LESSON_CATEGORY)[number];
+export type ClosurePendingKind = (typeof CLOSURE_PENDING_KIND)[number];
 export const EXPENSE_CATEGORY = ['LABOR', 'MATERIALS', 'EQUIPMENT', 'SERVICES', 'OTHER'] as const;
 
 export type Role = (typeof ROLE)[number];
@@ -56,6 +63,27 @@ export const LABELS = {
   incidentStatus: { OPEN: 'Abierto', IN_PROGRESS: 'En curso', RESOLVED: 'Resuelto', CLOSED: 'Cerrado' },
   deliverableStatus: { PENDING: 'Pendiente', IN_REVIEW: 'En revisión', ACCEPTED: 'Aceptado', REJECTED: 'Rechazado' },
   reviewOutcome: { ACCEPTED: 'Aceptado', REJECTED: 'Rechazado' },
+  lessonType: { WORKED_WELL: 'Funcionó bien', TO_IMPROVE: 'A mejorar' },
+  lessonCategory: {
+    SCOPE: 'Alcance',
+    SCHEDULE: 'Cronograma',
+    COST: 'Costos',
+    QUALITY: 'Calidad',
+    TEAM: 'Equipo',
+    COMMUNICATION: 'Comunicación',
+    RISK: 'Riesgos',
+    STAKEHOLDERS: 'Interesados',
+    PROCUREMENT: 'Proveedores',
+    OTHER: 'Otro',
+  },
+  closurePending: {
+    deliverables: 'Entregables sin aceptar',
+    incidents: 'Incidentes abiertos',
+    risks: 'Riesgos abiertos',
+    tasks: 'Tareas sin terminar',
+    objectives: 'Objetivos sin evaluar',
+    charter: 'Acta sin aprobar',
+  },
   objectiveStatus: { PENDING: 'Pendiente', MET: 'Cumplido', NOT_MET: 'No cumplido' },
   milestoneStatus: { PENDING: 'Pendiente', REACHED: 'Alcanzado' },
   taskStatus: { TODO: 'Por hacer', IN_PROGRESS: 'En curso', BLOCKED: 'Bloqueada', DONE: 'Hecha' },

@@ -277,3 +277,34 @@ export type DeliverableReview = {
   createdAt: string;
 };
 export type DeliverableDetail = DeliverableRow & { description: string; criteria: DeliverableCriterion[]; reviews: DeliverableReview[] };
+
+export type ClosureReport = {
+  dates: { plannedStart: string | null; plannedEnd: string | null; actualStart: string | null; actualEnd: string; endVarianceDays: number | null };
+  budget: { plannedCents: number; actualCents: number; varianceCents: number; currency: string };
+  performance: { cpi: number | null; spi: number | null; eacCents: number; vacCents: number } | null;
+  objectives: { met: number; notMet: number; pending: number };
+  deliverables: Record<import('@pm/shared').DeliverableStatus, number>;
+  changes: { approved: number; rejected: number; pending: number };
+  incidents: { total: number; open: number };
+  risks: { total: number; open: number };
+  pendings: { kind: import('@pm/shared').ClosurePendingKind; count: number }[];
+};
+type ClosedStatus = 'CLOSED' | 'CANCELLED';
+export type ClosureState = {
+  status: 'open' | 'closed';
+  legacy: boolean;
+  report: ClosureReport;
+  current: { finalStatus: ClosedStatus; summary: string; pendingReason: string; closedAt: string; closedBy: PersonRef } | null;
+  history: {
+    id: string;
+    finalStatus: ClosedStatus;
+    summary: string;
+    pendingReason: string;
+    closedAt: string;
+    closedBy: PersonRef;
+    reopenedAt: string | null;
+    reopenedBy: PersonRef | null;
+    reopenReason: string;
+    report: ClosureReport;
+  }[];
+};

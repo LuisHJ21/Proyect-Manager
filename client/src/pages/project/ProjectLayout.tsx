@@ -30,6 +30,7 @@ const TABS = [
   { to: 'desempeno', label: 'Desempeño', pmOnly: true },
   { to: 'cambios', label: 'Control de cambios', pmOnly: true },
   { to: 'entregables', label: 'Entregables', pmOnly: true },
+  { to: 'cierre', label: 'Cierre', pmOnly: true },
 ];
 
 export const projectKey = (id: string) => ['project', id, 'detail'];
@@ -89,7 +90,7 @@ export function ProjectLayout() {
           )}
         </div>
       )}
-      <nav aria-label="Secciones del proyecto" className="mb-6 flex flex-wrap gap-1 border-b border-line">
+      <nav aria-label="Secciones del proyecto" data-print-hide className="mb-6 flex flex-wrap gap-1 border-b border-line">
         {TABS.filter((tab) => isPm || !tab.pmOnly).map((tab) => (
           <NavLink
             key={tab.to}

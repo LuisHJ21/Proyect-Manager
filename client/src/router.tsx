@@ -11,6 +11,7 @@ import { ProjectLayout, ProjectPmOnly } from './pages/project/ProjectLayout';
 import { ProjectListPage } from './pages/project/ProjectList';
 import { ChangeRequestsPage } from './pages/project/ChangeRequests';
 import { DeliverablesPage } from './pages/project/Deliverables';
+import { ClosurePage } from './pages/project/Closure';
 import { IncidentsPage } from './pages/project/Incidents';
 import { PerformancePage } from './pages/project/Performance';
 import { AttachmentsPage, BudgetPage, RisksPage, StakeholdersPage } from './pages/project/Registers';
@@ -43,6 +44,7 @@ export function AppRoutes() {
               <Route path="desempeno" element={<PerformancePage />} />
               <Route path="cambios" element={<ChangeRequestsPage />} />
               <Route path="entregables" element={<DeliverablesPage />} />
+              <Route path="cierre" element={<ClosurePage />} />
             </Route>
           </Route>
           <Route path="/calendario" element={<CalendarPage />} />

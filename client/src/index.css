@@ -62,3 +62,14 @@ h2 {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Impresión del informe de cierre: solo el contenido, sin navegación ni botones. */
+@media print {
+  nav,
+  header,
+  aside,
+  button,
+  [data-print-hide] {
+    display: none !important;
+  }
+}

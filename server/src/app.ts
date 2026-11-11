@@ -21,6 +21,7 @@ import { changeRequestRoutes } from './routes/changeRequests';
 import { performanceRoutes } from './routes/performance';
 import { incidentRoutes } from './routes/incidents';
 import { decisionRoutes } from './routes/decisions';
+import { deliverableRoutes } from './routes/deliverables';
 import { taskStepRoutes } from './routes/taskSteps';
 import { taskRoutes } from './routes/tasks';
 import { userRoutes } from './routes/users';
@@ -64,6 +65,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await performanceRoutes(app);
   await incidentRoutes(app);
   await decisionRoutes(app);
+  await deliverableRoutes(app);
   await taskRoutes(app);
   await taskStepRoutes(app);
   await dependencyRoutes(app);

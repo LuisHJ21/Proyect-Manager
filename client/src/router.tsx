@@ -12,6 +12,8 @@ import { ProjectListPage } from './pages/project/ProjectList';
 import { ChangeRequestsPage } from './pages/project/ChangeRequests';
 import { DeliverablesPage } from './pages/project/Deliverables';
 import { ClosurePage } from './pages/project/Closure';
+import { LessonsPage } from './pages/project/Lessons';
+import { LessonsLibraryPage } from './pages/Lessons';
 import { IncidentsPage } from './pages/project/Incidents';
 import { PerformancePage } from './pages/project/Performance';
 import { AttachmentsPage, BudgetPage, RisksPage, StakeholdersPage } from './pages/project/Registers';
@@ -29,6 +31,7 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route index element={<HomeRedirect />} />
           <Route path="/proyectos" element={<ProjectListPage />} />
+          <Route path="/lecciones" element={<LessonsLibraryPage />} />
           <Route path="/proyectos/:id" element={<ProjectLayout />}>
             <Route index element={<Navigate to="resumen" replace />} />
             <Route path="resumen" element={<SummaryPage />} />
@@ -37,6 +40,7 @@ export function AppRoutes() {
             <Route path="tareas/:taskId" element={<TaskDetailPage />} />
             <Route path="anexos" element={<AttachmentsPage />} />
             <Route path="incidentes" element={<IncidentsPage />} />
+            <Route path="lecciones" element={<LessonsPage />} />
             <Route element={<ProjectPmOnly />}>
               <Route path="interesados" element={<StakeholdersPage />} />
               <Route path="riesgos" element={<RisksPage />} />

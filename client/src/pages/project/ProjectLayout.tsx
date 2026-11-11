@@ -24,6 +24,7 @@ const TABS = [
   { to: 'tareas', label: 'Tareas' },
   { to: 'anexos', label: 'Anexos' },
   { to: 'incidentes', label: 'Incidentes' },
+  { to: 'lecciones', label: 'Lecciones' },
   { to: 'interesados', label: 'Interesados', pmOnly: true },
   { to: 'riesgos', label: 'Riesgos', pmOnly: true },
   { to: 'presupuesto', label: 'Presupuesto', pmOnly: true },

@@ -308,3 +308,16 @@ export type ClosureState = {
     report: ClosureReport;
   }[];
 };
+
+export type Lesson = {
+  id: string;
+  type: import('@pm/shared').LessonType;
+  category: import('@pm/shared').LessonCategory;
+  situation: string;
+  recommendation: string;
+  author: PersonRef;
+  project: { id: string; name: string };
+  createdAt: string;
+  updatedAt: string;
+  canEdit: boolean;
+};

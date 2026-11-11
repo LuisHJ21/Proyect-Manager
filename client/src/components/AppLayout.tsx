@@ -1,6 +1,6 @@
 import { LABELS } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, CheckSquare, FolderKanban, House, KeyRound, LayoutDashboard, LogOut, Plus, Users } from 'lucide-react';
+import { CalendarDays, CheckSquare, FolderKanban, House, KeyRound, LayoutDashboard, Lightbulb, LogOut, Plus, Users } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -16,6 +16,7 @@ type Destination = { to: string; label: string; Icon: ComponentType<{ size?: num
 const PM_LINKS: Destination[] = [
   { to: '/panel', label: 'Inicio', Icon: House },
   { to: '/calendario', label: 'Calendario', Icon: CalendarDays },
+  { to: '/lecciones', label: 'Lecciones', Icon: Lightbulb },
   { to: '/proyectos', label: 'Proyectos', Icon: FolderKanban },
   { to: '/usuarios', label: 'Usuarios', Icon: Users },
 ];
@@ -23,6 +24,7 @@ const PM_LINKS: Destination[] = [
 const COLLABORATOR_LINKS: Destination[] = [
   { to: '/mis-tareas', label: 'Mis tareas', Icon: CheckSquare },
   { to: '/calendario', label: 'Calendario', Icon: CalendarDays },
+  { to: '/lecciones', label: 'Lecciones', Icon: Lightbulb },
   { to: '/proyectos', label: 'Proyectos', Icon: FolderKanban },
 ];
 

@@ -170,6 +170,6 @@ describe('pestaña Cambios', () => {
     mockApi({ ...signedInAs(collaborator), 'GET /api/projects/p1': project, 'GET /api/projects/p1/indicators': { progress: 0, overdueTasks: 0, blockedTasks: 0, upcomingMilestones: [] }, 'GET /api/projects/p1/objectives': [], 'GET /api/projects/p1/milestones': [], 'GET /api/projects/p1/members': [] });
     renderApp('/proyectos/p1/resumen');
     const tabs = await screen.findByRole('navigation', { name: 'Secciones del proyecto' });
-    expect(within(tabs).queryByRole('link', { name: 'Cambios' })).not.toBeInTheDocument();
+    expect(within(tabs).queryByRole('link', { name: 'Control de cambios' })).not.toBeInTheDocument();
   });
 });

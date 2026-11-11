@@ -28,6 +28,13 @@ Solo el Project Manager ve estas secciones.
 - **Salud:** con línea base, un CPI o SPI bajo 0,9 marca el proyecto como "Atención".
 - **Cambios:** la pestaña **Cambios** registra cada solicitud con su impacto en alcance, plazo y costo, y su decisión con una nota. Una nueva línea base puede citar un cambio aprobado.
 
+## Incidentes y decisiones
+
+- **Incidentes:** cualquier miembro del proyecto reporta un problema desde la pestaña **Incidentes** o desde una tarea. El colaborador ve los que reportó y los que tiene asignados. Si es el responsable, puede marcarlos en curso y resolverlos con una resolución. El Project Manager ve todos, asigna responsable, prioridad y fecha límite, y los cierra o reabre.
+- **Riesgo a incidente:** en el detalle de un riesgo, "Pasar a incidente" crea el incidente con el título, el responsable y la prioridad del riesgo.
+- **Panel:** los incidentes de prioridad alta abiertos y los vencidos aparecen en "Requiere atención".
+- **Decisiones:** en la pestaña **Control de cambios**, el Project Manager registra qué se decidió, quién y por qué, con enlaces a cambios e incidentes. Al cerrar un incidente puede registrarlo como decisión. Los colaboradores no ven las decisiones.
+
 ## Requisitos
 
 - Node.js 24

@@ -151,7 +151,7 @@ test('flujo principal', async ({ browser }) => {
   const cpiCard = pm.getByRole('region', { name: 'Indicadores de valor ganado' }).locator('[data-card]').filter({ hasText: 'CPI' });
   await expect(cpiCard).toContainText('Sobre el costo');
 
-  await pm.getByRole('link', { name: 'Cambios' }).click();
+  await pm.getByRole('link', { name: 'Control de cambios' }).click();
   await pm.getByRole('button', { name: 'Añadir cambio' }).click();
   const changeDialog = pm.getByRole('dialog');
   await changeDialog.getByLabel('Título').fill('Agregar blog');
@@ -237,6 +237,41 @@ test('flujo principal', async ({ browser }) => {
   await carlos.getByRole('link', { name: 'diseño final.pdf' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('diseño final.pdf');
+
+  // Incidentes: Carlos reporta uno desde su tarea, el PM lo asigna, Carlos lo resuelve y el PM lo cierra con una decisión.
+  await carlos.goto(`${projectUrl}/tareas`);
+  await carlos.getByRole('main').getByRole('link', { name: 'Construcción' }).click();
+  await carlos.getByRole('button', { name: 'Reportar incidente' }).click();
+  await carlos.getByRole('dialog').getByLabel('Título').fill('Servidor de pruebas caído');
+  await carlos.getByRole('dialog').getByRole('button', { name: 'Guardar' }).click();
+  await expect(carlos.getByRole('region', { name: 'Incidentes de la tarea' }).getByText(/INC-1/)).toBeVisible();
+
+  await pm.goto(`${projectUrl}/incidentes`);
+  await pm.getByRole('button', { name: 'Ver INC-1' }).click();
+  await pm.getByRole('dialog').getByRole('button', { name: 'Editar' }).click();
+  const incidentDialog = pm.getByRole('dialog');
+  await incidentDialog.getByLabel('Responsable').selectOption({ label: 'Carlos' });
+  await incidentDialog.getByLabel('Prioridad').selectOption({ label: 'Alta' });
+  await incidentDialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(pm.getByRole('dialog')).toHaveCount(0);
+  await expect(pm.getByRole('table').getByText('Carlos')).toBeVisible();
+
+  await carlos.goto(`${projectUrl}/incidentes`);
+  await carlos.getByRole('button', { name: 'Ver INC-1' }).click();
+  await carlos.getByRole('dialog').getByRole('button', { name: 'Resolver' }).click();
+  await carlos.getByRole('dialog').getByLabel('Resolución').fill('Se reinició el servidor');
+  await carlos.getByRole('dialog').getByRole('button', { name: 'Resolver' }).click();
+  await expect(carlos.getByRole('table').getByText('Resuelto')).toBeVisible();
+
+  await pm.reload();
+  await pm.getByRole('button', { name: 'Ver INC-1' }).click();
+  await pm.getByRole('dialog').getByRole('button', { name: 'Cerrar' }).click();
+  await pm.getByRole('dialog').getByLabel('Registrar como decisión').check();
+  await pm.getByRole('dialog').getByRole('button', { name: 'Cerrar incidente' }).click();
+  await expect(pm.getByRole('table').getByText('Cerrado')).toBeVisible();
+  await pm.getByRole('link', { name: 'Control de cambios' }).click();
+  await expect(pm.getByText('DEC-1')).toBeVisible();
+  await expect(pm.getByText('Cierre de INC-1: Servidor de pruebas caído')).toBeVisible();
 
   // 7. El PM ve el avance actualizado.
   await pm.goto(`${projectUrl}/resumen`);

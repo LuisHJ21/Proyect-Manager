@@ -35,7 +35,7 @@
   - Campos: `id`, `deliverableId`, `text` (obligatorio, máximo 300 caracteres), `met` (booleano, por defecto falso), `position` (entero) y fechas.
   - Se borra con su entregable.
 - **`DeliverableReview`:**
-  - Campos: `id`, `deliverableId`, `outcome` (`ACCEPTED` o `REJECTED`), `stakeholderId` (opcional; si se borra el interesado queda vacío, `SetNull`), `stakeholderName` (copia del nombre al revisar, por defecto vacío), `reviewedOn` (fecha `YYYY-MM-DD`), `note` (texto, por defecto vacío), `attachmentId` (opcional; si se borra el anexo queda vacío, `SetNull`), `criteria` (copia en JSON: lista de `{ text, met }` en el orden de ese momento), `reviewedById` (usuario PM; `Restrict`) y `createdAt`.
+  - Campos: `id`, `deliverableId`, `outcome` (`ACCEPTED` o `REJECTED`), `stakeholderId` (opcional; si se borra el interesado queda vacío, `SetNull`), `stakeholderName` (copia del nombre al revisar, por defecto vacío), `reviewedOn` (fecha `YYYY-MM-DD`), `note` (texto, por defecto vacío), `attachmentId` (opcional; si se borra el anexo queda vacío, `SetNull`), `attachmentName` (copia del nombre original del anexo al revisar, por defecto vacío), `criteria` (copia en JSON: lista de `{ text, met }` en el orden de ese momento), `reviewedById` (usuario PM; `Restrict`) y `createdAt`.
   - Se borra con su entregable.
 - **Número:** correlativo por proyecto con un contador propio (`Project.lastDeliverableNumber`). No se reutiliza aunque se borre un entregable, se muestra como "ENT-<n>" y el contador no se envía al cliente.
 - **Estados:** `PENDING` → "Pendiente", `IN_REVIEW` → "En revisión", `ACCEPTED` → "Aceptado", `REJECTED` → "Rechazado". Por defecto, `PENDING`.
@@ -68,7 +68,7 @@
 Todas las rutas son solo para el PM. Para un colaborador miembro responden 403 y para alguien que no es miembro, 404, como en decisiones. La base es `/api/projects/:id/deliverables`.
 
 - **`GET /`:** acepta `?status=` opcional. Un valor no válido o repetido responde 400. Devuelve los entregables ordenados por número, cada uno con `id`, `number`, `name`, `status`, `dueDate`, `overdue`, `milestone` (`{ id, name }` o null), `criteriaMet`, `criteriaTotal` y `lastReview` (`{ outcome, reviewedOn, stakeholderName }` o null).
-- **`GET /:did`:** lo mismo, más `description`, `criteria` (ordenados por `position`) y `reviews` (de la más reciente a la más antigua). Cada revisión lleva `stakeholder` (`{ id, name }` o null), `stakeholderName`, `attachment` (`{ id, originalName }` o null) y `criteria`.
+- **`GET /:did`:** lo mismo, más `description`, `criteria` (ordenados por `position`) y `reviews` (de la más reciente a la más antigua). Cada revisión lleva `stakeholder` (`{ id, name }` o null), `stakeholderName`, `attachment` (`{ id, originalName }` o null), `attachmentName` y `criteria`.
 - **`POST /`:** recibe `{ name, description?, milestoneId?, dueDate?, criteria?: string[] }` y responde 201.
   - Los textos de criterio vacíos se descartan.
   - Un hito de otro proyecto responde 400 en `milestoneId`.
@@ -118,7 +118,7 @@ Todas las rutas son solo para el PM. Para un colaborador miembro responden 403 y
     - Aceptado: "Reabrir".
     - "Editar" y "Eliminar" aparecen siempre.
   - **"Aceptar":** si no se cumple `canAccept`, está desactivado y debajo se lee "Marca todos los criterios para poder aceptar".
-  - **Historial "Revisiones":** fecha, resultado, interesado (o la copia del nombre, o "—"), nota, anexo descargable (o "Anexo eliminado" si había uno y ya no existe) y los criterios de ese momento.
+  - **Historial "Revisiones":** fecha, resultado, interesado (o la copia del nombre, o "—"), nota, anexo descargable (o "Anexo eliminado" si `attachmentName` tiene texto y `attachment` es null) y los criterios de ese momento.
   - **Errores:** un 409 o 404 muestra un aviso con el mensaje y recarga los datos.
 - **Ventana de revisión** ("Aceptar ENT-n" o "Rechazar ENT-n"):
   - Campos: "Interesado" (lista del registro, opcional), "Fecha" (hoy por defecto), "Nota" (obligatoria al rechazar; el botón queda desactivado mientras esté vacía) y "Anexo" (lista de Anexos del proyecto, opcional).

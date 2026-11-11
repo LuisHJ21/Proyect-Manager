@@ -327,4 +327,39 @@ test('flujo principal', async ({ browser }) => {
   await pm.getByRole('link', { name: 'Inicio' }).click();
   await expect(pm.getByTestId('kpi-activeProjects')).toContainText('1');
   await expect(pm.getByRole('main').getByRole('link', { name: 'Portal' })).toBeVisible();
+
+  // Cierre: el PM ve los pendientes y cierra con motivo; el proyecto queda en solo lectura.
+  await pm.goto(`${projectUrl}/cierre`);
+  const pendings = pm.getByRole('region', { name: 'Pendientes' });
+  await expect(pendings.getByRole('link', { name: 'Tareas sin terminar' })).toBeVisible();
+  await pendings.getByRole('button', { name: 'Cerrar proyecto' }).click();
+  const closeDialog = pm.getByRole('dialog', { name: 'Cerrar proyecto' });
+  await closeDialog.getByLabel('Motivo de los pendientes').fill('Se entrega en la fase 2');
+  await closeDialog.getByRole('button', { name: 'Cerrar proyecto' }).click();
+  await expect(pm.getByRole('status').filter({ hasText: 'solo lectura' })).toBeVisible();
+  await expect(pm.getByRole('button', { name: 'Imprimir informe' })).toBeVisible();
+  await pm.getByRole('link', { name: 'Tareas', exact: true }).click();
+  await expect(pm.getByRole('button', { name: 'Nueva tarea' })).toHaveCount(0);
+
+  // Con el proyecto cerrado, Carlos todavía registra una lección aprendida.
+  await carlos.goto(`${projectUrl}/lecciones`);
+  await carlos.getByRole('button', { name: 'Añadir lección' }).click();
+  const lessonDialog = carlos.getByRole('dialog', { name: 'Añadir lección' });
+  await lessonDialog.getByLabel('Tipo').selectOption({ label: 'A mejorar' });
+  await lessonDialog.getByLabel('Situación').fill('Las pruebas empezaron tarde');
+  await lessonDialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(carlos.getByRole('article').getByText('Las pruebas empezaron tarde')).toBeVisible();
+
+  // El PM la encuentra en la página global y reabre el proyecto.
+  await pm.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Lecciones' }).click();
+  await pm.getByLabel('Buscar').fill('pruebas');
+  await expect(pm.getByRole('article').getByText('Las pruebas empezaron tarde')).toBeVisible();
+  await pm.getByRole('article').getByRole('link', { name: 'Portal' }).click();
+  await pm.getByRole('status').getByRole('button', { name: 'Reabrir' }).click();
+  const reopenDialog = pm.getByRole('dialog', { name: 'Reabrir proyecto' });
+  await reopenDialog.getByLabel('Motivo').fill('Seguimos con la fase 2');
+  await reopenDialog.getByRole('button', { name: 'Reabrir' }).click();
+  await expect(pm.getByText(/solo lectura/)).toHaveCount(0);
+  await pm.getByRole('link', { name: 'Tareas', exact: true }).click();
+  await expect(pm.getByRole('button', { name: 'Nueva tarea' })).toBeVisible();
 });

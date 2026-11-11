@@ -50,6 +50,23 @@ Esta función es solo para el Project Manager; los colaboradores no ven la pesta
   - Mientras está aceptado, sus criterios no se pueden cambiar.
 - **Panel:** los entregables vencidos (pasada la fecha comprometida y sin aceptar) aparecen en "Requiere atención".
 
+## Cierre y lecciones aprendidas
+
+- **Cerrar un proyecto:** el Project Manager lo hace desde la pestaña **Cierre**.
+  - La pestaña muestra qué queda abierto: entregables sin aceptar, incidentes y riesgos abiertos, tareas sin terminar, objetivos sin evaluar y el acta sin aprobar.
+  - Se puede cerrar igualmente, pero si hay pendientes hay que escribir el motivo.
+  - El estado final puede ser "Cerrado" o "Cancelado"; el formulario del proyecto ya no ofrece esos estados.
+- **Informe de cierre:** compara lo planificado con lo real en fechas, presupuesto, valor ganado (si hay línea base), objetivos, entregables, cambios, incidentes y riesgos.
+  - Con el proyecto abierto se ve como vista previa.
+  - Al cerrar queda congelado tal como estaba y se puede imprimir o guardar como PDF con "Imprimir informe".
+- **Solo lectura:** un proyecto cerrado o cancelado no admite cambios. Se puede consultar todo, borrar el proyecto y añadir lecciones aprendidas.
+  - El Project Manager puede reabrirlo con un motivo, y cada cierre y reapertura queda en el "Historial de cierre".
+  - Los proyectos que ya estaban cerrados antes de esta versión siguen cerrados. Su informe se calcula al consultarlo y se pueden reabrir.
+- **Lecciones aprendidas:** cualquier miembro las registra en la pestaña **Lecciones** del proyecto, en cualquier momento, también con el proyecto cerrado.
+  - Cada lección tiene tipo ("Funcionó bien" o "A mejorar"), categoría, situación y recomendación.
+  - Su autor y el Project Manager pueden editarla o borrarla.
+  - La página **Lecciones** de la navegación principal reúne las de todos los proyectos, con búsqueda y filtros, para cualquier usuario.
+
 ## Requisitos
 
 - Node.js 24

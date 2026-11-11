@@ -14,7 +14,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
       include: { members: { include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: 'asc' } } } },
     });
     const where = { projectId: { in: projects.map((p) => p.id) } };
-    const [tasks, risks, expenses, milestones, incidents] = await Promise.all([
+    const [tasks, risks, expenses, milestones, incidents, deliverables] = await Promise.all([
       prisma.task.findMany({
         where,
         include: { assignees: { include: { user: { select: { id: true, name: true, role: true, active: true } } } } },
@@ -25,6 +25,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
       prisma.incident.findMany({
         where: { ...where, status: { in: ['OPEN', 'IN_PROGRESS'] } },
         select: { id: true, number: true, title: true, projectId: true, priority: true, status: true, dueDate: true },
+      }),
+      prisma.deliverable.findMany({
+        where: { ...where, status: { not: 'ACCEPTED' }, dueDate: { not: null } },
+        select: { id: true, number: true, name: true, projectId: true, status: true, dueDate: true },
       }),
     ]);
     const today = localToday(app.now());
@@ -46,6 +50,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         expenses: expenses.map((e) => ({ projectId: e.projectId, amountCents: Number(e.amountCents) })),
         milestones,
         incidents,
+        deliverables,
       },
       today,
     );

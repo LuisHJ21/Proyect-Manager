@@ -1,4 +1,4 @@
-import { addDays, toPlainText, type Health } from '@pm/shared';
+import { addDays, isDeliverableOverdue, toPlainText, type Health } from '@pm/shared';
 import { isActiveProject, isHighRisk, isOverdue, summarizeProject, type EvmIndexes } from './health';
 import { isIncidentOverdue } from './incidents';
 
@@ -22,6 +22,7 @@ export type DashboardInput = {
   expenses: { projectId: string; amountCents: number }[];
   milestones: { id: string; name: string; dueDate: string; status: string; projectId: string }[];
   incidents?: { id: string; number: number; title: string; projectId: string; priority: string; status: string; dueDate: string | null }[];
+  deliverables?: { id: string; number: number; name: string; projectId: string; status: string; dueDate: string | null }[];
 };
 
 /** Fechas vacías al final. */
@@ -61,6 +62,11 @@ export function buildDashboard(input: DashboardInput, today: string) {
     .filter((i) => (i.status === 'OPEN' || i.status === 'IN_PROGRESS') && (i.priority === 'HIGH' || i.overdue))
     .sort((a, b) => Number(b.overdue) - Number(a.overdue) || a.number - b.number);
 
+  // Entregables vencidos: primero los de fecha más antigua.
+  const overdueDeliverables = inScope(input.deliverables ?? [])
+    .filter((d) => isDeliverableOverdue(d, today))
+    .sort((a, b) => compareDates(a.dueDate, b.dueDate) || a.number - b.number);
+
   const attention = [
     ...[...overdue]
       .sort((a, b) => compareDates(a.dueDate, b.dueDate))
@@ -75,6 +81,15 @@ export function buildDashboard(input: DashboardInput, today: string) {
       priority: i.priority,
       dueDate: i.dueDate,
       overdue: i.overdue,
+    })),
+    ...overdueDeliverables.map((d) => ({
+      kind: 'deliverable' as const,
+      id: d.id,
+      number: d.number,
+      title: d.name,
+      projectId: d.projectId,
+      projectName: projectName(d.projectId),
+      dueDate: d.dueDate,
     })),
     ...[...highRisks]
       .sort((a, b) => b.probability * b.impact - a.probability * a.impact)

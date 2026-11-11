@@ -50,3 +50,18 @@ describe('GET /api/dashboard con incidentes', () => {
     expect(body.attention).toEqual([expect.objectContaining({ kind: 'incident', number: 1, title: 'Caída', projectName: 'Portal', priority: 'HIGH', overdue: false })]);
   });
 });
+
+describe('GET /api/dashboard con entregables', () => {
+  let ctx: TestCtx;
+  afterEach(() => ctx.close());
+
+  it('devuelve los entregables vencidos con número y proyecto', async () => {
+    ctx = await createTestApp();
+    ctx.clock.set('2026-11-11T10:00:00');
+    const pm = await ctx.makeUser({ role: 'PM' });
+    const p = await ctx.makeProject({ name: 'Portal' });
+    await ctx.as(pm).post(`/api/projects/${p.id}/deliverables`, { name: 'Manual', dueDate: '2026-11-05' });
+    const body = (await ctx.as(pm).get('/api/dashboard')).json();
+    expect(body.attention).toEqual([expect.objectContaining({ kind: 'deliverable', number: 1, title: 'Manual', projectName: 'Portal', dueDate: '2026-11-05' })]);
+  });
+});

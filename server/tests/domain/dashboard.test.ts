@@ -183,3 +183,50 @@ describe('incidentes en Requiere atención', () => {
     expect(result.attention.map((a) => a.kind)).toEqual(['task', 'incident', 'risk']);
   });
 });
+
+describe('entregables en Requiere atención', () => {
+  const deliverable = (id: string, projectId: string, over: Partial<NonNullable<DashboardInput['deliverables']>[number]> = {}) => ({
+    id,
+    number: Number(id),
+    name: `Entregable ${id}`,
+    projectId,
+    status: 'PENDING',
+    dueDate: '2026-11-01',
+    ...over,
+  });
+
+  it('muestra los vencidos no aceptados de proyectos activos', () => {
+    const result = buildDashboard(
+      {
+        ...empty,
+        projects: [project('a'), project('b', { status: 'CLOSED' })],
+        deliverables: [
+          deliverable('1', 'a'),
+          deliverable('2', 'a', { status: 'ACCEPTED' }),
+          deliverable('3', 'a', { dueDate: null }),
+          deliverable('4', 'b'),
+          deliverable('5', 'a', { status: 'IN_REVIEW', dueDate: '2026-10-01' }),
+        ],
+      },
+      TODAY,
+    );
+    const items = result.attention.filter((a) => a.kind === 'deliverable');
+    expect(items.map((a) => a.number)).toEqual([5, 1]);
+    expect(items[1]).toMatchObject({ title: 'Entregable 1', projectName: 'Proyecto a', dueDate: '2026-11-01' });
+  });
+
+  it('van después de los incidentes y antes de los riesgos', () => {
+    const result = buildDashboard(
+      {
+        ...empty,
+        projects: [project('a')],
+        tasks: [task('t', 'a', { dueDate: '2026-11-01' })],
+        risks: [risk('r', 'a', 5, 5)],
+        incidents: [{ id: 'i', number: 1, title: 'I', projectId: 'a', priority: 'HIGH', status: 'OPEN', dueDate: null }],
+        deliverables: [deliverable('1', 'a')],
+      },
+      TODAY,
+    );
+    expect(result.attention.map((a) => a.kind)).toEqual(['task', 'incident', 'deliverable', 'risk']);
+  });
+});

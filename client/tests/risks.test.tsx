@@ -115,6 +115,25 @@ describe('riesgo a incidente', () => {
     expect(api.calls.some((c) => c.key === 'POST /api/projects/p1/risks/r1/incident')).toBe(true);
   });
 
+  it('tras pasar a incidente, el detalle abierto muestra el incidente nuevo', async () => {
+    let created = false;
+    mockApi({
+      ...routes,
+      'GET /api/projects/p1/risks': () => [created ? linked : { ...risk, incidents: [] }],
+      'POST /api/projects/p1/risks/r1/incident': () => {
+        created = true;
+        return { id: 'i1', number: 1, title: 'Retraso' };
+      },
+    });
+    renderApp('/proyectos/p1/riesgos');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Ver Retraso' }));
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Sin incidentes.')).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: 'Pasar a incidente' }));
+    expect(await dialog.findByText(/INC-1 · Retraso · Abierto/)).toBeInTheDocument();
+  });
+
   it('el detalle lista los incidentes del riesgo', async () => {
     mockApi({ ...routes, 'GET /api/projects/p1/risks': [linked] });
     renderApp('/proyectos/p1/riesgos');

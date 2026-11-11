@@ -165,7 +165,9 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
   const list = useQuery({ queryKey: key, queryFn: () => api<T[]>(base) });
   const [editing, setEditing] = useState<T | 'new' | null>(null);
   const [deleting, setDeleting] = useState<T | null>(null);
-  const [viewing, setViewing] = useState<T | null>(null);
+  // Se guarda el id y no una copia: así el detalle abierto refleja los datos recargados.
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const viewing = list.data?.find((item) => item.id === viewingId) ?? null;
   const showActions = canEdit || Boolean(detail);
 
   const refresh = async () => {
@@ -226,7 +228,7 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
                   {showActions && (
                     <td className="py-1 text-right whitespace-nowrap">
                       {detail && (
-                        <Button variant="ghost" aria-label={`Ver ${itemLabel(item)}`} onClick={() => setViewing(item)}>
+                        <Button variant="ghost" aria-label={`Ver ${itemLabel(item)}`} onClick={() => setViewingId(item.id)}>
                           Ver
                         </Button>
                       )}
@@ -259,10 +261,10 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
         />
       )}
       {viewing && detail && (
-        <Modal title={detail.title(viewing)} onClose={() => setViewing(null)} wide>
+        <Modal title={detail.title(viewing)} onClose={() => setViewingId(null)} wide>
           {detail.render(viewing)}
           <div className="mt-6 flex justify-end">
-            <Button variant="secondary" onClick={() => setViewing(null)}>
+            <Button variant="secondary" onClick={() => setViewingId(null)}>
               Cerrar
             </Button>
           </div>

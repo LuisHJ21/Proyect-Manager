@@ -227,7 +227,7 @@ export function ChangeRequestsPage() {
         ) : list.data.length === 0 ? (
           <EmptyState>Aún no hay solicitudes de cambio.</EmptyState>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-ink-soft uppercase">
                 <tr>

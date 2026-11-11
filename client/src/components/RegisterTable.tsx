@@ -199,7 +199,7 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
       ) : list.data.length === 0 ? (
         <EmptyState>{emptyText}</EmptyState>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs text-ink-soft uppercase">
               <tr>

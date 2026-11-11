@@ -56,6 +56,13 @@ describe('pestaña Incidentes', () => {
     expect(row('INC-1')).toHaveTextContent('En curso');
   });
 
+  it('la caja de la tabla contiene el texto oculto de la cabecera, para no ensanchar la página en móvil', async () => {
+    mockApi(routes(pmUser, [incident()]));
+    open();
+    const table = await screen.findByRole('table');
+    expect(table.parentElement).toHaveClass('overflow-x-auto', 'relative');
+  });
+
   it('filtros por estado y míos', async () => {
     const api = mockApi(routes(pmUser, [incident()]));
     open();

@@ -130,7 +130,7 @@ export function DecisionsCard({ projectId }: { projectId: string }) {
         ) : list.data.length === 0 ? (
           <EmptyState>Aún no hay decisiones.</EmptyState>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-ink-soft uppercase">
                 <tr>

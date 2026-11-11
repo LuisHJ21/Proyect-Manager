@@ -133,3 +133,53 @@ describe('buildDashboard', () => {
     expect(result.totals).toEqual({ activeProjects: 3, atRiskProjects: 1, overdueTasks: 3, overdueProjects: 2, highRisks: 0, overBudgetProjects: 1 });
   });
 });
+
+describe('incidentes en Requiere atención', () => {
+  const incident = (id: string, projectId: string, over: Partial<NonNullable<DashboardInput['incidents']>[number]> = {}) => ({
+    id,
+    number: Number(id),
+    title: `Incidente ${id}`,
+    projectId,
+    priority: 'MEDIUM',
+    status: 'OPEN',
+    dueDate: null,
+    ...over,
+  });
+
+  it('muestra los de prioridad alta abiertos y los vencidos, no los resueltos ni los de proyectos cerrados', () => {
+    const result = buildDashboard(
+      {
+        ...empty,
+        projects: [project('a'), project('b', { status: 'CLOSED' })],
+        incidents: [
+          incident('1', 'a', { priority: 'HIGH' }),
+          incident('2', 'a', { dueDate: '2026-11-01' }),
+          incident('3', 'a', { priority: 'HIGH', status: 'RESOLVED' }),
+          incident('4', 'b', { priority: 'HIGH' }),
+          incident('5', 'a'),
+        ],
+      },
+      TODAY,
+    );
+    const incidents = result.attention.filter((a) => a.kind === 'incident');
+    expect(incidents.map((a) => [a.number, a.overdue])).toEqual([
+      [2, true],
+      [1, false],
+    ]);
+    expect(incidents[0]).toMatchObject({ projectName: 'Proyecto a', title: 'Incidente 2', priority: 'MEDIUM' });
+  });
+
+  it('las tareas vencidas van antes que los incidentes y los riesgos al final', () => {
+    const result = buildDashboard(
+      {
+        ...empty,
+        projects: [project('a')],
+        tasks: [task('t', 'a', { dueDate: '2026-11-01' })],
+        risks: [risk('r', 'a', 5, 5)],
+        incidents: [incident('1', 'a', { priority: 'HIGH' })],
+      },
+      TODAY,
+    );
+    expect(result.attention.map((a) => a.kind)).toEqual(['task', 'incident', 'risk']);
+  });
+});

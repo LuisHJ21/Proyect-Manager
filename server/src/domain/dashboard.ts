@@ -1,5 +1,6 @@
 import { addDays, toPlainText, type Health } from '@pm/shared';
 import { isActiveProject, isHighRisk, isOverdue, summarizeProject, type EvmIndexes } from './health';
+import { isIncidentOverdue } from './incidents';
 
 const MAX_ATTENTION_ITEMS = 8;
 const UPCOMING_MILESTONE_DAYS = 14;
@@ -20,6 +21,7 @@ export type DashboardInput = {
   risks: { id: string; description: string; projectId: string; probability: number; impact: number; status: string }[];
   expenses: { projectId: string; amountCents: number }[];
   milestones: { id: string; name: string; dueDate: string; status: string; projectId: string }[];
+  incidents?: { id: string; number: number; title: string; projectId: string; priority: string; status: string; dueDate: string | null }[];
 };
 
 /** Fechas vacías al final. */
@@ -53,11 +55,27 @@ export function buildDashboard(input: DashboardInput, today: string) {
 
   const overdue = tasks.filter((t) => isOverdue(t, today));
   const highRisks = risks.filter(isHighRisk);
+  // Incidentes urgentes: abiertos o en curso, de prioridad alta o vencidos. Primero los vencidos.
+  const urgentIncidents = inScope(input.incidents ?? [])
+    .map((i) => ({ ...i, overdue: isIncidentOverdue(i, today) }))
+    .filter((i) => (i.status === 'OPEN' || i.status === 'IN_PROGRESS') && (i.priority === 'HIGH' || i.overdue))
+    .sort((a, b) => Number(b.overdue) - Number(a.overdue) || a.number - b.number);
 
   const attention = [
     ...[...overdue]
       .sort((a, b) => compareDates(a.dueDate, b.dueDate))
       .map((t) => ({ kind: 'task' as const, id: t.id, title: t.title, projectId: t.projectId, projectName: projectName(t.projectId), dueDate: t.dueDate })),
+    ...urgentIncidents.map((i) => ({
+      kind: 'incident' as const,
+      id: i.id,
+      number: i.number,
+      title: i.title,
+      projectId: i.projectId,
+      projectName: projectName(i.projectId),
+      priority: i.priority,
+      dueDate: i.dueDate,
+      overdue: i.overdue,
+    })),
     ...[...highRisks]
       .sort((a, b) => b.probability * b.impact - a.probability * a.impact)
       .map((r) => ({ kind: 'risk' as const, id: r.id, title: toPlainText(r.description), projectId: r.projectId, projectName: projectName(r.projectId), score: r.probability * r.impact })),

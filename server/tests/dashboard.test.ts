@@ -36,3 +36,17 @@ describe('GET /api/dashboard', () => {
     expect(res.json().projects[0].health).toBe('AT_RISK');
   });
 });
+
+describe('GET /api/dashboard con incidentes', () => {
+  let ctx: TestCtx;
+  afterEach(() => ctx.close());
+
+  it('devuelve los incidentes urgentes con número y proyecto', async () => {
+    ctx = await createTestApp();
+    const pm = await ctx.makeUser({ role: 'PM' });
+    const p = await ctx.makeProject({ name: 'Portal' });
+    await ctx.as(pm).post(`/api/projects/${p.id}/incidents`, { title: 'Caída', priority: 'HIGH' });
+    const body = (await ctx.as(pm).get('/api/dashboard')).json();
+    expect(body.attention).toEqual([expect.objectContaining({ kind: 'incident', number: 1, title: 'Caída', projectName: 'Portal', priority: 'HIGH', overdue: false })]);
+  });
+});

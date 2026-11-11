@@ -24,6 +24,7 @@ import { decisionRoutes } from './routes/decisions';
 import { deliverableRoutes } from './routes/deliverables';
 import { deliverableReviewRoutes } from './routes/deliverableReviews';
 import { closureRoutes } from './routes/closure';
+import { lessonRoutes } from './routes/lessons';
 import { registerClosedGuard } from './closedGuard';
 import { taskStepRoutes } from './routes/taskSteps';
 import { taskRoutes } from './routes/tasks';
@@ -72,6 +73,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await deliverableRoutes(app);
   await deliverableReviewRoutes(app);
   await closureRoutes(app);
+  await lessonRoutes(app);
   await taskRoutes(app);
   await taskStepRoutes(app);
   await dependencyRoutes(app);

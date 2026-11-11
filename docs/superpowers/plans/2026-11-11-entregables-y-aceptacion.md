@@ -134,7 +134,7 @@
   - `export const deliverableDetailInclude` y `export function toDeliverableDto(d, today: string, detail: boolean)`: con `detail` false devuelve la forma de la lista; con `detail` true, el detalle de la spec, sección 4. `reviews[].criteria` se devuelve ya parseado.
   - `export async function findDeliverable(prisma, projectId, deliverableId)`: lanza 404 "Entregable no encontrado".
   - `export async function loadDeliverableDetail(prisma, id, today)`: lo usan los criterios y la Tarea 4.
-  - La fecha de hoy sale de `localToday(app.clock.now())`, igual que en incidentes.
+  - La fecha de hoy sale de `localToday(app.now())`, igual que en incidentes.
 
 - [ ] **Step 1: Write the failing tests** (en `describe('API de entregables')`, con el PM, Ana colaboradora, un proyecto y `ctx.clock.set('2026-11-11T10:00:00')`):
   - **"solo el PM":** como Ana, `GET` lista → 403, `POST` → 403, `GET :id` → 403; un no miembro → 404.

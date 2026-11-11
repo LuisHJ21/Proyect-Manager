@@ -273,6 +273,52 @@ test('flujo principal', async ({ browser }) => {
   await expect(pm.getByText('DEC-1')).toBeVisible();
   await expect(pm.getByText('Cierre de INC-1: Servidor de pruebas caído')).toBeVisible();
 
+  // Entregables: el PM registra un interesado y sube el acta; luego rechaza el entregable y después lo acepta.
+  await pm.getByRole('link', { name: 'Interesados' }).click();
+  await pm.getByRole('button', { name: 'Añadir interesado' }).click();
+  await pm.getByRole('dialog').getByLabel('Nombre').fill('Cliente SA');
+  await pm.getByRole('dialog').getByRole('button', { name: 'Guardar' }).click();
+  await expect(pm.getByRole('table').getByText('Cliente SA').first()).toBeVisible();
+  await pm.getByRole('link', { name: 'Anexos' }).click();
+  await pm.getByLabel('Adjuntar archivo').setInputFiles({ name: 'acta de aceptación.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-acta') });
+  await expect(pm.getByRole('link', { name: 'acta de aceptación.pdf' })).toBeVisible();
+
+  await pm.getByRole('link', { name: 'Entregables' }).click();
+  await pm.getByRole('button', { name: 'Añadir entregable' }).click();
+  const newDeliverable = pm.getByRole('dialog', { name: 'Añadir entregable' });
+  await newDeliverable.getByLabel('Nombre').fill('Portal publicado');
+  await newDeliverable.getByLabel('Criterio 1', { exact: true }).fill('Funciona en móvil');
+  await newDeliverable.getByRole('button', { name: 'Añadir criterio' }).click();
+  await newDeliverable.getByLabel('Criterio 2', { exact: true }).fill('Manual entregado');
+  await newDeliverable.getByRole('button', { name: 'Guardar' }).click();
+  await expect(pm.getByRole('table').getByText('ENT-1')).toBeVisible();
+
+  await pm.getByRole('button', { name: 'Ver ENT-1' }).click();
+  const deliverable = pm.getByRole('dialog', { name: 'ENT-1 · Portal publicado' });
+  await deliverable.getByRole('button', { name: 'Enviar a revisión' }).click();
+  await deliverable.getByRole('button', { name: 'Rechazar' }).click();
+  const reject = pm.getByRole('dialog', { name: 'Rechazar ENT-1' });
+  await reject.getByLabel('Nota').fill('Falta el manual');
+  await reject.getByRole('button', { name: 'Rechazar' }).click();
+  await expect(deliverable.getByRole('region', { name: 'Revisiones' }).getByText('Falta el manual')).toBeVisible();
+
+  await deliverable.getByRole('button', { name: 'Enviar a revisión' }).click();
+  await deliverable.getByRole('checkbox', { name: 'Funciona en móvil' }).click();
+  await expect(deliverable.getByRole('checkbox', { name: 'Funciona en móvil' })).toBeChecked();
+  await deliverable.getByRole('checkbox', { name: 'Manual entregado' }).click();
+  await expect(deliverable.getByRole('checkbox', { name: 'Manual entregado' })).toBeChecked();
+  await deliverable.getByRole('button', { name: 'Aceptar' }).click();
+  const accept = pm.getByRole('dialog', { name: 'Aceptar ENT-1' });
+  await accept.getByLabel('Interesado').selectOption({ label: 'Cliente SA' });
+  await accept.getByLabel('Anexo').selectOption({ label: 'acta de aceptación.pdf' });
+  await accept.getByRole('button', { name: 'Aceptar' }).click();
+  const history = deliverable.getByRole('region', { name: 'Revisiones' });
+  await expect(history.getByText('Aceptado')).toBeVisible();
+  await expect(history.getByText('Rechazado')).toBeVisible();
+  await expect(history.getByRole('link', { name: 'acta de aceptación.pdf' })).toBeVisible();
+  await deliverable.getByRole('button', { name: 'Cerrar' }).click();
+  await expect(pm.getByRole('table').getByText('Aceptado')).toBeVisible();
+
   // 7. El PM ve el avance actualizado.
   await pm.goto(`${projectUrl}/resumen`);
   await expect(pm.getByTestId('indicator-progress')).toHaveText('75 %');

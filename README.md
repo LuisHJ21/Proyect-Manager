@@ -35,6 +35,21 @@ Solo el Project Manager ve estas secciones.
 - **Panel:** los incidentes de prioridad alta abiertos y los vencidos aparecen en "Requiere atención".
 - **Decisiones:** en la pestaña **Control de cambios**, el Project Manager registra qué se decidió, quién y por qué, con enlaces a cambios e incidentes. Al cerrar un incidente puede registrarlo como decisión. Los colaboradores no ven las decisiones.
 
+## Entregables y aceptación
+
+Esta función es solo para el Project Manager; los colaboradores no ven la pestaña.
+
+- **Entregables:** en la pestaña **Entregables** se registra cada producto que hay que entregar (ENT-1, ENT-2…). Cada uno puede tener hito, fecha comprometida y una lista de criterios de aceptación.
+- **Revisión:** un entregable pasa de "Pendiente" a "En revisión". Desde ahí se acepta o se rechaza en nombre de un interesado del registro.
+  - Para aceptar, todos los criterios tienen que estar marcados.
+  - Para rechazar hay que escribir el motivo.
+  - Como evidencia se puede elegir un archivo de **Anexos**, por ejemplo el acta firmada. Conviene subirlo antes.
+- **Historial:** cada revisión queda guardada con la fecha, el interesado, la nota, el anexo y cómo estaban los criterios en ese momento.
+  - Si después se borra el interesado o el anexo, el historial conserva el nombre.
+  - Un entregable aceptado se puede reabrir; el historial no se pierde.
+  - Mientras está aceptado, sus criterios no se pueden cambiar.
+- **Panel:** los entregables vencidos (pasada la fecha comprometida y sin aceptar) aparecen en "Requiere atención".
+
 ## Requisitos
 
 - Node.js 24

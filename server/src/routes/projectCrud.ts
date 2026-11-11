@@ -27,10 +27,12 @@ export type ProjectCrudOptions = {
   toDto?: (item: any) => object;
   /** Campos con formato: se limpian antes de validar. */
   richTextFields?: readonly string[];
+  /** Relaciones que se devuelven con cada registro. */
+  include?: object;
 };
 
 export function registerProjectCrud(app: FastifyInstance, options: ProjectCrudOptions) {
-  const { path, delegate, createSchema, updateSchema, readAccess, validate, toDto = (item) => item, richTextFields = [] } = options;
+  const { path, delegate, createSchema, updateSchema, readAccess, validate, toDto = (item) => item, richTextFields = [], include } = options;
   const base = `/api/projects/:id/${path}`;
 
   const findItem = async (projectId: string, itemId: string) => {
@@ -42,7 +44,7 @@ export function registerProjectCrud(app: FastifyInstance, options: ProjectCrudOp
   app.get<{ Params: { id: string } }>(base, async (req) => {
     const { project, isPm } = await getProjectAccess(req, req.params.id);
     if (readAccess === 'pm' && !isPm) throw forbidden();
-    const items = await delegate.findMany({ where: { projectId: project.id }, orderBy: { createdAt: 'asc' } });
+    const items = await delegate.findMany({ where: { projectId: project.id }, orderBy: { createdAt: 'asc' }, include });
     return items.map(toDto);
   });
 
@@ -50,7 +52,7 @@ export function registerProjectCrud(app: FastifyInstance, options: ProjectCrudOp
     const project = await requireProjectPm(req, req.params.id);
     const input = createSchema.parse(sanitizeFields(req.body, richTextFields));
     await validate?.(input, project);
-    const item = await delegate.create({ data: { ...input, projectId: project.id } });
+    const item = await delegate.create({ data: { ...input, projectId: project.id }, include });
     return reply.status(201).send(toDto(item));
   });
 
@@ -59,7 +61,7 @@ export function registerProjectCrud(app: FastifyInstance, options: ProjectCrudOp
     const current = await findItem(project.id, req.params.itemId);
     const input = updateSchema.parse(sanitizeFields(req.body, richTextFields));
     await validate?.({ ...current, ...input }, project);
-    const item = await delegate.update({ where: { id: current.id }, data: input });
+    const item = await delegate.update({ where: { id: current.id }, data: input, include });
     return toDto(item);
   });
 

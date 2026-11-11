@@ -1,10 +1,12 @@
 import { createIncidentSchema, localToday, reportIncidentSchema, toPlainText, updateIncidentSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { getProjectAccess } from '../auth/access';
+import { getProjectAccess, requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { incidentAccess, isIncidentOverdue, truncateTitle, type IncidentViewer } from '../domain/incidents';
+import { HIGH_RISK_SCORE } from '../domain/indicators';
 import { fieldError, forbidden, notFound } from '../errors';
+import { createDecision } from './decisions';
 
 type ItemParams = { id: string; incidentId: string };
 
@@ -111,7 +113,7 @@ export async function incidentRoutes(app: FastifyInstance) {
     if (!access.edit && body && typeof body === 'object' && Object.keys(body).some((k) => k !== 'status' && k !== 'resolution')) {
       throw forbidden('Solo el Project Manager puede cambiar esos datos');
     }
-    const { recordDecision: _recordDecision, ...input } = updateIncidentSchema.parse(body);
+    const { recordDecision, ...input } = updateIncidentSchema.parse(body);
     const nextStatus = input.status ?? incident.status;
     const statusChanged = nextStatus !== incident.status;
     if (statusChanged && (nextStatus === 'CLOSED' || incident.status === 'CLOSED') && !access.close) {
@@ -122,6 +124,9 @@ export async function incidentRoutes(app: FastifyInstance) {
     }
     const resolution = input.resolution ?? incident.resolution;
     if (nextStatus === 'RESOLVED' && !resolution.trim()) throw fieldError('resolution', 'Escribe la resolución');
+    if (recordDecision && !(statusChanged && nextStatus === 'CLOSED')) {
+      throw fieldError('recordDecision', 'Solo se registra una decisión al cerrar el incidente');
+    }
     await assertIncidentLinks(prisma, project.id, input);
 
     const now = app.now();
@@ -132,8 +137,36 @@ export async function incidentRoutes(app: FastifyInstance) {
       if (nextStatus === 'CLOSED') dates.closedAt = now;
       else if (incident.status === 'CLOSED') dates.closedAt = null;
     }
-    const updated = await prisma.incident.update({ where: { id: incident.id }, data: { ...input, ...dates }, include: incidentInclude });
+    const updated = await prisma.$transaction(async (tx) => {
+      const saved = await tx.incident.update({ where: { id: incident.id }, data: { ...input, ...dates }, include: incidentInclude });
+      if (recordDecision) {
+        // Deja constancia del cierre en el registro de decisiones del proyecto.
+        await createDecision(tx, project.id, {
+          title: truncateTitle(`Cierre de INC-${saved.number}: ${saved.title}`),
+          rationale: saved.resolution,
+          decidedBy: requireUser(req).name,
+          decidedOn: today(),
+          incidentId: saved.id,
+        });
+      }
+      return saved;
+    });
     return toIncidentDto(updated, viewer, today());
+  });
+
+  app.post<{ Params: { id: string; riskId: string } }>('/api/projects/:id/risks/:riskId/incident', async (req, reply) => {
+    const project = await requireProjectPm(req, req.params.id);
+    const risk = await prisma.risk.findFirst({ where: { id: req.params.riskId, projectId: project.id } });
+    if (!risk) throw notFound('Riesgo no encontrado');
+    const viewer = { userId: requireUser(req).id, isPm: true };
+    const created = await createIncident(prisma, project.id, {
+      title: truncateTitle(toPlainText(risk.description)) || 'Riesgo materializado',
+      riskId: risk.id,
+      ownerId: risk.ownerId,
+      priority: risk.probability * risk.impact >= HIGH_RISK_SCORE ? 'HIGH' : 'MEDIUM',
+      reportedById: viewer.userId,
+    });
+    return reply.status(201).send(toIncidentDto(created, viewer, today()));
   });
 
   app.delete<{ Params: ItemParams }>(`${base}/:incidentId`, async (req) => {

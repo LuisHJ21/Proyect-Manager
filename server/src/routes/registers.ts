@@ -48,6 +48,7 @@ export async function registerRoutes(app: FastifyInstance) {
     updateSchema: updateRiskSchema,
     readAccess: 'pm',
     richTextFields: ['description', 'responsePlan'],
+    include: { incidents: { select: { id: true, number: true, title: true, status: true }, orderBy: { number: 'asc' } } },
     toDto: (risk) => ({ ...risk, score: risk.probability * risk.impact }),
     validate: async (risk, project) => {
       if (!isResponseValidForType(risk.type, risk.response)) throw fieldError('response', INVALID_RESPONSE_MESSAGE);

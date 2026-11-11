@@ -18,19 +18,20 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  sessions          Session[]
-  memberships       ProjectMember[]
-  assignments       TaskAssignee[]
-  comments          TaskComment[]
-  attachments       Attachment[]
-  ownedRisks        Risk[]
-  approvedCharters  Charter[]
-  taskSteps         TaskStep[]
-  raciCells         RaciCell[]
-  baselines         Baseline[]
-  decidedChanges    ChangeRequest[]
-  reportedIncidents Incident[]      @relation("incidentReporter")
-  ownedIncidents    Incident[]      @relation("incidentOwner")
+  sessions           Session[]
+  memberships        ProjectMember[]
+  assignments        TaskAssignee[]
+  comments           TaskComment[]
+  attachments        Attachment[]
+  ownedRisks         Risk[]
+  approvedCharters   Charter[]
+  taskSteps          TaskStep[]
+  raciCells          RaciCell[]
+  baselines          Baseline[]
+  decidedChanges     ChangeRequest[]
+  reportedIncidents  Incident[]          @relation("incidentReporter")
+  ownedIncidents     Incident[]          @relation("incidentOwner")
+  deliverableReviews DeliverableReview[] @relation("deliverableReviewer")
 }
 
 model Session {
@@ -47,21 +48,22 @@ model Session {
 }
 
 model Project {
-  id                 String   @id @default(cuid())
-  name               String
-  description        String   @default("")
-  status             String   @default("PLANNING")
-  approach           String   @default("PREDICTIVE")
-  startDate          String?
-  endDate            String?
-  plannedBudgetCents BigInt   @default(0)
-  currency           String   @default("USD")
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String   @default("")
+  status                String   @default("PLANNING")
+  approach              String   @default("PREDICTIVE")
+  startDate             String?
+  endDate               String?
+  plannedBudgetCents    BigInt   @default(0)
+  currency              String   @default("USD")
   /// Último número de solicitud de cambio usado; los números no se reutilizan aunque se borre una solicitud.
-  lastChangeNumber   Int      @default(0)
-  lastIncidentNumber Int      @default(0)
-  lastDecisionNumber Int      @default(0)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  lastChangeNumber      Int      @default(0)
+  lastIncidentNumber    Int      @default(0)
+  lastDecisionNumber    Int      @default(0)
+  lastDeliverableNumber Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   members        ProjectMember[]
   charter        Charter?
@@ -78,6 +80,7 @@ model Project {
   evmSnapshots   EvmSnapshot[]
   incidents      Incident[]
   decisions      Decision[]
+  deliverables   Deliverable[]
 }
 
 model ProjectMember {
@@ -140,8 +143,9 @@ model Milestone {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks   Task[]
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+  deliverables Deliverable[]
 
   @@index([projectId])
 }
@@ -244,6 +248,8 @@ model Attachment {
   task       Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
   uploadedBy User    @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
 
+  deliverableReviews DeliverableReview[]
+
   @@index([projectId])
   @@index([taskId])
 }
@@ -261,8 +267,9 @@ model Stakeholder {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  raciCells RaciCell[]
+  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  raciCells          RaciCell[]
+  deliverableReviews DeliverableReview[]
 
   @@index([projectId])
 }
@@ -463,4 +470,64 @@ model Decision {
   incident      Incident?      @relation(fields: [incidentId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, number])
+}
+
+model Deliverable {
+  id          String   @id @default(cuid())
+  projectId   String
+  number      Int
+  name        String
+  description String   @default("")
+  milestoneId String?
+  dueDate     String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone Milestone?             @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  criteria  DeliverableCriterion[]
+  reviews   DeliverableReview[]
+
+  @@unique([projectId, number])
+  @@index([milestoneId])
+}
+
+model DeliverableCriterion {
+  id            String   @id @default(cuid())
+  deliverableId String
+  text          String
+  met           Boolean  @default(false)
+  position      Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+
+  @@index([deliverableId])
+}
+
+model DeliverableReview {
+  id              String   @id @default(cuid())
+  deliverableId   String
+  outcome         String
+  stakeholderId   String?
+  stakeholderName String   @default("")
+  reviewedOn      String
+  note            String   @default("")
+  attachmentId    String?
+  attachmentName  String   @default("")
+  /// Copia JSON de los criterios al revisar: [{ text, met }].
+  criteria        String
+  reviewedById    String
+  createdAt       DateTime @default(now())
+
+  deliverable Deliverable  @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  stakeholder Stakeholder? @relation(fields: [stakeholderId], references: [id], onDelete: SetNull)
+  attachment  Attachment?  @relation(fields: [attachmentId], references: [id], onDelete: SetNull)
+  reviewedBy  User         @relation("deliverableReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@index([deliverableId])
+  @@index([stakeholderId])
+  @@index([attachmentId])
 }

@@ -24,6 +24,6 @@ export async function requireProjectPm(req: FastifyRequest, projectId: string): 
 
 export function toProjectDto(project: Project, isPm: boolean) {
   // Los contadores de cambios, incidentes y decisiones son internos: no se envían a nadie.
-  const { plannedBudgetCents, currency, lastChangeNumber: _c, lastIncidentNumber: _i, lastDecisionNumber: _d, ...visible } = project;
+  const { plannedBudgetCents, currency, lastChangeNumber: _c, lastIncidentNumber: _i, lastDecisionNumber: _d, lastDeliverableNumber: _e, ...visible } = project;
   return isPm ? { ...visible, plannedBudgetCents: Number(plannedBudgetCents), currency } : visible;
 }

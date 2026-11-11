@@ -1,22 +1,21 @@
-import { DELIVERABLE_STATUS, LABELS, type DeliverableStatus } from '@pm/shared';
+import { DELIVERABLE_STATUS, LABELS } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, errorMessage } from '../../api/client';
 import type { DeliverableRow } from '../../api/types';
+import { DELIVERABLE_TONE, DeliverableDetailDialog } from '../../components/deliverables/DeliverableDetail';
 import { deliverableCode, DeliverableForm, deliverablesKey } from '../../components/deliverables/DeliverableForm';
 import { ErrorState, Loading } from '../../components/ErrorState';
-import { Badge, Button, Card, EmptyState, inputClass, type Tone } from '../../components/ui';
+import { Badge, Button, Card, EmptyState, inputClass } from '../../components/ui';
 import { shortDate } from '../../lib/display';
 import { useProject } from './ProjectLayout';
-
-export const DELIVERABLE_TONE: Record<DeliverableStatus, Tone> = { PENDING: 'neutral', IN_REVIEW: 'info', ACCEPTED: 'success', REJECTED: 'danger' };
 
 /** Registro de entregables del proyecto, con sus criterios de aceptación. Solo para el Project Manager. */
 export function DeliverablesPage() {
   const { project } = useProject();
   const [status, setStatus] = useState('');
   const [adding, setAdding] = useState(false);
-  const [, setViewingId] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const list = useQuery({
     queryKey: [...deliverablesKey(project.id), 'list', status],
     queryFn: () => api<DeliverableRow[]>(`/api/projects/${project.id}/deliverables${status ? `?status=${status}` : ''}`),
@@ -88,6 +87,7 @@ export function DeliverablesPage() {
         </div>
       )}
       {adding && <DeliverableForm projectId={project.id} onClose={() => setAdding(false)} />}
+      {viewingId && <DeliverableDetailDialog projectId={project.id} id={viewingId} onClose={() => setViewingId(null)} />}
     </Card>
   );
 }

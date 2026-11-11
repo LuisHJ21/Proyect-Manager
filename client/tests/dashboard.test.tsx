@@ -109,3 +109,17 @@ describe('incidentes en el panel', () => {
     expect(link).toHaveTextContent('Vencido');
   });
 });
+
+describe('entregables en el panel', () => {
+  it('requiere atención muestra entregables vencidos', async () => {
+    mockApi(
+      routes({
+        ...dashboard,
+        attention: [{ kind: 'deliverable', id: 'd3', number: 3, title: 'Portal', projectId: 'p1', projectName: 'Portal', dueDate: '2026-11-01' }],
+      }),
+    );
+    renderApp('/');
+    const link = await screen.findByRole('link', { name: /ENT-3 · Portal está vencido/ });
+    expect(link).toHaveAttribute('href', '/proyectos/p1/entregables');
+  });
+});

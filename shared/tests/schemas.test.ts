@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CHANGE_STATUS, LABELS } from '../src/enums';
-import { baselineSchema, changeRequestSchema, createExpenseSchema, createMilestoneSchema, createTaskSchema, decisionSchema, updateTaskSchema } from '../src/schemas';
+import { CHANGE_STATUS, INCIDENT_STATUS, LABELS } from '../src/enums';
+import { createIncidentSchema, decisionRecordSchema, reportIncidentSchema, updateIncidentSchema, baselineSchema, changeRequestSchema, createExpenseSchema, createMilestoneSchema, createTaskSchema, decisionSchema, updateTaskSchema } from '../src/schemas';
 
 describe('mensajes de validación', () => {
   it('una fecha ausente da un mensaje en español', () => {
@@ -44,5 +44,25 @@ describe('línea base y cambios', () => {
   it('las etiquetas de estado de cambio están en español', () => {
     expect(LABELS.changeStatus).toEqual({ PENDING: 'Pendiente', APPROVED: 'Aprobada', REJECTED: 'Rechazada' });
     expect(CHANGE_STATUS).toEqual(['PENDING', 'APPROVED', 'REJECTED']);
+  });
+});
+
+describe('incidentes y decisiones', () => {
+  it('reportar exige título y no admite una tarea vacía', () => {
+    expect(reportIncidentSchema.safeParse({ title: ' ' }).success).toBe(false);
+    expect(reportIncidentSchema.safeParse({ title: 'X', taskId: '' }).success).toBe(false);
+    expect(reportIncidentSchema.safeParse({ title: 'X', taskId: null }).success).toBe(true);
+  });
+  it('el PM puede fijar responsable, prioridad, fecha y riesgo', () => {
+    expect(createIncidentSchema.parse({ title: 'X', priority: 'HIGH', dueDate: '2026-11-20', ownerId: 'u1', riskId: 'r1' })).toMatchObject({ priority: 'HIGH', ownerId: 'u1' });
+    expect(updateIncidentSchema.safeParse({ status: 'DONE' }).success).toBe(false);
+  });
+  it('la decisión exige fecha válida', () => {
+    expect(decisionRecordSchema.safeParse({ title: 'D', decidedOn: '2026-02-30' }).success).toBe(false);
+    expect(decisionRecordSchema.parse({ title: 'D', decidedOn: '2026-11-10' })).toMatchObject({ rationale: '', decidedBy: '' });
+  });
+  it('los estados de incidente están en español', () => {
+    expect(LABELS.incidentStatus).toEqual({ OPEN: 'Abierto', IN_PROGRESS: 'En curso', RESOLVED: 'Resuelto', CLOSED: 'Cerrado' });
+    expect(INCIDENT_STATUS).toEqual(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']);
   });
 });

@@ -3,6 +3,7 @@ import { diffDays, isValidCalendarDate } from './dates';
 import {
   APPROACH,
   EXPENSE_CATEGORY,
+  INCIDENT_STATUS,
   LEVEL,
   MILESTONE_STATUS,
   OBJECTIVE_STATUS,
@@ -308,4 +309,47 @@ export const updateChangeRequestSchema = z.object({
 export const decisionSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
   note: required('Escribe la nota de la decisión'),
+});
+
+const optionalId = z.string().min(1, 'Selecciona una opción válida').nullable().optional();
+
+/** Lo que puede enviar cualquier miembro al reportar un incidente. */
+export const reportIncidentSchema = z.object({
+  title: required('Escribe el título'),
+  description: z.string().default(''),
+  taskId: optionalId,
+});
+/** Campos que solo fija el Project Manager. */
+export const pmIncidentFields = {
+  ownerId: optionalId,
+  priority: z.enum(PRIORITY).optional(),
+  dueDate: optionalDateSchema,
+  riskId: optionalId,
+};
+export const createIncidentSchema = reportIncidentSchema.extend(pmIncidentFields);
+export const updateIncidentSchema = z.object({
+  title: required('Escribe el título').optional(),
+  description: z.string().optional(),
+  taskId: optionalId,
+  ...pmIncidentFields,
+  status: z.enum(INCIDENT_STATUS).optional(),
+  resolution: z.string().optional(),
+  recordDecision: z.boolean().optional(),
+});
+
+export const decisionRecordSchema = z.object({
+  title: required('Escribe el título'),
+  rationale: z.string().default(''),
+  decidedBy: z.string().default(''),
+  decidedOn: calendarDateSchema,
+  changeRequestId: optionalId,
+  incidentId: optionalId,
+});
+export const updateDecisionRecordSchema = z.object({
+  title: required('Escribe el título').optional(),
+  rationale: z.string().optional(),
+  decidedBy: z.string().optional(),
+  decidedOn: calendarDateSchema.optional(),
+  changeRequestId: optionalId,
+  incidentId: optionalId,
 });

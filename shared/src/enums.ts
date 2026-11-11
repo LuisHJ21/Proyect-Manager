@@ -32,6 +32,8 @@ export type Health = (typeof HEALTH)[number];
 export type ExpenseCategory = (typeof EXPENSE_CATEGORY)[number];
 
 export const CHANGE_STATUS = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+export const INCIDENT_STATUS = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
+export type IncidentStatus = (typeof INCIDENT_STATUS)[number];
 export type ChangeStatus = (typeof CHANGE_STATUS)[number];
 
 export const LABELS = {
@@ -47,6 +49,7 @@ export const LABELS = {
   health: { AT_RISK: 'En riesgo', ATTENTION: 'Atención', ON_TRACK: 'Al día' },
   charterStatus: { DRAFT: 'Borrador', APPROVED: 'Aprobada' },
   changeStatus: { PENDING: 'Pendiente', APPROVED: 'Aprobada', REJECTED: 'Rechazada' },
+  incidentStatus: { OPEN: 'Abierto', IN_PROGRESS: 'En curso', RESOLVED: 'Resuelto', CLOSED: 'Cerrado' },
   objectiveStatus: { PENDING: 'Pendiente', MET: 'Cumplido', NOT_MET: 'No cumplido' },
   milestoneStatus: { PENDING: 'Pendiente', REACHED: 'Alcanzado' },
   taskStatus: { TODO: 'Por hacer', IN_PROGRESS: 'En curso', BLOCKED: 'Bloqueada', DONE: 'Hecha' },

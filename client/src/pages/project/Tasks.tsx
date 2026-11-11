@@ -28,7 +28,7 @@ function readView(param: string | null) {
 }
 
 export function TasksPage() {
-  const { project, isPm } = useProject();
+  const { project, isPm, readOnly } = useProject();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -42,7 +42,7 @@ export function TasksPage() {
     enabled: view === 'cronograma',
   });
   const moveTask = useMoveTask(project.id);
-  const canMove = (task: Task) => isPm || task.assignees.some((a) => a.id === user?.id);
+  const canMove = (task: Task) => !readOnly && (isPm || task.assignees.some((a) => a.id === user?.id));
 
   const filters: { id: QuickFilter; label: string }[] = [
     { id: 'all', label: 'Todas' },

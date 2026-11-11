@@ -1,4 +1,4 @@
-import { APPROACH, LABELS, PROJECT_STATUS, type Approach, type ProjectStatus } from '@pm/shared';
+import { ACTIVE_PROJECT_STATUS, APPROACH, LABELS, type Approach, type ProjectStatus } from '@pm/shared';
 import { useState, type FormEvent } from 'react';
 import { api } from '../../api/client';
 import type { Project } from '../../api/types';
@@ -68,7 +68,7 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
         </div>
         <FormField label="Estado" error={errors.fields.status}>
           <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)}>
-            {PROJECT_STATUS.map((value) => (
+            {ACTIVE_PROJECT_STATUS.map((value) => (
               <option key={value} value={value}>
                 {LABELS.projectStatus[value]}
               </option>

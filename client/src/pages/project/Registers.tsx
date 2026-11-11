@@ -25,7 +25,7 @@ const responseOptions = (type: RiskType): Option[] =>
   RISK_RESPONSE[type].map((value) => ({ value, label: LABELS.riskResponse[value] }));
 
 export function StakeholdersPage() {
-  const { project } = useProject();
+  const { project, readOnly } = useProject();
   const queryClient = useQueryClient();
   return (
     <div className="space-y-6">
@@ -34,7 +34,7 @@ export function StakeholdersPage() {
         path="stakeholders"
         title="Registro de interesados"
         singular="interesado"
-        canEdit
+        canEdit={!readOnly}
         emptyText="Aún no hay interesados registrados."
         itemLabel={(item) => item.name}
         defaults={{ name: '', organization: '', position: '', contact: '', influence: 'MEDIUM', interest: 'MEDIUM', strategy: '' }}
@@ -57,13 +57,13 @@ export function StakeholdersPage() {
         ]}
         onChanged={() => void queryClient.invalidateQueries({ queryKey: raciKey(project.id) })}
       />
-      <RaciMatrix projectId={project.id} />
+      <RaciMatrix projectId={project.id} readOnly={readOnly} />
     </div>
   );
 }
 
 /** Incidentes de un riesgo y el botón para pasarlo a incidente. */
-function RiskIncidents({ projectId, risk }: { projectId: string; risk: Risk }) {
+function RiskIncidents({ projectId, risk, readOnly }: { projectId: string; risk: Risk; readOnly: boolean }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const create = useMutation({
@@ -90,15 +90,17 @@ function RiskIncidents({ projectId, risk }: { projectId: string; risk: Risk }) {
       ) : (
         <p className="text-ink-soft">Sin incidentes.</p>
       )}
-      <Button variant="secondary" disabled={create.isPending} onClick={() => create.mutate()}>
-        Pasar a incidente
-      </Button>
+      {!readOnly && (
+        <Button variant="secondary" disabled={create.isPending} onClick={() => create.mutate()}>
+          Pasar a incidente
+        </Button>
+      )}
     </div>
   );
 }
 
 export function RisksPage() {
-  const { project } = useProject();
+  const { project, readOnly } = useProject();
   const members = useQuery({ queryKey: membersKey(project.id), queryFn: () => api<Member[]>(`/api/projects/${project.id}/members`) });
   const memberName = (id: string | null) => members.data?.find((m) => m.userId === id)?.name ?? '—';
 
@@ -113,7 +115,7 @@ export function RisksPage() {
       path="risks"
       title="Registro de riesgos"
       singular="riesgo"
-      canEdit
+      canEdit={!readOnly}
       emptyText="Aún no hay riesgos registrados."
       itemLabel={(item) => toPlainText(item.description)}
       normalize={normalize}
@@ -129,7 +131,7 @@ export function RisksPage() {
               { label: 'Respuesta', value: LABELS.riskResponse[item.response as keyof typeof LABELS.riskResponse] },
               { label: 'Responsable', value: memberName(item.ownerId) },
               { label: 'Estado', value: LABELS.riskStatus[item.status] },
-              { label: 'Incidentes', value: <RiskIncidents projectId={project.id} risk={item} /> },
+              { label: 'Incidentes', value: <RiskIncidents projectId={project.id} risk={item} readOnly={readOnly} /> },
             ]}
           />
         ),
@@ -202,7 +204,7 @@ function BudgetTotals({ projectId, currency }: { projectId: string; currency: st
 }
 
 export function BudgetPage() {
-  const { project } = useProject();
+  const { project, readOnly } = useProject();
   const currency = project.currency ?? 'USD';
   const tasks = useQuery({ queryKey: tasksKey(project.id), queryFn: () => api<Task[]>(`/api/projects/${project.id}/tasks`) });
   const taskTitle = (id: string | null) => (id ? (tasks.data?.find((t) => t.id === id)?.title ?? '—') : '—');
@@ -214,7 +216,7 @@ export function BudgetPage() {
         path="expenses"
         title="Gastos"
         singular="gasto"
-        canEdit
+        canEdit={!readOnly}
         emptyText="Aún no hay gastos registrados."
         itemLabel={(item) => item.description}
         defaults={{ description: '', amountCents: null, date: '', category: 'LABOR', taskId: null }}
@@ -245,12 +247,12 @@ export function BudgetPage() {
 }
 
 export function AttachmentsPage() {
-  const { project, isPm } = useProject();
+  const { project, isPm, readOnly } = useProject();
   const { user } = useAuth();
   return (
     <Card title="Anexos del proyecto">
       <p className="mb-3 text-sm text-ink-nav">Todos los miembros del proyecto pueden ver y descargar estos archivos.</p>
-      <AttachmentList scope={{ projectId: project.id }} canUpload={isPm} isPm={isPm} currentUserId={user?.id} />
+      <AttachmentList scope={{ projectId: project.id }} canUpload={isPm && !readOnly} isPm={isPm} currentUserId={user?.id} readOnly={readOnly} />
     </Card>
   );
 }

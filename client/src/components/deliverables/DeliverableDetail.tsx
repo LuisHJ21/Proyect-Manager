@@ -63,7 +63,7 @@ function ReviewHistory({ reviews }: { reviews: DeliverableReview[] }) {
 }
 
 /** Detalle de un entregable: criterios, acciones según el estado e historial de revisiones. */
-export function DeliverableDetailDialog({ projectId, id, onClose }: { projectId: string; id: string; onClose: () => void }) {
+export function DeliverableDetailDialog({ projectId, id, readOnly = false, onClose }: { projectId: string; id: string; readOnly?: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const key = [...deliverablesKey(projectId), id];
@@ -173,7 +173,8 @@ export function DeliverableDetailDialog({ projectId, id, onClose }: { projectId:
             { label: 'Fecha comprometida', value: d.dueDate ? `${shortDate(d.dueDate)}${d.overdue ? ' · Vencido' : ''}` : '—' },
           ]}
         />
-        <CriteriaList deliverable={d} change={change} busy={busy} />
+        <CriteriaList deliverable={d} change={change} busy={busy} readOnly={readOnly} />
+        {!readOnly && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             {d.status === 'PENDING' && (
@@ -215,6 +216,7 @@ export function DeliverableDetailDialog({ projectId, id, onClose }: { projectId:
           </div>
           {d.status === 'IN_REVIEW' && !acceptable && <p className="text-sm text-ink-soft">Marca todos los criterios para poder aceptar</p>}
         </div>
+        )}
         <ReviewHistory reviews={d.reviews} />
         <div className="flex justify-end">
           <Button variant="secondary" onClick={onClose}>

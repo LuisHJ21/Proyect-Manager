@@ -13,7 +13,7 @@ import { useProject } from './ProjectLayout';
 
 /** Registro de incidentes del proyecto. El colaborador ve los que reportó o tiene asignados. */
 export function IncidentsPage() {
-  const { project, isPm } = useProject();
+  const { project, isPm, readOnly } = useProject();
   const [status, setStatus] = useState('');
   const [mine, setMine] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -30,7 +30,7 @@ export function IncidentsPage() {
   const viewing = list.data?.find((i) => i.id === viewingId) ?? null;
 
   return (
-    <Card title="Incidentes" actions={<Button variant="secondary" onClick={() => setReporting(true)}>Reportar incidente</Button>}>
+    <Card title="Incidentes" actions={readOnly ? undefined : <Button variant="secondary" onClick={() => setReporting(true)}>Reportar incidente</Button>}>
       <div className="mb-4 flex flex-wrap items-end gap-4">
         <label className="text-sm text-ink-nav">
           <span className="mb-1 block font-medium">Estado</span>
@@ -103,7 +103,7 @@ export function IncidentsPage() {
         </div>
       )}
       {reporting && <IncidentForm projectId={project.id} isPm={isPm} onClose={() => setReporting(false)} />}
-      {viewing && <IncidentDetail projectId={project.id} incident={viewing} isPm={isPm} onClose={() => setViewingId(null)} />}
+      {viewing && <IncidentDetail projectId={project.id} incident={viewing} isPm={isPm} readOnly={readOnly} onClose={() => setViewingId(null)} />}
     </Card>
   );
 }

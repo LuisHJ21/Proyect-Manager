@@ -47,7 +47,7 @@ function DeleteProjectDialog({ project, onClose }: { project: Project; onClose: 
 }
 
 export function SummaryPage() {
-  const { project, isPm } = useProject();
+  const { project, isPm, readOnly } = useProject();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -64,9 +64,11 @@ export function SummaryPage() {
         actions={
           isPm ? (
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setEditing(true)}>
-                Editar proyecto
-              </Button>
+              {!readOnly && (
+                <Button variant="secondary" onClick={() => setEditing(true)}>
+                  Editar proyecto
+                </Button>
+              )}
               <Button variant="ghost" onClick={() => setDeleting(true)}>
                 Eliminar proyecto
               </Button>
@@ -90,9 +92,9 @@ export function SummaryPage() {
           </div>
         </dl>
       </Card>
-      <ObjectivesPanel projectId={project.id} canEdit={isPm} />
-      <MilestonesPanel projectId={project.id} canEdit={isPm} />
-      <MembersPanel projectId={project.id} canEdit={isPm} />
+      <ObjectivesPanel projectId={project.id} canEdit={isPm && !readOnly} />
+      <MilestonesPanel projectId={project.id} canEdit={isPm && !readOnly} />
+      <MembersPanel projectId={project.id} canEdit={isPm && !readOnly} />
       {editing && (
         <ProjectForm
           project={project}

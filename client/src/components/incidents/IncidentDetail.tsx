@@ -19,7 +19,7 @@ export const code = (incident: { number: number }) => `INC-${incident.number}`;
 type Step = 'view' | 'edit' | 'resolve' | 'close' | 'delete';
 
 /** Detalle de un incidente con las acciones que permite `can`. */
-export function IncidentDetail({ projectId, incident, isPm, onClose }: { projectId: string; incident: Incident; isPm: boolean; onClose: () => void }) {
+export function IncidentDetail({ projectId, incident, isPm, readOnly = false, onClose }: { projectId: string; incident: Incident; isPm: boolean; readOnly?: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [step, setStep] = useState<Step>('view');
@@ -123,7 +123,8 @@ export function IncidentDetail({ projectId, incident, isPm, onClose }: { project
     );
   }
 
-  const { can, status } = incident;
+  const { status } = incident;
+  const can = readOnly ? { edit: false, changeStatus: false, close: false } : incident.can;
   return (
     <Modal title={`${code(incident)} · ${incident.title}`} onClose={onClose} wide>
       <FormMessage message={error} />

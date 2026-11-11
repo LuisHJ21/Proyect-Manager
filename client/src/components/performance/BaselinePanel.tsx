@@ -71,16 +71,18 @@ export function BaselinePanel({
   baseline,
   history,
   onFix,
+  readOnly = false,
 }: {
   projectId: string;
   currency: string;
   baseline: BaselineInfo;
   history: BaselineInfo[];
   onFix: (body: { reason: string; changeRequestId?: string }) => Promise<void>;
+  readOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Card title="Línea base" actions={<Button variant="secondary" onClick={() => setOpen(true)}>Fijar nueva línea base</Button>}>
+    <Card title="Línea base" actions={readOnly ? undefined : <Button variant="secondary" onClick={() => setOpen(true)}>Fijar nueva línea base</Button>}>
       <p className="text-sm font-semibold text-ink">Versión {baseline.version}</p>
       <p className="mt-0.5 text-sm text-ink-nav">{describe(baseline, currency)}</p>
       {baseline.reason && <p className="mt-1 text-sm text-ink-nav">Motivo: {baseline.reason}</p>}

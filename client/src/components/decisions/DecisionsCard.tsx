@@ -102,7 +102,7 @@ const links = (d: DecisionRecord) => [d.changeRequest && `CR-${d.changeRequest.n
 type Dialog = { kind: 'new' } | { kind: 'edit' | 'view' | 'delete'; item: DecisionRecord };
 
 /** Registro de decisiones del proyecto. Solo para el Project Manager. */
-export function DecisionsCard({ projectId }: { projectId: string }) {
+export function DecisionsCard({ projectId, readOnly = false }: { projectId: string; readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const list = useQuery({ queryKey: decisionsKey(projectId), queryFn: () => api<DecisionRecord[]>(`/api/projects/${projectId}/decisions`) });
@@ -122,7 +122,7 @@ export function DecisionsCard({ projectId }: { projectId: string }) {
 
   return (
     <div role="region" aria-label="Decisiones">
-      <Card title="Decisiones" actions={<Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir decisión</Button>}>
+      <Card title="Decisiones" actions={readOnly ? undefined : <Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir decisión</Button>}>
         {list.isPending ? (
           <Loading />
         ) : list.isError ? (
@@ -154,8 +154,8 @@ export function DecisionsCard({ projectId }: { projectId: string }) {
                     <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">{links(item)}</td>
                     <td className="py-1 text-right whitespace-nowrap">
                       {action('Ver', item, () => setDialog({ kind: 'view', item }))}
-                      {action('Editar', item, () => setDialog({ kind: 'edit', item }))}
-                      {action('Eliminar', item, () => setDialog({ kind: 'delete', item }))}
+                      {!readOnly && action('Editar', item, () => setDialog({ kind: 'edit', item }))}
+                      {!readOnly && action('Eliminar', item, () => setDialog({ kind: 'delete', item }))}
                     </td>
                   </tr>
                 ))}

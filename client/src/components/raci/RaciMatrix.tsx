@@ -33,7 +33,7 @@ const LEGEND = ['R: hace el trabajo', 'A: rinde cuentas y aprueba', 'C: se le co
 
 const cellKey = (activityId: string, column: Column) => `${activityId}:${column.kind}:${column.id}`;
 
-function RoleSelect({ projectId, activity, column, value }: { projectId: string; activity: Activity; column: Column; value: CellValue }) {
+function RoleSelect({ projectId, activity, column, value, readOnly }: { projectId: string; activity: Activity; column: Column; value: CellValue; readOnly: boolean }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   // Valor elegido mientras se guarda; si falla, se descarta y vuelve el del servidor.
@@ -50,7 +50,7 @@ function RoleSelect({ projectId, activity, column, value }: { projectId: string;
     <select
       aria-label={`${activity.title} — ${column.name}`}
       value={shown ?? ''}
-      disabled={save.isPending}
+      disabled={save.isPending || readOnly}
       onChange={(event) => {
         const role = (event.target.value || null) as CellValue;
         setPending({ role });
@@ -90,7 +90,7 @@ function Warnings({ warnings }: { warnings: RaciWarning[] }) {
 }
 
 /** Matriz RACI del proyecto: actividades en filas y miembros e interesados en columnas. */
-export function RaciMatrix({ projectId }: { projectId: string }) {
+export function RaciMatrix({ projectId, readOnly = false }: { projectId: string; readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const matrix = useQuery({ queryKey: raciKey(projectId), queryFn: () => api<RaciMatrixData>(`/api/projects/${projectId}/raci`) });
@@ -165,17 +165,19 @@ export function RaciMatrix({ projectId }: { projectId: string }) {
                           <Warnings warnings={activity.warnings} />
                         </div>
                       </div>
+                      {!readOnly && (<>
                       <button type="button" aria-label={`Editar ${activity.title}`} onClick={() => setEditing(activity)} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-raised hover:text-ink">
                         <Pencil size={15} aria-hidden="true" />
                       </button>
                       <button type="button" aria-label={`Eliminar ${activity.title}`} onClick={() => setDeleting(activity)} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-raised hover:text-ink">
                         <Trash2 size={15} aria-hidden="true" />
                       </button>
+                      </>)}
                     </div>
                   </th>
                   {columns.map((column) => (
                     <td key={`${column.kind}:${column.id}`} className="border-l border-line px-2 py-2 align-top">
-                      <RoleSelect projectId={projectId} activity={activity} column={column} value={roles.get(cellKey(activity.id, column)) ?? null} />
+                      <RoleSelect projectId={projectId} activity={activity} column={column} value={roles.get(cellKey(activity.id, column)) ?? null} readOnly={readOnly} />
                     </td>
                   ))}
                 </tr>
@@ -189,7 +191,7 @@ export function RaciMatrix({ projectId }: { projectId: string }) {
 
   return (
     <div role="region" aria-label="Matriz RACI">
-      <Card title="Matriz RACI" actions={addButton}>
+      <Card title="Matriz RACI" actions={readOnly ? undefined : addButton}>
         {body}
         <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft" aria-label="Leyenda">
           {LEGEND.map((text) => (

@@ -81,7 +81,7 @@ function TaskTable({ rows, currency }: { rows: Performance['tasks']; currency: s
 
 /** Valor ganado del proyecto contra su línea base. Solo para el Project Manager. */
 export function PerformancePage() {
-  const { project } = useProject();
+  const { project, readOnly } = useProject();
   const queryClient = useQueryClient();
   const currency = project.currency ?? 'USD';
   const performance = useQuery({ queryKey: performanceKey(project.id), queryFn: () => api<Performance>(`/api/projects/${project.id}/performance`) });
@@ -105,11 +105,13 @@ export function PerformancePage() {
         <p className="mt-2 text-sm text-ink-soft">
           {costed === undefined ? 'Contando tareas…' : `${costed} ${costed === 1 ? 'tarea con costo planeado' : 'tareas con costo planeado'}.`}
         </p>
-        <div className="mt-4">
-          <Button disabled={fix.isPending} onClick={() => fix.mutate({})}>
-            Fijar línea base
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="mt-4">
+            <Button disabled={fix.isPending} onClick={() => fix.mutate({})}>
+              Fijar línea base
+            </Button>
+          </div>
+        )}
         <MissingDates projectId={project.id} error={fix.error} />
       </Card>
     );
@@ -133,6 +135,7 @@ export function PerformancePage() {
         <TaskTable rows={data.tasks} currency={currency} />
       </Card>
       <BaselinePanel
+        readOnly={readOnly}
         projectId={project.id}
         currency={currency}
         baseline={data.baseline}

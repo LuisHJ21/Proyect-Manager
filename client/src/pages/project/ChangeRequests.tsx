@@ -193,7 +193,7 @@ type Dialog =
 
 /** Registro de solicitudes de cambio del proyecto. Solo para el Project Manager. */
 export function ChangeRequestsPage() {
-  const { project } = useProject();
+  const { project, readOnly } = useProject();
   const queryClient = useQueryClient();
   const toast = useToast();
   const currency = project.currency ?? 'USD';
@@ -219,7 +219,7 @@ export function ChangeRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <Card title="Solicitudes de cambio" actions={<Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir cambio</Button>}>
+      <Card title="Solicitudes de cambio" actions={readOnly ? undefined : <Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir cambio</Button>}>
         {list.isPending ? (
           <Loading />
         ) : list.isError ? (
@@ -255,7 +255,7 @@ export function ChangeRequestsPage() {
                     <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{new Date(item.createdAt).toLocaleDateString('es')}</td>
                     <td className="py-1 text-right whitespace-nowrap">
                       {action('Ver', item, () => setDialog({ kind: 'view', item }))}
-                      {item.status === 'PENDING' && (
+                      {item.status === 'PENDING' && !readOnly && (
                         <>
                           {action('Aprobar', item, () => setDialog({ kind: 'decide', item, status: 'APPROVED' }))}
                           {action('Rechazar', item, () => setDialog({ kind: 'decide', item, status: 'REJECTED' }))}
@@ -280,7 +280,7 @@ export function ChangeRequestsPage() {
           </ConfirmDialog>
         )}
       </Card>
-      <DecisionsCard projectId={project.id} />
+      <DecisionsCard projectId={project.id} readOnly={readOnly} />
     </div>
   );
 }

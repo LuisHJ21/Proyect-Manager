@@ -12,7 +12,7 @@ import { useProject } from './ProjectLayout';
 
 /** Registro de entregables del proyecto, con sus criterios de aceptación. Solo para el Project Manager. */
 export function DeliverablesPage() {
-  const { project } = useProject();
+  const { project, readOnly } = useProject();
   const [status, setStatus] = useState('');
   const [adding, setAdding] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function DeliverablesPage() {
   });
 
   return (
-    <Card title="Entregables" actions={<Button variant="secondary" onClick={() => setAdding(true)}>Añadir entregable</Button>}>
+    <Card title="Entregables" actions={readOnly ? undefined : <Button variant="secondary" onClick={() => setAdding(true)}>Añadir entregable</Button>}>
       <div className="mb-4">
         <label className="text-sm text-ink-nav">
           <span className="mb-1 block font-medium">Estado</span>
@@ -87,7 +87,7 @@ export function DeliverablesPage() {
         </div>
       )}
       {adding && <DeliverableForm projectId={project.id} onClose={() => setAdding(false)} />}
-      {viewingId && <DeliverableDetailDialog projectId={project.id} id={viewingId} onClose={() => setViewingId(null)} />}
+      {viewingId && <DeliverableDetailDialog projectId={project.id} id={viewingId} readOnly={readOnly} onClose={() => setViewingId(null)} />}
     </Card>
   );
 }

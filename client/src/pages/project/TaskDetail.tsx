@@ -113,7 +113,9 @@ function Property({ label, children }: { label: string; children: ReactNode }) {
 
 export function TaskDetailPage() {
   const { taskId = '' } = useParams();
-  const { project, isPm } = useProject();
+  const { project, isPm: isPmUser, readOnly } = useProject();
+  // Con el proyecto cerrado, nadie edita: ni el PM ni los asignados.
+  const isPm = isPmUser && !readOnly;
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -160,7 +162,7 @@ export function TaskDetailPage() {
   }
 
   const task = detail.data!;
-  const canUpdate = isPm || task.assignees.some((a) => a.id === user?.id);
+  const canUpdate = !readOnly && (isPm || task.assignees.some((a) => a.id === user?.id));
   const milestone = milestones.data?.find((m) => m.id === task.milestoneId);
 
   return (
@@ -201,9 +203,11 @@ export function TaskDetailPage() {
           <section aria-label="Incidentes de la tarea" className="rounded-xl border border-line bg-surface p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-ink">Incidentes</h2>
-              <Button variant="secondary" onClick={() => setReportingIncident(true)}>
-                Reportar incidente
-              </Button>
+              {!readOnly && (
+                <Button variant="secondary" onClick={() => setReportingIncident(true)}>
+                  Reportar incidente
+                </Button>
+              )}
             </div>
             {task.incidents && task.incidents.length > 0 ? (
               <ul className="space-y-1.5 text-sm">
@@ -255,12 +259,12 @@ export function TaskDetailPage() {
               <Property label="Hito">{milestone?.name ?? '—'}</Property>
             </dl>
           </Panel>
-          {isPm && <TaskCosts projectId={project.id} currency={project.currency ?? 'USD'} task={task} />}
+          {isPmUser && <TaskCosts projectId={project.id} currency={project.currency ?? 'USD'} task={task} />}
           <Panel>
             <DependencyPicker task={task} canEdit={isPm} />
           </Panel>
           <Panel title="Anexos">
-            <AttachmentList scope={{ taskId: task.id }} canUpload={canUpdate} isPm={isPm} currentUserId={user?.id} />
+            <AttachmentList scope={{ taskId: task.id }} canUpload={canUpdate} isPm={isPm} currentUserId={user?.id} readOnly={readOnly} />
           </Panel>
         </aside>
       </div>

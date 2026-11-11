@@ -5,8 +5,8 @@ import { Button, inputClass } from '../ui';
 type Change = (path: string, method: 'POST' | 'PATCH' | 'PUT' | 'DELETE', body?: object) => Promise<boolean>;
 
 /** Criterios de aceptación de un entregable. Con el entregable aceptado quedan de solo lectura. */
-export function CriteriaList({ deliverable, change, busy }: { deliverable: DeliverableDetail; change: Change; busy: boolean }) {
-  const locked = deliverable.status === 'ACCEPTED';
+export function CriteriaList({ deliverable, change, busy, readOnly = false }: { deliverable: DeliverableDetail; change: Change; busy: boolean; readOnly?: boolean }) {
+  const locked = readOnly || deliverable.status === 'ACCEPTED';
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const ids = deliverable.criteria.map((c) => c.id);

@@ -10,12 +10,12 @@ import { Button } from '../ui';
 
 type Scope = { projectId: string } | { taskId: string };
 
-type Props = { scope: Scope; canUpload: boolean; isPm: boolean; currentUserId?: string };
+type Props = { scope: Scope; canUpload: boolean; isPm: boolean; currentUserId?: string; readOnly?: boolean };
 
 const formatSize = (bytes: number) =>
   bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
-export function AttachmentList({ scope, canUpload, isPm, currentUserId }: Props) {
+export function AttachmentList({ scope, canUpload, isPm, currentUserId, readOnly = false }: Props) {
   const queryClient = useQueryClient();
   const inputId = useId();
   const base = 'taskId' in scope ? `/api/tasks/${scope.taskId}/attachments` : `/api/projects/${scope.projectId}/attachments`;
@@ -73,7 +73,7 @@ export function AttachmentList({ scope, canUpload, isPm, currentUserId }: Props)
                   {formatSize(attachment.size)} · {attachment.uploadedBy.name}
                 </p>
               </div>
-              {(isPm || attachment.uploadedBy.id === currentUserId) && (
+              {!readOnly && (isPm || attachment.uploadedBy.id === currentUserId) && (
                 <Button variant="ghost" aria-label={`Eliminar ${attachment.originalName}`} onClick={() => setDeleting(attachment)}>
                   Eliminar
                 </Button>

@@ -146,7 +146,7 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
 }
 
 export function CharterPage() {
-  const { project, isPm } = useProject();
+  const { project, isPm, readOnly } = useProject();
   const charter = useQuery({
     queryKey: ['project', project.id, 'charter'],
     queryFn: () => api<Charter>(`/api/projects/${project.id}/charter`),
@@ -154,5 +154,5 @@ export function CharterPage() {
 
   if (charter.isPending) return <Loading />;
   if (isBlockingError(charter)) return <ErrorState message={errorMessage(charter.error)} onRetry={() => charter.refetch()} />;
-  return isPm ? <CharterForm projectId={project.id} charter={charter.data!} /> : <CharterReadOnly charter={charter.data!} />;
+  return isPm && !readOnly ? <CharterForm projectId={project.id} charter={charter.data!} /> : <CharterReadOnly charter={charter.data!} />;
 }

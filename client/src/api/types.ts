@@ -34,6 +34,8 @@ export type Project = {
   approach: Approach;
   startDate: string | null;
   endDate: string | null;
+  /** Fecha del cierre vigente; null si está abierto o se cerró antes del registro de cierres. */
+  closedAt?: string | null;
   progress?: number;
   team?: PersonRef[];
   /** Solo para Project Manager. */

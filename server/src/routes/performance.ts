@@ -1,4 +1,4 @@
-import { addDays, baselineSchema, diffDays, localToday } from '@pm/shared';
+import { addDays, baselineSchema, CLOSED_PROJECT_STATUS, diffDays, localToday } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { requireProjectPm } from '../auth/access';
@@ -111,7 +111,8 @@ export async function performanceRoutes(app: FastifyInstance) {
     const today = localToday(app.now());
     const { metrics, tasks, outsideBaseline } = computeEvm(input, today);
     const snapshot = { bacCents: BigInt(metrics.bacCents), pvCents: BigInt(metrics.pvCents), evCents: BigInt(metrics.evCents), acCents: BigInt(metrics.acCents) };
-    await prisma.evmSnapshot.upsert({
+    // Un proyecto cerrado no acumula fotos: su curva S queda congelada.
+    if (!(CLOSED_PROJECT_STATUS as readonly string[]).includes(project.status)) await prisma.evmSnapshot.upsert({
       where: { projectId_date: { projectId: project.id, date: today } },
       update: snapshot,
       create: { projectId: project.id, date: today, ...snapshot },

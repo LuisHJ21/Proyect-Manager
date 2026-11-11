@@ -88,8 +88,10 @@ export async function userRoutes(app: FastifyInstance) {
     const becomesPm = input.role === 'PM' && target.role !== 'PM';
     const updated = await prisma.$transaction(async (tx) => {
       if (becomesPm) {
-        await tx.taskAssignee.deleteMany({ where: { userId: target.id } });
-        await tx.taskStep.updateMany({ where: { assigneeId: target.id }, data: { assigneeId: null } });
+        // Los proyectos cerrados conservan su historia: solo se tocan las asignaciones de proyectos activos.
+        const active = { project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } };
+        await tx.taskAssignee.deleteMany({ where: { userId: target.id, task: active } });
+        await tx.taskStep.updateMany({ where: { assigneeId: target.id, task: active }, data: { assigneeId: null } });
       }
       return tx.user.update({ where: { id: target.id }, data: input });
     });

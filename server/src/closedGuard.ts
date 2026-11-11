@@ -10,28 +10,27 @@ declare module 'fastify' {
 }
 
 const WRITE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
-const PROJECT_PATH = /^\/api\/projects\/([^/]+)(\/.*)?$/;
-const TASK_PATH = /^\/api\/tasks\/([^/]+)(\/.*)?$/;
-const ATTACHMENT_PATH = /^\/api\/attachments\/([^/]+)$/;
 
-/** Rutas que siguen permitidas con el proyecto cerrado. */
-function isException(method: string, path: string) {
-  const match = PROJECT_PATH.exec(path);
-  if (!match) return false;
-  const rest = match[2] ?? '';
-  if (method === 'DELETE' && rest === '') return true;
-  if (rest === '/lessons' || rest.startsWith('/lessons/')) return true;
-  return method === 'POST' && rest === '/reopen';
+const under = (pattern: string, prefix: string) => pattern === prefix || pattern.startsWith(`${prefix}/`);
+
+/** Rutas (por su patrón, no por la URL recibida) que siguen permitidas con el proyecto cerrado. */
+function isException(method: string, pattern: string) {
+  if (method === 'DELETE' && pattern === '/api/projects/:id') return true;
+  if (under(pattern, '/api/projects/:id/lessons')) return true;
+  return method === 'POST' && pattern === '/api/projects/:id/reopen';
 }
 
-async function projectIdOf(req: FastifyRequest, path: string): Promise<string | null> {
+/**
+ * El proyecto afectado sale del patrón de la ruta y de los parámetros ya decodificados por Fastify,
+ * nunca de la URL cruda: así un id con caracteres codificados (%61…) no se salta el guardia.
+ */
+async function projectIdOf(req: FastifyRequest, pattern: string): Promise<string | null> {
+  const id = (req.params as { id?: string } | undefined)?.id;
+  if (!id) return null;
   const { prisma } = req.server;
-  const project = PROJECT_PATH.exec(path);
-  if (project) return project[1]!;
-  const task = TASK_PATH.exec(path);
-  if (task) return (await prisma.task.findUnique({ where: { id: task[1] }, select: { projectId: true } }))?.projectId ?? null;
-  const attachment = ATTACHMENT_PATH.exec(path);
-  if (attachment) return (await prisma.attachment.findUnique({ where: { id: attachment[1] }, select: { projectId: true } }))?.projectId ?? null;
+  if (under(pattern, '/api/projects/:id')) return id;
+  if (under(pattern, '/api/tasks/:id')) return (await prisma.task.findUnique({ where: { id }, select: { projectId: true } }))?.projectId ?? null;
+  if (pattern === '/api/attachments/:id') return (await prisma.attachment.findUnique({ where: { id }, select: { projectId: true } }))?.projectId ?? null;
   return null;
 }
 
@@ -48,9 +47,9 @@ export function registerClosedGuard(app: FastifyInstance) {
 
   app.addHook('preHandler', async (req) => {
     if (!WRITE_METHODS.has(req.method) || !req.user) return;
-    const path = req.url.split('?')[0]!;
-    if (isException(req.method, path)) return;
-    const projectId = await projectIdOf(req, path);
+    const pattern = req.routeOptions.url;
+    if (!pattern || isException(req.method, pattern)) return;
+    const projectId = await projectIdOf(req, pattern);
     if (!projectId) return;
     const project = await app.prisma.project.findUnique({ where: { id: projectId }, select: { status: true } });
     if (!project || !(CLOSED_PROJECT_STATUS as readonly string[]).includes(project.status)) return;

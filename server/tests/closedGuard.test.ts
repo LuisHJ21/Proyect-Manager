@@ -67,6 +67,23 @@ describe('guardia de solo lectura', () => {
     expect((await ctx.as(pm).patch('/api/tasks/no-existe', { title: 'X' })).statusCode).toBe(404);
   });
 
+  it('un id codificado en la URL no se salta el guardia', async () => {
+    const encode = (id: string) => `%${id.charCodeAt(0).toString(16)}${id.slice(1)}`;
+    const viaProject = await ctx.as(pm).post(`/api/projects/${encode(project.id)}/tasks`, { title: 'Colada' });
+    expect(viaProject.statusCode).toBe(409);
+    const viaTask = await ctx.as(ana).patch(`/api/tasks/${encode(task.id)}/progress`, { progress: 50 });
+    expect(viaTask.statusCode).toBe(409);
+    expect(await ctx.prisma.task.count({ where: { projectId: project.id } })).toBe(1);
+  });
+
+  it('ascender a PM no toca las asignaciones de un proyecto cerrado', async () => {
+    const open = await ctx.makeProject({ members: [ana] });
+    const openTask = await ctx.makeTask(open.id, { title: 'Abierta', assignees: [ana] });
+    expect((await ctx.as(pm).patch(`/api/users/${ana.id}`, { role: 'PM' })).statusCode).toBe(200);
+    expect(await ctx.prisma.taskAssignee.count({ where: { taskId: task.id, userId: ana.id } })).toBe(1);
+    expect(await ctx.prisma.taskAssignee.count({ where: { taskId: openTask.id, userId: ana.id } })).toBe(0);
+  });
+
   it('un proyecto abierto no se bloquea', async () => {
     await setStatus('EXECUTING');
     expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Nuevo' })).statusCode).toBe(200);

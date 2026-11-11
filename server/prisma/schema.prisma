@@ -18,17 +18,19 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  sessions         Session[]
-  memberships      ProjectMember[]
-  assignments      TaskAssignee[]
-  comments         TaskComment[]
-  attachments      Attachment[]
-  ownedRisks       Risk[]
-  approvedCharters Charter[]
-  taskSteps        TaskStep[]
-  raciCells        RaciCell[]
-  baselines        Baseline[]
-  decidedChanges   ChangeRequest[]
+  sessions          Session[]
+  memberships       ProjectMember[]
+  assignments       TaskAssignee[]
+  comments          TaskComment[]
+  attachments       Attachment[]
+  ownedRisks        Risk[]
+  approvedCharters  Charter[]
+  taskSteps         TaskStep[]
+  raciCells         RaciCell[]
+  baselines         Baseline[]
+  decidedChanges    ChangeRequest[]
+  reportedIncidents Incident[]      @relation("incidentReporter")
+  ownedIncidents    Incident[]      @relation("incidentOwner")
 }
 
 model Session {
@@ -56,6 +58,8 @@ model Project {
   currency           String   @default("USD")
   /// Último número de solicitud de cambio usado; los números no se reutilizan aunque se borre una solicitud.
   lastChangeNumber   Int      @default(0)
+  lastIncidentNumber Int      @default(0)
+  lastDecisionNumber Int      @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -72,6 +76,8 @@ model Project {
   baselines      Baseline[]
   changeRequests ChangeRequest[]
   evmSnapshots   EvmSnapshot[]
+  incidents      Incident[]
+  decisions      Decision[]
 }
 
 model ProjectMember {
@@ -164,6 +170,7 @@ model Task {
   attachments  Attachment[]
   steps        TaskStep[]
   expenses     Expense[]
+  incidents    Incident[]
 
   @@index([projectId])
 }
@@ -274,8 +281,9 @@ model Risk {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  incidents Incident[]
 
   @@index([projectId])
 }
@@ -385,6 +393,7 @@ model ChangeRequest {
   project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   decidedBy User?      @relation(fields: [decidedById], references: [id], onDelete: SetNull)
   baselines Baseline[]
+  decisions Decision[]
 
   @@unique([projectId, number])
 }
@@ -401,4 +410,57 @@ model EvmSnapshot {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, date])
+}
+
+model Incident {
+  id           String    @id @default(cuid())
+  projectId    String
+  number       Int
+  title        String
+  description  String    @default("")
+  reportedById String
+  ownerId      String?
+  priority     String    @default("MEDIUM")
+  dueDate      String?
+  status       String    @default("OPEN")
+  resolution   String    @default("")
+  taskId       String?
+  riskId       String?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportedBy User       @relation("incidentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  owner      User?      @relation("incidentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  task       Task?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  risk       Risk?      @relation(fields: [riskId], references: [id], onDelete: SetNull)
+  decisions  Decision[]
+
+  @@unique([projectId, number])
+  @@index([ownerId])
+  @@index([reportedById])
+  @@index([taskId])
+  @@index([riskId])
+}
+
+model Decision {
+  id              String   @id @default(cuid())
+  projectId       String
+  number          Int
+  title           String
+  rationale       String   @default("")
+  decidedBy       String   @default("")
+  decidedOn       String
+  changeRequestId String?
+  incidentId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  changeRequest ChangeRequest? @relation(fields: [changeRequestId], references: [id], onDelete: SetNull)
+  incident      Incident?      @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, number])
 }

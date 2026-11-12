@@ -1,4 +1,5 @@
-import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+import { HTTPException } from 'hono/http-exception';
+import type { Context } from 'hono';
 import { ZodError } from 'zod';
 
 export type ErrorExtras = {
@@ -31,22 +32,24 @@ function zodFields(error: ZodError): Record<string, string> {
   return fields;
 }
 
-export function errorHandler(error: FastifyError | Error, req: FastifyRequest, reply: FastifyReply) {
+export function errorHandler(error: Error, c: Context): Response {
   if (error instanceof AppError) {
-    return reply.status(error.status).send({ error: { code: error.code, message: error.message, ...error.extras } });
+    return c.json({ error: { code: error.code, message: error.message, ...error.extras } }, error.status as 400);
   }
   if (error instanceof ZodError) {
-    return reply.status(400).send({
-      error: { code: 'validation_error', message: 'Revisa los datos ingresados', fields: zodFields(error) },
-    });
+    return c.json({ error: { code: 'validation_error', message: 'Revisa los datos ingresados', fields: zodFields(error) } }, 400);
   }
-  const status = (error as FastifyError).statusCode;
+  const status = error instanceof HTTPException ? error.status : undefined;
   if (status === 413) {
-    return reply.status(413).send({ error: { code: 'file_too_large', message: 'El archivo supera el límite de 25 MB' } });
+    return c.json({ error: { code: 'file_too_large', message: 'El archivo supera el límite de 25 MB' } }, 413);
   }
   if (status && status >= 400 && status < 500) {
-    return reply.status(status).send({ error: { code: 'bad_request', message: 'Solicitud inválida' } });
+    return c.json({ error: { code: 'bad_request', message: 'Solicitud inválida' } }, status);
   }
-  req.log.error(error);
-  return reply.status(500).send({ error: { code: 'internal_error', message: 'Ocurrió un error interno. Inténtalo de nuevo.' } });
+  console.error(error);
+  return c.json({ error: { code: 'internal_error', message: 'Ocurrió un error interno. Inténtalo de nuevo.' } }, 500);
+}
+
+export function notFoundHandler(c: Context): Response {
+  return c.json({ error: { code: 'not_found', message: 'No encontrado' } }, 404);
 }

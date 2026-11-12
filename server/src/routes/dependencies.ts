@@ -1,5 +1,6 @@
+import type { PrismaClient } from '@prisma/client';
 import { dependencySchema } from '@pm/shared';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { readBody, type App, type Ctx } from '../http';
 import { findDependencyCycle } from '../domain/dependencies';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { taskInclude, toTaskDto } from './taskDto';
@@ -7,20 +8,20 @@ import { getTaskAccess } from './tasks';
 
 type Params = { Params: { id: string; predecessorId: string } };
 
-export async function dependencyRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function dependencyRoutes(app: App) {
 
-  const requireTaskPm = async (req: FastifyRequest, taskId: string) => {
-    const { task, isPm } = await getTaskAccess(req, taskId);
+  const requireTaskPm = async (c: Ctx, taskId: string) => {
+    const { task, isPm } = await getTaskAccess(c, taskId);
     if (!isPm) throw forbidden();
     return task;
   };
-  const loadDto = async (taskId: string) =>
+  const loadDto = async (prisma: PrismaClient, taskId: string) =>
     toTaskDto(await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude }), true);
 
-  app.post<{ Params: { id: string } }>('/api/tasks/:id/dependencies', async (req, reply) => {
-    const successor = await requireTaskPm(req, req.params.id);
-    const { predecessorId } = dependencySchema.parse(req.body);
+  app.post('/api/tasks/:id/dependencies', async (c) => {
+    const { prisma } = c.var.deps;
+    const successor = await requireTaskPm(c, c.req.param('id'));
+    const { predecessorId } = dependencySchema.parse(await readBody(c));
 
     const tasks = await prisma.task.findMany({ where: { projectId: successor.projectId }, select: { id: true, title: true } });
     const titles = new Map(tasks.map((t) => [t.id, t.title]));
@@ -43,14 +44,15 @@ export async function dependencyRoutes(app: FastifyInstance) {
     }
 
     await prisma.taskDependency.create({ data: { predecessorId, successorId: successor.id } });
-    return reply.status(201).send(await loadDto(successor.id));
+    return c.json(await loadDto(c.var.deps.prisma, successor.id), 201);
   });
 
-  app.delete<Params>('/api/tasks/:id/dependencies/:predecessorId', async (req) => {
-    const successor = await requireTaskPm(req, req.params.id);
-    const where = { predecessorId_successorId: { predecessorId: req.params.predecessorId, successorId: successor.id } };
+  app.delete('/api/tasks/:id/dependencies/:predecessorId', async (c) => {
+    const { prisma } = c.var.deps;
+    const successor = await requireTaskPm(c, c.req.param('id'));
+    const where = { predecessorId_successorId: { predecessorId: c.req.param('predecessorId'), successorId: successor.id } };
     if (!(await prisma.taskDependency.findUnique({ where }))) throw notFound('Dependencia no encontrada');
     await prisma.taskDependency.delete({ where });
-    return loadDto(successor.id);
+    return c.json(await loadDto(c.var.deps.prisma, successor.id));
   });
 }

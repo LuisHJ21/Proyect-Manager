@@ -1,17 +1,27 @@
 import { createReadStream } from 'node:fs';
 import { access } from 'node:fs/promises';
-import { isAllowedFile } from '@pm/shared';
+import { Readable } from 'node:stream';
+import { isAllowedFile, MAX_FILE_BYTES } from '@pm/shared';
 import type { Attachment } from '@prisma/client';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { bodyLimit } from 'hono/body-limit';
 import { getProjectAccess, requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError, forbidden, notFound } from '../errors';
 import { contentDisposition, normalizeUploadName, removeStoredFiles, saveUpload, storedFilePath } from '../files';
+import type { App, Ctx } from '../http';
 import { getTaskAccess } from './tasks';
 
-type IdParams = { Params: { id: string } };
-
 const uploadedByInclude = { uploadedBy: { select: { id: true, name: true } } };
+
+const fileTooLarge = () => new AppError(413, 'file_too_large', 'El archivo supera el límite de 25 MB');
+
+/** Corta la lectura de cuerpos mucho mayores que el límite antes de procesarlos. */
+const uploadLimit = bodyLimit({
+  maxSize: MAX_FILE_BYTES + 1024 * 1024,
+  onError: () => {
+    throw fileTooLarge();
+  },
+});
 
 function toDto(a: Attachment & { uploadedBy: { id: string; name: string } }) {
   return {
@@ -26,95 +36,102 @@ function toDto(a: Attachment & { uploadedBy: { id: string; name: string } }) {
   };
 }
 
-export async function attachmentRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+async function readFile(c: Ctx): Promise<File> {
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.parseBody();
+  } catch {
+    throw new AppError(400, 'file_required', 'Selecciona un archivo');
+  }
+  const { file } = body;
+  if (!(file instanceof File)) throw new AppError(400, 'file_required', 'Selecciona un archivo');
+  return file;
+}
 
-  const receive = async (req: FastifyRequest, projectId: string, taskId: string | null) => {
-    const file = await req.file();
-    if (!file) throw new AppError(400, 'file_required', 'Selecciona un archivo');
+async function receive(c: Ctx, projectId: string, taskId: string | null) {
+  const { prisma, dataDir } = c.var.deps;
+  const file = await readFile(c);
 
-    const originalName = normalizeUploadName(file.filename);
-    if (!isAllowedFile(originalName, file.mimetype)) {
-      file.file.resume();
-      throw new AppError(415, 'file_type_not_allowed', 'Este tipo de archivo no está permitido');
-    }
+  const originalName = normalizeUploadName(file.name);
+  if (!isAllowedFile(originalName, file.type)) {
+    throw new AppError(415, 'file_type_not_allowed', 'Este tipo de archivo no está permitido');
+  }
+  if (file.size > MAX_FILE_BYTES) throw fileTooLarge();
 
-    const { storedName, size, truncated } = await saveUpload(app.dataDir, file.file);
-    if (truncated) {
-      await removeStoredFiles(app.dataDir, [storedName]);
-      throw new AppError(413, 'file_too_large', 'El archivo supera el límite de 25 MB');
-    }
+  const { storedName, size } = await saveUpload(dataDir, file);
+  try {
+    const attachment = await prisma.attachment.create({
+      data: { projectId, taskId, uploadedById: requireUser(c).id, originalName, storedName, mimeType: file.type, size },
+      include: uploadedByInclude,
+    });
+    return toDto(attachment);
+  } catch (error) {
+    await removeStoredFiles(dataDir, [storedName]);
+    throw error;
+  }
+}
 
-    try {
-      const attachment = await prisma.attachment.create({
-        data: { projectId, taskId, uploadedById: requireUser(req).id, originalName, storedName, mimeType: file.mimetype, size },
-        include: uploadedByInclude,
-      });
-      return toDto(attachment);
-    } catch (error) {
-      await removeStoredFiles(app.dataDir, [storedName]);
-      throw error;
-    }
-  };
+async function list(c: Ctx, where: { projectId: string; taskId: string | null }) {
+  const items = await c.var.deps.prisma.attachment.findMany({ where, include: uploadedByInclude, orderBy: { createdAt: 'asc' } });
+  return items.map(toDto);
+}
 
-  const list = async (where: { projectId: string; taskId: string | null }) => {
-    const items = await prisma.attachment.findMany({ where, include: uploadedByInclude, orderBy: { createdAt: 'asc' } });
-    return items.map(toDto);
-  };
+async function findAttachment(c: Ctx, id: string) {
+  const attachment = await c.var.deps.prisma.attachment.findUnique({ where: { id } });
+  if (!attachment) throw notFound('Anexo no encontrado');
+  return attachment;
+}
 
-  const findAttachment = async (id: string) => {
-    const attachment = await prisma.attachment.findUnique({ where: { id } });
-    if (!attachment) throw notFound('Anexo no encontrado');
-    return attachment;
-  };
-
-  app.get<IdParams>('/api/projects/:id/attachments', async (req) => {
-    const { project } = await getProjectAccess(req, req.params.id);
-    return list({ projectId: project.id, taskId: null });
+export function attachmentRoutes(app: App) {
+  app.get('/api/projects/:id/attachments', async (c) => {
+    const { project } = await getProjectAccess(c, c.req.param('id'));
+    return c.json(await list(c, { projectId: project.id, taskId: null }));
   });
 
-  app.post<IdParams>('/api/projects/:id/attachments', async (req, reply) => {
-    const project = await requireProjectPm(req, req.params.id);
-    return reply.status(201).send(await receive(req, project.id, null));
+  app.post('/api/projects/:id/attachments', uploadLimit, async (c) => {
+    const project = await requireProjectPm(c, c.req.param('id'));
+    return c.json(await receive(c, project.id, null), 201);
   });
 
-  app.get<IdParams>('/api/tasks/:id/attachments', async (req) => {
-    const { task } = await getTaskAccess(req, req.params.id);
-    return list({ projectId: task.projectId, taskId: task.id });
+  app.get('/api/tasks/:id/attachments', async (c) => {
+    const { task } = await getTaskAccess(c, c.req.param('id'));
+    return c.json(await list(c, { projectId: task.projectId, taskId: task.id }));
   });
 
-  app.post<IdParams>('/api/tasks/:id/attachments', async (req, reply) => {
-    const { task, isPm, isAssignee } = await getTaskAccess(req, req.params.id);
+  app.post('/api/tasks/:id/attachments', uploadLimit, async (c) => {
+    const { task, isPm, isAssignee } = await getTaskAccess(c, c.req.param('id'));
     if (!isPm && !isAssignee) throw forbidden('Solo puedes adjuntar archivos a las tareas que tienes asignadas');
-    return reply.status(201).send(await receive(req, task.projectId, task.id));
+    return c.json(await receive(c, task.projectId, task.id), 201);
   });
 
-  app.get<IdParams>('/api/attachments/:id/download', async (req, reply) => {
-    requireUser(req);
-    const attachment = await findAttachment(req.params.id);
-    await getProjectAccess(req, attachment.projectId);
+  app.get('/api/attachments/:id/download', async (c) => {
+    requireUser(c);
+    const attachment = await findAttachment(c, c.req.param('id'));
+    await getProjectAccess(c, attachment.projectId);
 
-    const path = storedFilePath(app.dataDir, attachment.storedName);
+    const path = storedFilePath(c.var.deps.dataDir, attachment.storedName);
     try {
       await access(path);
     } catch {
       throw new AppError(404, 'attachment_file_missing', 'El archivo ya no está disponible en el servidor');
     }
 
-    return reply
-      .header('content-disposition', contentDisposition(attachment.originalName))
-      .header('x-content-type-options', 'nosniff')
-      .type('application/octet-stream')
-      .send(createReadStream(path));
+    return new Response(Readable.toWeb(createReadStream(path)) as unknown as globalThis.ReadableStream, {
+      headers: {
+        'content-disposition': contentDisposition(attachment.originalName),
+        'x-content-type-options': 'nosniff',
+        'content-type': 'application/octet-stream',
+      },
+    });
   });
 
-  app.delete<IdParams>('/api/attachments/:id', async (req) => {
-    const user = requireUser(req);
-    const attachment = await findAttachment(req.params.id);
-    const { isPm } = await getProjectAccess(req, attachment.projectId);
+  app.delete('/api/attachments/:id', async (c) => {
+    const user = requireUser(c);
+    const attachment = await findAttachment(c, c.req.param('id'));
+    const { isPm } = await getProjectAccess(c, attachment.projectId);
     if (!isPm && attachment.uploadedById !== user.id) throw forbidden('Solo puedes eliminar los anexos que subiste');
-    await prisma.attachment.delete({ where: { id: attachment.id } });
-    await removeStoredFiles(app.dataDir, [attachment.storedName]);
-    return { ok: true };
+    await c.var.deps.prisma.attachment.delete({ where: { id: attachment.id } });
+    await removeStoredFiles(c.var.deps.dataDir, [attachment.storedName]);
+    return c.json({ ok: true });
   });
 }

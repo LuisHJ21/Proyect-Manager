@@ -3,15 +3,19 @@ import { Hono } from 'hono';
 import { registerAuthHook } from './auth/guards';
 import { errorHandler, notFoundHandler } from './errors';
 import type { App, AppEnv, Ctx, Deps } from './http';
+import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
 import { calendarRoutes } from './routes/calendar';
 import { charterRoutes } from './routes/charter';
 import { dashboardRoutes } from './routes/dashboard';
+import { dependencyRoutes } from './routes/dependencies';
 import { indicatorRoutes } from './routes/indicators';
 import { memberRoutes } from './routes/members';
 import { projectRoutes } from './routes/projects';
 import { raciRoutes } from './routes/raci';
 import { registerRoutes } from './routes/registers';
+import { taskStepRoutes } from './routes/taskSteps';
+import { taskRoutes } from './routes/tasks';
 import { userRoutes } from './routes/users';
 
 export type BuildAppOptions = {
@@ -46,6 +50,10 @@ export function buildApp(opts: BuildAppOptions): App {
   charterRoutes(app);
   registerRoutes(app);
   raciRoutes(app);
+  taskRoutes(app);
+  taskStepRoutes(app);
+  dependencyRoutes(app);
+  attachmentRoutes(app);
   indicatorRoutes(app);
   dashboardRoutes(app);
   calendarRoutes(app);

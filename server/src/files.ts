@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 export const uploadsDir = (dataDir: string) => join(dataDir, 'uploads');
@@ -13,21 +13,17 @@ export async function removeStoredFiles(dataDir: string, storedNames: string[]):
   await Promise.all(storedNames.map((name) => rm(storedFilePath(dataDir, name), { force: true })));
 }
 
-/** Guarda el archivo con un nombre aleatorio. `truncated` indica que superó el límite de tamaño. */
-export async function saveUpload(dataDir: string, stream: Readable & { truncated?: boolean }) {
+/** Guarda el archivo recibido con un nombre aleatorio. Si la escritura falla no deja residuos. */
+export async function saveUpload(dataDir: string, file: File): Promise<{ storedName: string; size: number }> {
   await mkdir(uploadsDir(dataDir), { recursive: true });
   const storedName = randomUUID();
-  let size = 0;
-  stream.on('data', (chunk: Buffer) => {
-    size += chunk.length;
-  });
   try {
-    await pipeline(stream, createWriteStream(storedFilePath(dataDir, storedName)));
+    await pipeline(Readable.fromWeb(file.stream() as import('node:stream/web').ReadableStream), createWriteStream(storedFilePath(dataDir, storedName)));
   } catch (error) {
     await removeStoredFiles(dataDir, [storedName]);
     throw error;
   }
-  return { storedName, size, truncated: Boolean(stream.truncated) };
+  return { storedName, size: file.size };
 }
 
 /** Limpia el nombre recibido: los navegadores envían las comillas como %22. Nunca se usa como ruta en disco. */

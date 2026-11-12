@@ -80,9 +80,9 @@ export function listRoutes(app: App): { method: string; url: string }[];
 - Produces: `registerAuthHook(app: App)` como middleware de `/api/*` con la misma regla de cambio obligatorio de contraseña; `requireUser(c: Ctx): User`; `requirePm(c: Ctx): User`; `getProjectAccess(c: Ctx, projectId: string)`; `requireProjectPm(c: Ctx, projectId: string)`.
 - Produces, en `testApp.ts`: `httpClient` llama `app.request(url, init)` y devuelve un objeto con las mismas propiedades que las pruebas ya leen de la respuesta de `inject`. `ctx.app` es la aplicación Hono; `close()` ya no llama `app.close()`.
 
-- [ ] **Step 1:** `npm install hono @hono/node-server -w server`.
-- [ ] **Step 2:** Listar qué propiedades de la respuesta usan las pruebas: `grep -rhoE "res[A-Za-z]*\.(statusCode|json\(\)|headers|body|payload|cookies)" server/tests | sed 's/.*\.//' | sort | uniq -c`. El adaptador de `testApp.ts` implementa exactamente esas (como mínimo `statusCode`, `json()`, `headers` y `body`).
-- [ ] **Step 3:** Escribir `server/tests/http.test.ts`:
+- [x] **Step 1:** `npm install hono @hono/node-server -w server`.
+- [x] **Step 2:** Listar qué propiedades de la respuesta usan las pruebas: `grep -rhoE "res[A-Za-z]*\.(statusCode|json\(\)|headers|body|payload|cookies)" server/tests | sed 's/.*\.//' | sort | uniq -c`. El adaptador de `testApp.ts` implementa exactamente esas (como mínimo `statusCode`, `json()`, `headers` y `body`).
+- [x] **Step 3:** Escribir `server/tests/http.test.ts`:
 
 ```ts
 it('responde 400 con el formato común si el JSON no es válido', async () => {
@@ -102,10 +102,10 @@ it('responde 404 con el formato común en una ruta de API inexistente', async ()
 });
 ```
 
-- [ ] **Step 4:** Implementar `http.ts`, `errors.ts`, `guards.ts`, `access.ts` y `app.ts`. El primer middleware de `app.ts` fija `deps`, `user = null` y `sessionToken = null`. En `app.ts` se registran solo `authRoutes` y `userRoutes`; las demás rutas quedan sin registrar hasta las Tasks 2 a 4.
-- [ ] **Step 5:** Convertir `routes/auth.ts` y `routes/users.ts` con la tabla.
-- [ ] **Step 6:** En `server/`: `npx vitest run tests/http.test.ts tests/auth.test.ts tests/users.test.ts tests/usersOverview.test.ts tests/resetPassword.test.ts tests/domain`. Esperado: todas pasan.
-- [ ] **Step 7:** Commit `refactor: núcleo de la API en Hono con autenticación y usuarios`.
+- [x] **Step 4:** Implementar `http.ts`, `errors.ts`, `guards.ts`, `access.ts` y `app.ts`. El primer middleware de `app.ts` fija `deps`, `user = null` y `sessionToken = null`. En `app.ts` se registran solo `authRoutes` y `userRoutes`; las demás rutas quedan sin registrar hasta las Tasks 2 a 4.
+- [x] **Step 5:** Convertir `routes/auth.ts` y `routes/users.ts` con la tabla.
+- [x] **Step 6:** En `server/`: `npx vitest run tests/http.test.ts tests/auth.test.ts tests/users.test.ts tests/usersOverview.test.ts tests/resetPassword.test.ts tests/domain`. Esperado: todas pasan.
+- [x] **Step 7:** Commit `refactor: núcleo de la API en Hono con autenticación y usuarios`.
 
 ### Task 2: Rutas de proyecto en Hono
 
@@ -116,9 +116,9 @@ it('responde 404 con el formato común en una ruta de API inexistente', async ()
 - Consumes: `App`, `Ctx`, `readBody`, guardas y accesos de Task 1.
 - Produces: `registerProjectCrud(app: App, options: ProjectCrudOptions)` con las mismas opciones.
 
-- [ ] **Step 1:** Convertir los archivos con la tabla y registrarlos en `app.ts`.
-- [ ] **Step 2:** En `server/`: `npx vitest run tests/projects.test.ts tests/projectsList.test.ts tests/registers.test.ts tests/charter.test.ts tests/raci.test.ts tests/indicators.test.ts tests/dashboard.test.ts tests/calendar.test.ts tests/richText.test.ts tests/reviewFixes.test.ts`. Las pruebas de estos archivos que dependan de rutas aún no convertidas (tareas, anexos) pueden fallar; anotar cuáles y confirmar que pasan al terminar la Task 3.
-- [ ] **Step 3:** Commit `refactor: rutas de proyecto en Hono`.
+- [x] **Step 1:** Convertir los archivos con la tabla y registrarlos en `app.ts`.
+- [x] **Step 2:** En `server/`: `npx vitest run tests/projects.test.ts tests/projectsList.test.ts tests/registers.test.ts tests/charter.test.ts tests/raci.test.ts tests/indicators.test.ts tests/dashboard.test.ts tests/calendar.test.ts tests/richText.test.ts tests/reviewFixes.test.ts`. Las pruebas de estos archivos que dependan de rutas aún no convertidas (tareas, anexos) pueden fallar; anotar cuáles y confirmar que pasan al terminar la Task 3.
+- [x] **Step 3:** Commit `refactor: rutas de proyecto en Hono`.
 
 ### Task 3: Rutas de tareas y anexos en Hono
 
@@ -129,9 +129,9 @@ it('responde 404 con el formato común en una ruta de API inexistente', async ()
 - Produces: `getTaskAccess(c: Ctx, taskId: string)` con el mismo resultado.
 - Produces: `saveUpload(dataDir: string, file: File): Promise<{ storedName: string; size: number }>` (recibe el `File` de `c.req.parseBody()`).
 
-- [ ] **Step 1:** Convertir con la tabla. En `attachments.ts`: el archivo llega con `const { file } = await c.req.parseBody()`; si no es un `File`, 400 `file_required`; si `file.size > MAX_FILE_BYTES`, 413 `file_too_large`; las dos rutas de subida llevan `bodyLimit` de `hono/body-limit` con `MAX_FILE_BYTES + 1 MB` y el mismo error 413. La descarga devuelve `new Response(Readable.toWeb(createReadStream(path)))` con las mismas cabeceras.
-- [ ] **Step 2:** En `server/`: `npx vitest run tests/tasks.test.ts tests/taskSteps.test.ts tests/taskDates.test.ts tests/dependencies.test.ts tests/assignmentRule.test.ts tests/plannedCost.test.ts tests/attachments.test.ts` y las pruebas anotadas en la Task 2. Esperado: todas pasan.
-- [ ] **Step 3:** Commit `refactor: rutas de tareas y anexos en Hono`.
+- [x] **Step 1:** Convertir con la tabla. En `attachments.ts`: el archivo llega con `const { file } = await c.req.parseBody()`; si no es un `File`, 400 `file_required`; si `file.size > MAX_FILE_BYTES`, 413 `file_too_large`; las dos rutas de subida llevan `bodyLimit` de `hono/body-limit` con `MAX_FILE_BYTES + 1 MB` y el mismo error 413. La descarga devuelve `new Response(Readable.toWeb(createReadStream(path)))` con las mismas cabeceras.
+- [x] **Step 2:** En `server/`: `npx vitest run tests/tasks.test.ts tests/taskSteps.test.ts tests/taskDates.test.ts tests/dependencies.test.ts tests/assignmentRule.test.ts tests/plannedCost.test.ts tests/attachments.test.ts` y las pruebas anotadas en la Task 2. Esperado: todas pasan.
+- [x] **Step 3:** Commit `refactor: rutas de tareas y anexos en Hono`.
 
 ### Task 4: Rutas de control, guardia de solo lectura y retiro de Fastify
 
@@ -144,11 +144,11 @@ it('responde 404 con el formato común en una ruta de API inexistente', async ()
 - Produces: `withStatic(app: App, clientDist: string): App` en `static.ts`: sirve archivos con `serveStatic` de `@hono/node-server/serve-static` y entrega `index.html` en cualquier GET que no empiece por `/api`.
 - Produces: `server/src/index.ts` arranca con `serve({ fetch: app.fetch, port, hostname: '0.0.0.0' })` de `@hono/node-server` y `clientIp` tomado de `getConnInfo` de `@hono/node-server/conninfo`.
 
-- [ ] **Step 1:** Convertir las rutas con la tabla y registrarlas. Antes de escribir el guardia, leer en `node_modules/hono` cómo expone las rutas coincidentes la versión instalada.
-- [ ] **Step 2:** Adaptar `app.test.ts` para construir `withStatic(await buildApp(...), fixtureDist)`; sus aserciones no cambian.
-- [ ] **Step 3:** Quitar de `server/package.json`: `fastify`, `@fastify/cookie`, `@fastify/multipart`, `@fastify/static`. `grep -rn "fastify" server/src server/tests client/src shared/src` no devuelve nada.
-- [ ] **Step 4:** `npm test` y `npm run build && npm run test:e2e`. Esperado: todo en verde.
-- [ ] **Step 5:** Commit `refactor: API completa en Hono; se retira Fastify`.
+- [x] **Step 1:** Convertir las rutas con la tabla y registrarlas. Antes de escribir el guardia, leer en `node_modules/hono` cómo expone las rutas coincidentes la versión instalada.
+- [x] **Step 2:** Adaptar `app.test.ts` para construir `withStatic(await buildApp(...), fixtureDist)`; sus aserciones no cambian.
+- [x] **Step 3:** Quitar de `server/package.json`: `fastify`, `@fastify/cookie`, `@fastify/multipart`, `@fastify/static`. `grep -rn "fastify" server/src server/tests client/src shared/src` no devuelve nada.
+- [x] **Step 4:** `npm test` y `npm run build && npm run test:e2e`. Esperado: todo en verde.
+- [x] **Step 5:** Commit `refactor: API completa en Hono; se retira Fastify`.
 
 ---
 

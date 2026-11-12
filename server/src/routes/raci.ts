@@ -1,15 +1,14 @@
 import { raciActivitySchema, raciCellSchema, updateRaciActivitySchema } from '@pm/shared';
-import type { FastifyInstance } from 'fastify';
+import type { PrismaClient } from '@prisma/client';
+import { readBody, type App } from '../http';
 import { requireProjectPm } from '../auth/access';
 import { raciWarnings } from '../domain/raci';
 import { fieldError, notFound } from '../errors';
 
 type ActivityParams = { id: string; activityId: string };
 
-export async function raciRoutes(app: FastifyInstance) {
-  const { prisma } = app;
-
-  const findActivity = async (projectId: string, activityId: string) => {
+export function raciRoutes(app: App) {
+  const findActivity = async (prisma: PrismaClient, projectId: string, activityId: string) => {
     const activity = await prisma.raciActivity.findFirst({ where: { id: activityId, projectId } });
     if (!activity) throw notFound('Actividad no encontrada');
     return activity;
@@ -17,8 +16,9 @@ export async function raciRoutes(app: FastifyInstance) {
 
   const toActivityDto = (a: { id: string; title: string; description: string }) => ({ id: a.id, title: a.title, description: a.description });
 
-  app.get<{ Params: { id: string } }>('/api/projects/:id/raci', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
+  app.get('/api/projects/:id/raci', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
     const [activities, members, stakeholders] = await Promise.all([
       prisma.raciActivity.findMany({
         where: { projectId: project.id },
@@ -28,7 +28,7 @@ export async function raciRoutes(app: FastifyInstance) {
       prisma.projectMember.findMany({ where: { projectId: project.id }, include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: 'asc' } } }),
       prisma.stakeholder.findMany({ where: { projectId: project.id }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     ]);
-    return {
+    return c.json({
       activities: activities.map((a) => ({ ...toActivityDto(a), warnings: raciWarnings(a.cells.map((c) => c.role)) })),
       members: members.map((m) => ({ id: m.user.id, name: m.user.name })),
       stakeholders,
@@ -40,27 +40,30 @@ export async function raciRoutes(app: FastifyInstance) {
           role: c.role,
         })),
       ),
-    };
+    });
   });
 
-  app.post<{ Params: { id: string } }>('/api/projects/:id/raci/activities', async (req, reply) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const input = raciActivitySchema.parse(req.body);
+  app.post('/api/projects/:id/raci/activities', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const input = raciActivitySchema.parse(await readBody(c));
     const activity = await prisma.raciActivity.create({ data: { ...input, projectId: project.id } });
-    return reply.status(201).send(toActivityDto(activity));
+    return c.json(toActivityDto(activity), 201);
   });
 
-  app.patch<{ Params: ActivityParams }>('/api/projects/:id/raci/activities/:activityId', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const activity = await findActivity(project.id, req.params.activityId);
-    const input = updateRaciActivitySchema.parse(req.body);
-    return toActivityDto(await prisma.raciActivity.update({ where: { id: activity.id }, data: input }));
+  app.patch('/api/projects/:id/raci/activities/:activityId', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const activity = await findActivity(prisma, project.id, c.req.param('activityId'));
+    const input = updateRaciActivitySchema.parse(await readBody(c));
+    return c.json(toActivityDto(await prisma.raciActivity.update({ where: { id: activity.id }, data: input })));
   });
 
-  app.put<{ Params: { id: string } }>('/api/projects/:id/raci/cells', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const input = raciCellSchema.parse(req.body);
-    const activity = await findActivity(project.id, input.activityId);
+  app.put('/api/projects/:id/raci/cells', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const input = raciCellSchema.parse(await readBody(c));
+    const activity = await findActivity(prisma, project.id, input.activityId);
     const party =
       input.kind === 'member'
         ? await prisma.projectMember.findUnique({ where: { projectId_userId: { projectId: project.id, userId: input.partyId } } })
@@ -77,13 +80,14 @@ export async function raciRoutes(app: FastifyInstance) {
           : { activityId_stakeholderId: { activityId: activity.id, stakeholderId: input.partyId } };
       await prisma.raciCell.upsert({ where, update: { role: input.role }, create: { activityId: activity.id, role: input.role, ...owner } });
     }
-    return { ok: true };
+    return c.json({ ok: true });
   });
 
-  app.delete<{ Params: ActivityParams }>('/api/projects/:id/raci/activities/:activityId', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const activity = await findActivity(project.id, req.params.activityId);
+  app.delete('/api/projects/:id/raci/activities/:activityId', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const activity = await findActivity(prisma, project.id, c.req.param('activityId'));
     await prisma.raciActivity.delete({ where: { id: activity.id } });
-    return { ok: true };
+    return c.json({ ok: true });
   });
 }

@@ -194,7 +194,7 @@ it('todas las tablas públicas tienen RLS activado', async () => {
 - Produces: `localToday(now: Date, timeZone?: string): string`. Con `timeZone` usa `Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })`; sin él, el comportamiento actual.
 - Produces: `timeZone?: string` en las opciones de `buildApp` y `Deps.today(): string`, igual a `localToday(deps.now(), timeZone)`.
 
-- [ ] **Step 1:** Prueba en `shared/tests/dates.test.ts`:
+- [x] **Step 1:** Prueba en `shared/tests/dates.test.ts`:
 
 ```ts
 it('calcula la fecha en la zona indicada', () => {
@@ -204,11 +204,11 @@ it('calcula la fecha en la zona indicada', () => {
 });
 ```
 
-- [ ] **Step 2:** Prueba en `server/tests/timezone.test.ts`: aplicación creada con `timeZone: 'America/Lima'` y reloj en `2026-11-07T01:00:00Z`; una tarea con `dueDate: '2026-11-06'` y estado `TODO` da `overdueTasks === 0` en `GET /api/projects/:id/indicators`. `createTestApp` acepta `{ timeZone }` y lo pasa a `buildApp`.
-- [ ] **Step 3:** Ejecutar ambas y verlas fallar.
-- [ ] **Step 4:** Implementar `localToday` con el segundo parámetro, `deps.today`, y sustituir en el servidor cada `localToday(c.var.deps.now())` por `c.var.deps.today()` (los ayudantes locales `const today = () => …` de `closure.ts` e `incidents.ts` pasan a devolver `c.var.deps.today()`).
-- [ ] **Step 5:** `npm test`. Esperado: verde.
-- [ ] **Step 6:** Commit `feat: fecha del servidor según APP_TIMEZONE`.
+- [x] **Step 2:** Prueba en `server/tests/timezone.test.ts`: aplicación creada con `timeZone: 'America/Lima'` y reloj en `2026-11-07T01:00:00Z`; una tarea con `dueDate: '2026-11-06'` y estado `TODO` da `overdueTasks === 0` en `GET /api/projects/:id/indicators`. `createTestApp` acepta `{ timeZone }` y lo pasa a `buildApp`.
+- [x] **Step 3:** Ejecutar ambas y verlas fallar.
+- [x] **Step 4:** Implementar `localToday` con el segundo parámetro, `deps.today`, y sustituir en el servidor cada `localToday(c.var.deps.now())` por `c.var.deps.today()` (los ayudantes locales `const today = () => …` de `closure.ts` e `incidents.ts` pasan a devolver `c.var.deps.today()`).
+- [x] **Step 5:** `npm test`. Esperado: verde.
+- [x] **Step 6:** Commit `feat: fecha del servidor según APP_TIMEZONE`.
 
 ### Task 7: Limitador de intentos en la base de datos
 

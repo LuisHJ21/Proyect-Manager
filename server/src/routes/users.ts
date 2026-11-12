@@ -1,4 +1,4 @@
-import { ACTIVE_PROJECT_STATUS, createUserSchema, localToday, resetPasswordSchema, updateUserSchema } from '@pm/shared';
+import { ACTIVE_PROJECT_STATUS, createUserSchema, resetPasswordSchema, updateUserSchema } from '@pm/shared';
 import type { User } from '@prisma/client';
 import { requirePm } from '../auth/guards';
 import { hashPassword } from '../auth/passwords';
@@ -28,7 +28,7 @@ export function userRoutes(app: App) {
         },
       },
     });
-    const today = localToday(c.var.deps.now());
+    const today = c.var.deps.today();
     return c.json(users.map((user) => ({
       ...toUserDto(user),
       projects: user.memberships.map((m) => ({ id: m.project.id, name: m.project.name, projectRole: m.projectRole })),

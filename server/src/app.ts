@@ -1,3 +1,4 @@
+import { localToday } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { Hono } from 'hono';
 import { registerAuthHook } from './auth/guards';
@@ -31,15 +32,19 @@ export type BuildAppOptions = {
   prisma: PrismaClient;
   dataDir: string;
   now?: () => Date;
+  /** Zona para calcular "hoy" (APP_TIMEZONE). Sin ella, la del sistema. */
+  timeZone?: string;
   clientIp?: (c: Ctx) => string;
 };
 
 export function buildApp(opts: BuildAppOptions): App {
   const app = new Hono<AppEnv>();
+  const now = opts.now ?? (() => new Date());
   const deps: Deps = {
     prisma: opts.prisma,
     dataDir: opts.dataDir,
-    now: opts.now ?? (() => new Date()),
+    now,
+    today: () => localToday(now(), opts.timeZone),
     clientIp: opts.clientIp ?? (() => '127.0.0.1'),
   };
 

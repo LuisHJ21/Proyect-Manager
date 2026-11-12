@@ -5,8 +5,14 @@ function toUtcMs(date: string): number {
   return Date.UTC(year!, month! - 1, day!);
 }
 
-/** Fecha de calendario local del instante dado, en formato YYYY-MM-DD. */
-export function localToday(now: Date): string {
+/**
+ * Fecha de calendario del instante dado, en formato YYYY-MM-DD.
+ * Con `timeZone` (por ejemplo `America/Lima`) se calcula en esa zona; sin ella, en la del sistema.
+ */
+export function localToday(now: Date, timeZone?: string): string {
+  if (timeZone) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  }
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${now.getFullYear()}-${month}-${day}`;

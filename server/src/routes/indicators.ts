@@ -1,4 +1,3 @@
-import { localToday } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { getProjectAccess } from '../auth/access';
 import { computeIndicators } from '../domain/indicators';
@@ -17,6 +16,6 @@ export function indicatorRoutes(app: App) {
           risks: await prisma.risk.findMany({ where }),
         }
       : {};
-    return c.json(computeIndicators({ tasks, milestones, ...pmData }, localToday(c.var.deps.now())));
+    return c.json(computeIndicators({ tasks, milestones, ...pmData }, c.var.deps.today()));
   });
 }

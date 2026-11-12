@@ -2,7 +2,14 @@ import type { PrismaClient, User } from '@prisma/client';
 import type { Context, Hono } from 'hono';
 import { AppError } from './errors';
 
-export type Deps = { prisma: PrismaClient; dataDir: string; now(): Date; clientIp(c: Ctx): string };
+export type Deps = {
+  prisma: PrismaClient;
+  dataDir: string;
+  now(): Date;
+  /** Fecha de hoy (YYYY-MM-DD) en la zona configurada. */
+  today(): string;
+  clientIp(c: Ctx): string;
+};
 export type AppEnv = { Variables: { deps: Deps; user: User | null; sessionToken: string | null } };
 export type App = Hono<AppEnv>;
 export type Ctx = Context<AppEnv>;

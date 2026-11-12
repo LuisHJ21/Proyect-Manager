@@ -1,4 +1,4 @@
-import { ACTIVE_PROJECT_STATUS, localToday } from '@pm/shared';
+import { ACTIVE_PROJECT_STATUS } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { requirePm } from '../auth/guards';
 import { buildDashboard } from '../domain/dashboard';
@@ -31,7 +31,7 @@ export function dashboardRoutes(app: App) {
         select: { id: true, number: true, name: true, projectId: true, status: true, dueDate: true },
       }),
     ]);
-    const today = localToday(c.var.deps.now());
+    const today = c.var.deps.today();
     const evm = await loadEvmIndexes(prisma, projects.map((p) => p.id), today);
 
     return c.json(buildDashboard(

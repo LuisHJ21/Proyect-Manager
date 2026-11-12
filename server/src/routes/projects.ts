@@ -1,4 +1,4 @@
-import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrderValid, localToday, updateProjectSchema } from '@pm/shared';
+import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrderValid, updateProjectSchema } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { readBody, type App } from '../http';
 import { getProjectAccess, requireProjectPm, toProjectDto } from '../auth/access';
@@ -37,7 +37,7 @@ export function projectRoutes(app: App) {
     });
     const averages = await prisma.task.groupBy({ by: ['projectId'], _avg: { progress: true } });
     const progressById = new Map(averages.map((a) => [a.projectId, Math.round(a._avg.progress ?? 0)]));
-    const summaries = isPm ? await loadProjectSummaries(prisma, projects, localToday(c.var.deps.now())) : null;
+    const summaries = isPm ? await loadProjectSummaries(prisma, projects, c.var.deps.today()) : null;
     return c.json(projects.map(({ members, ...project }) => {
       const summary = summaries?.get(project.id);
       return {

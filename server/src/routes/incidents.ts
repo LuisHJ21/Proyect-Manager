@@ -1,4 +1,4 @@
-import { createIncidentSchema, localToday, reportIncidentSchema, toPlainText, updateIncidentSchema } from '@pm/shared';
+import { createIncidentSchema, reportIncidentSchema, toPlainText, updateIncidentSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, readQuery, type App, type Ctx } from '../http';
 import { getProjectAccess, requireProjectPm } from '../auth/access';
@@ -74,7 +74,7 @@ export function incidentRoutes(app: App) {
     return { project, viewer, incident };
   };
 
-  const today = (c: Ctx) => localToday(c.var.deps.now());
+  const today = (c: Ctx) => c.var.deps.today();
 
   app.get(base, async (c) => {
     const { prisma } = c.var.deps;

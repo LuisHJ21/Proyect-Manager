@@ -17,7 +17,7 @@ const port = resolvePort(process.env);
 const clientDist = resolve(rootDir, 'client/dist');
 
 const prisma = new PrismaClient({ datasources: { db: { url: resolveDatabaseUrl(process.env) } } });
-const api = buildApp({ prisma, dataDir, clientIp: (c) => getConnInfo(c).remote.address ?? '127.0.0.1' });
+const api = buildApp({ prisma, dataDir, timeZone: process.env.APP_TIMEZONE, clientIp: (c) => getConnInfo(c).remote.address ?? '127.0.0.1' });
 let app = api;
 if (existsSync(clientDist)) app = withStatic(api, clientDist);
 else console.warn('No se encontró la interfaz compilada. Ejecuta "npm run build".');

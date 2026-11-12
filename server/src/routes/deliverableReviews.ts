@@ -1,4 +1,4 @@
-import { canAccept, deliverableReviewSchema, localToday } from '@pm/shared';
+import { canAccept, deliverableReviewSchema } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
@@ -47,6 +47,6 @@ export function deliverableReviewRoutes(app: App) {
       }),
       prisma.deliverable.update({ where: { id: deliverable.id }, data: { status: input.outcome } }),
     ]);
-    return c.json(await loadDeliverableDetail(prisma, deliverable.id, localToday(c.var.deps.now())));
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, c.var.deps.today()));
   });
 }

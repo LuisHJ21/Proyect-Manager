@@ -5,7 +5,6 @@ import {
   deliverableSchema,
   isDeliverableOverdue,
   canTransition,
-  localToday,
   updateCriterionSchema,
   updateDeliverableSchema,
   type DeliverableStatus,
@@ -80,7 +79,7 @@ const acceptedLocked = () => new AppError(409, 'deliverable_accepted', 'El entre
 
 export function deliverableRoutes(app: App) {
   const base = '/api/projects/:id/deliverables';
-  const today = (c: Ctx) => localToday(c.var.deps.now());
+  const today = (c: Ctx) => c.var.deps.today();
 
   const assertMilestone = async (prisma: PrismaClient, projectId: string, milestoneId: string | null | undefined) => {
     if (milestoneId && !(await prisma.milestone.findFirst({ where: { id: milestoneId, projectId }, select: { id: true } }))) {

@@ -1,4 +1,4 @@
-import { addDays, baselineSchema, CLOSED_PROJECT_STATUS, diffDays, localToday } from '@pm/shared';
+import { addDays, baselineSchema, CLOSED_PROJECT_STATUS, diffDays } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
@@ -109,7 +109,7 @@ export function performanceRoutes(app: App) {
       return c.json({ baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, series: [] });
     }
 
-    const today = localToday(c.var.deps.now());
+    const today = c.var.deps.today();
     const { metrics, tasks, outsideBaseline } = computeEvm(input, today);
     const snapshot = { bacCents: BigInt(metrics.bacCents), pvCents: BigInt(metrics.pvCents), evCents: BigInt(metrics.evCents), acCents: BigInt(metrics.acCents) };
     // Un proyecto cerrado no acumula fotos: su curva S queda congelada.

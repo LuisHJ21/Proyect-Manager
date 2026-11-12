@@ -1,4 +1,4 @@
-import { ACTIVE_PROJECT_STATUS, CLOSED_PROJECT_STATUS, closeProjectSchema, localToday, reopenProjectSchema } from '@pm/shared';
+import { ACTIVE_PROJECT_STATUS, CLOSED_PROJECT_STATUS, closeProjectSchema, reopenProjectSchema } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
@@ -42,7 +42,7 @@ export async function loadClosureInput(prisma: PrismaClient, projectId: string):
 const isClosed = (status: string) => (CLOSED_PROJECT_STATUS as readonly string[]).includes(status);
 
 export function closureRoutes(app: App) {
-  const today = (c: Ctx) => localToday(c.var.deps.now());
+  const today = (c: Ctx) => c.var.deps.today();
 
   /** Estado de cierre del proyecto: informe (en vivo o congelado), cierre vigente e historial. */
   const closureState = async (c: Ctx, projectId: string) => {

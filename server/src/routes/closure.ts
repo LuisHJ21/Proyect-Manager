@@ -1,6 +1,6 @@
 import { ACTIVE_PROJECT_STATUS, CLOSED_PROJECT_STATUS, closeProjectSchema, localToday, reopenProjectSchema } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
-import type { FastifyInstance } from 'fastify';
+import { readBody, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { buildClosureReport, closurePendings, type ClosureInput, type ClosureReport } from '../domain/closure';
@@ -41,12 +41,12 @@ export async function loadClosureInput(prisma: PrismaClient, projectId: string):
 
 const isClosed = (status: string) => (CLOSED_PROJECT_STATUS as readonly string[]).includes(status);
 
-export async function closureRoutes(app: FastifyInstance) {
-  const { prisma } = app;
-  const today = () => localToday(app.now());
+export function closureRoutes(app: App) {
+  const today = (c: Ctx) => localToday(c.var.deps.now());
 
   /** Estado de cierre del proyecto: informe (en vivo o congelado), cierre vigente e historial. */
-  const closureState = async (projectId: string) => {
+  const closureState = async (c: Ctx, projectId: string) => {
+    const { prisma } = c.var.deps;
     const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { status: true } });
     const closures = await prisma.projectClosure.findMany({
       where: { projectId },
@@ -54,8 +54,8 @@ export async function closureRoutes(app: FastifyInstance) {
       include: { closedBy: person, reopenedBy: person },
     });
     const closed = isClosed(project.status);
-    const current = closed ? (closures.find((c) => !c.reopenedAt) ?? null) : null;
-    const report: ClosureReport = current ? JSON.parse(current.report) : buildClosureReport(await loadClosureInput(prisma, projectId), today());
+    const current = closed ? (closures.find((x) => !x.reopenedAt) ?? null) : null;
+    const report: ClosureReport = current ? JSON.parse(current.report) : buildClosureReport(await loadClosureInput(prisma, projectId), today(c));
     return {
       status: closed ? ('closed' as const) : ('open' as const),
       legacy: closed && !current,
@@ -78,22 +78,23 @@ export async function closureRoutes(app: FastifyInstance) {
     };
   };
 
-  app.get<{ Params: { id: string } }>('/api/projects/:id/closure', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    return closureState(project.id);
+  app.get('/api/projects/:id/closure', async (c) => {
+    const project = await requireProjectPm(c, c.req.param('id'));
+    return c.json(await closureState(c, project.id));
   });
 
-  app.post<{ Params: { id: string } }>('/api/projects/:id/closure', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const user = requireUser(req);
-    const input = closeProjectSchema.parse(req.body);
+  app.post('/api/projects/:id/closure', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const user = requireUser(c);
+    const input = closeProjectSchema.parse(await readBody(c));
     if (isClosed(project.status)) throw new AppError(409, 'project_already_closed', 'El proyecto ya está cerrado');
     const closureInput = await loadClosureInput(prisma, project.id);
     if (closurePendings(closureInput).length > 0 && !input.pendingReason.trim()) {
       throw fieldError('pendingReason', 'Explica por qué se cierra con pendientes');
     }
-    const now = app.now();
-    const report = buildClosureReport(closureInput, today());
+    const now = c.var.deps.now();
+    const report = buildClosureReport(closureInput, today(c));
     await prisma.$transaction(async (tx) => {
       const { count } = await tx.project.updateMany({
         where: { id: project.id, status: { in: [...ACTIVE_PROJECT_STATUS] } },
@@ -112,16 +113,17 @@ export async function closureRoutes(app: FastifyInstance) {
         },
       });
     });
-    return closureState(project.id);
+    return c.json(await closureState(c, project.id));
   });
 
-  app.post<{ Params: { id: string } }>('/api/projects/:id/reopen', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const user = requireUser(req);
-    const { reason } = reopenProjectSchema.parse(req.body);
-    const now = app.now();
+  app.post('/api/projects/:id/reopen', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const user = requireUser(c);
+    const { reason } = reopenProjectSchema.parse(await readBody(c));
+    const now = c.var.deps.now();
     // La foto para un cierre anterior a esta versión se calcula fuera de la transacción.
-    const legacyReport = JSON.stringify(buildClosureReport(await loadClosureInput(prisma, project.id), today()));
+    const legacyReport = JSON.stringify(buildClosureReport(await loadClosureInput(prisma, project.id), today(c)));
     await prisma.$transaction(async (tx) => {
       const before = await tx.project.findUniqueOrThrow({ where: { id: project.id }, select: { status: true } });
       const { count } = await tx.project.updateMany({
@@ -139,6 +141,6 @@ export async function closureRoutes(app: FastifyInstance) {
         });
       }
     });
-    return closureState(project.id);
+    return c.json(await closureState(c, project.id));
   });
 }

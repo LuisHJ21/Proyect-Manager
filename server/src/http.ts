@@ -32,3 +32,12 @@ export function listRoutes(app: App): { method: string; url: string }[] {
   }
   return routes;
 }
+
+/** Parámetros de consulta como los entregaba Fastify: un valor repetido llega como arreglo. */
+export function readQuery(c: Ctx): Record<string, string | string[]> {
+  const query: Record<string, string | string[]> = {};
+  for (const [key, values] of Object.entries(c.req.queries())) {
+    query[key] = values.length === 1 ? values[0]! : values;
+  }
+  return query;
+}

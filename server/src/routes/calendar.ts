@@ -1,5 +1,5 @@
 import { ACTIVE_PROJECT_STATUS, calendarRangeSchema } from '@pm/shared';
-import { readBody, type App, type Ctx } from '../http';
+import { readBody, readQuery, type App, type Ctx } from '../http';
 import { requireUser } from '../auth/guards';
 
 export function calendarRoutes(app: App) {
@@ -7,7 +7,7 @@ export function calendarRoutes(app: App) {
   app.get('/api/calendar', async (c) => {
     const { prisma } = c.var.deps;
     const user = requireUser(c);
-    const { from, to } = calendarRangeSchema.parse(c.req.query());
+    const { from, to } = calendarRangeSchema.parse(readQuery(c));
     const isPm = user.role === 'PM';
 
     const activeProject = { status: { in: [...ACTIVE_PROJECT_STATUS] } };

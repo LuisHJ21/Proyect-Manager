@@ -1,6 +1,6 @@
 import { createIncidentSchema, localToday, reportIncidentSchema, toPlainText, updateIncidentSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { readBody, readQuery, type App, type Ctx } from '../http';
 import { getProjectAccess, requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { incidentAccess, isIncidentOverdue, truncateTitle, type IncidentViewer } from '../domain/incidents';
@@ -59,57 +59,61 @@ export function createIncident(prisma: PrismaClient, projectId: string, data: Om
 
 const hasKey = (body: unknown, key: string) => Boolean(body && typeof body === 'object' && key in body);
 
-export async function incidentRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function incidentRoutes(app: App) {
   const base = '/api/projects/:id/incidents';
 
-  const viewerOf = async (req: FastifyRequest, projectId: string) => {
-    const { project, isPm } = await getProjectAccess(req, projectId);
-    return { project, viewer: { userId: requireUser(req).id, isPm } satisfies IncidentViewer };
+  const viewerOf = async (c: Ctx, projectId: string) => {
+    const { project, isPm } = await getProjectAccess(c, projectId);
+    return { project, viewer: { userId: requireUser(c).id, isPm } satisfies IncidentViewer };
   };
 
-  const loadVisible = async (req: FastifyRequest, projectId: string, incidentId: string) => {
-    const { project, viewer } = await viewerOf(req, projectId);
-    const incident = await prisma.incident.findFirst({ where: { id: incidentId, projectId: project.id }, include: incidentInclude });
+  const loadVisible = async (c: Ctx, projectId: string, incidentId: string) => {
+    const { project, viewer } = await viewerOf(c, projectId);
+    const incident = await c.var.deps.prisma.incident.findFirst({ where: { id: incidentId, projectId: project.id }, include: incidentInclude });
     if (!incident || !incidentAccess(incident, viewer).view) throw notFound('Incidente no encontrado');
     return { project, viewer, incident };
   };
 
-  const today = () => localToday(app.now());
+  const today = (c: Ctx) => localToday(c.var.deps.now());
 
-  app.get<{ Params: { id: string }; Querystring: { status?: string; mine?: string } }>(base, async (req) => {
-    const { project, viewer } = await viewerOf(req, req.params.id);
+  app.get(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const { project, viewer } = await viewerOf(c, c.req.param('id'));
+    const query = readQuery(c) as { status?: string; mine?: string };
     const mine = { OR: [{ reportedById: viewer.userId }, { ownerId: viewer.userId }] };
     const where: Prisma.IncidentWhereInput = {
       projectId: project.id,
-      ...(req.query.status ? { status: req.query.status } : {}),
-      ...(!viewer.isPm || req.query.mine === '1' ? mine : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(!viewer.isPm || query.mine === '1' ? mine : {}),
     };
     const incidents = await prisma.incident.findMany({ where, include: incidentInclude, orderBy: { number: 'desc' } });
-    return incidents.map((i) => toIncidentDto(i, viewer, today()));
+    return c.json(incidents.map((i) => toIncidentDto(i, viewer, today(c))));
   });
 
-  app.get<{ Params: ItemParams }>(`${base}/:incidentId`, async (req) => {
-    const { viewer, incident } = await loadVisible(req, req.params.id, req.params.incidentId);
-    return toIncidentDto(incident, viewer, today());
+  app.get(`${base}/:incidentId`, async (c) => {
+    const { viewer, incident } = await loadVisible(c, c.req.param('id'), c.req.param('incidentId'));
+    return c.json(toIncidentDto(incident, viewer, today(c)));
   });
 
-  app.post<{ Params: { id: string } }>(base, async (req, reply) => {
-    const { project, viewer } = await viewerOf(req, req.params.id);
+  app.post(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const { project, viewer } = await viewerOf(c, c.req.param('id'));
     const allowed = ['title', 'description', 'taskId'];
-    if (!viewer.isPm && req.body && typeof req.body === 'object' && Object.keys(req.body).some((k) => !allowed.includes(k))) {
+    const body = await readBody(c);
+    if (!viewer.isPm && body && typeof body === 'object' && Object.keys(body).some((k) => !allowed.includes(k))) {
       throw forbidden('Solo el Project Manager puede fijar responsable, prioridad, fecha o riesgo');
     }
-    const input = viewer.isPm ? createIncidentSchema.parse(req.body) : reportIncidentSchema.parse(req.body);
+    const input = viewer.isPm ? createIncidentSchema.parse(body) : reportIncidentSchema.parse(body);
     await assertIncidentLinks(prisma, project.id, input);
     const created = await createIncident(prisma, project.id, { ...input, reportedById: viewer.userId });
-    return reply.status(201).send(toIncidentDto(created, viewer, today()));
+    return c.json(toIncidentDto(created, viewer, today(c)), 201);
   });
 
-  app.patch<{ Params: ItemParams }>(`${base}/:incidentId`, async (req) => {
-    const { project, viewer, incident } = await loadVisible(req, req.params.id, req.params.incidentId);
+  app.patch(`${base}/:incidentId`, async (c) => {
+    const { prisma } = c.var.deps;
+    const { project, viewer, incident } = await loadVisible(c, c.req.param('id'), c.req.param('incidentId'));
     const access = incidentAccess(incident, viewer);
-    const body = req.body;
+    const body = await readBody(c);
     if (!access.edit && body && typeof body === 'object' && Object.keys(body).some((k) => k !== 'status' && k !== 'resolution')) {
       throw forbidden('Solo el Project Manager puede cambiar esos datos');
     }
@@ -129,7 +133,7 @@ export async function incidentRoutes(app: FastifyInstance) {
     }
     await assertIncidentLinks(prisma, project.id, input);
 
-    const now = app.now();
+    const now = c.var.deps.now();
     const dates: Prisma.IncidentUncheckedUpdateInput = {};
     if (statusChanged) {
       if (nextStatus === 'RESOLVED') dates.resolvedAt = now;
@@ -144,21 +148,22 @@ export async function incidentRoutes(app: FastifyInstance) {
         await createDecision(tx, project.id, {
           title: truncateTitle(`Cierre de INC-${saved.number}: ${saved.title}`),
           rationale: saved.resolution,
-          decidedBy: requireUser(req).name,
-          decidedOn: today(),
+          decidedBy: requireUser(c).name,
+          decidedOn: today(c),
           incidentId: saved.id,
         });
       }
       return saved;
     });
-    return toIncidentDto(updated, viewer, today());
+    return c.json(toIncidentDto(updated, viewer, today(c)));
   });
 
-  app.post<{ Params: { id: string; riskId: string } }>('/api/projects/:id/risks/:riskId/incident', async (req, reply) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const risk = await prisma.risk.findFirst({ where: { id: req.params.riskId, projectId: project.id } });
+  app.post('/api/projects/:id/risks/:riskId/incident', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const risk = await prisma.risk.findFirst({ where: { id: c.req.param('riskId'), projectId: project.id } });
     if (!risk) throw notFound('Riesgo no encontrado');
-    const viewer = { userId: requireUser(req).id, isPm: true };
+    const viewer = { userId: requireUser(c).id, isPm: true };
     const created = await createIncident(prisma, project.id, {
       title: truncateTitle(toPlainText(risk.description)) || 'Riesgo materializado',
       riskId: risk.id,
@@ -166,13 +171,14 @@ export async function incidentRoutes(app: FastifyInstance) {
       priority: risk.probability * risk.impact >= HIGH_RISK_SCORE ? 'HIGH' : 'MEDIUM',
       reportedById: viewer.userId,
     });
-    return reply.status(201).send(toIncidentDto(created, viewer, today()));
+    return c.json(toIncidentDto(created, viewer, today(c)), 201);
   });
 
-  app.delete<{ Params: ItemParams }>(`${base}/:incidentId`, async (req) => {
-    const { viewer, incident } = await loadVisible(req, req.params.id, req.params.incidentId);
+  app.delete(`${base}/:incidentId`, async (c) => {
+    const { prisma } = c.var.deps;
+    const { viewer, incident } = await loadVisible(c, c.req.param('id'), c.req.param('incidentId'));
     if (!incidentAccess(incident, viewer).edit) throw forbidden();
     await prisma.incident.delete({ where: { id: incident.id } });
-    return { ok: true };
+    return c.json({ ok: true });
   });
 }

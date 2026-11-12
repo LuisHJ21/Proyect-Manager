@@ -1,19 +1,19 @@
 import { canAccept, deliverableReviewSchema, localToday } from '@pm/shared';
-import type { FastifyInstance } from 'fastify';
+import { readBody, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError, fieldError } from '../errors';
 import { findDeliverable, loadDeliverableDetail } from './deliverables';
 
 /** Aceptar o rechazar un entregable en revisión, dejando constancia en su historial. */
-export async function deliverableReviewRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function deliverableReviewRoutes(app: App) {
 
-  app.post<{ Params: { id: string; did: string } }>('/api/projects/:id/deliverables/:did/reviews', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const user = requireUser(req);
-    const deliverable = await findDeliverable(prisma, project.id, req.params.did);
-    const input = deliverableReviewSchema.parse(req.body);
+  app.post('/api/projects/:id/deliverables/:did/reviews', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const user = requireUser(c);
+    const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
+    const input = deliverableReviewSchema.parse(await readBody(c));
     if (deliverable.status !== 'IN_REVIEW') throw new AppError(409, 'not_in_review', 'El entregable no está en revisión');
 
     const stakeholder = input.stakeholderId
@@ -42,11 +42,11 @@ export async function deliverableReviewRoutes(app: FastifyInstance) {
           attachmentName: attachment?.originalName ?? '',
           criteria: JSON.stringify(criteria.map((c) => ({ text: c.text, met: c.met }))),
           reviewedById: user.id,
-          createdAt: app.now(),
+          createdAt: c.var.deps.now(),
         },
       }),
       prisma.deliverable.update({ where: { id: deliverable.id }, data: { status: input.outcome } }),
     ]);
-    return loadDeliverableDetail(prisma, deliverable.id, localToday(app.now()));
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, localToday(c.var.deps.now())));
   });
 }

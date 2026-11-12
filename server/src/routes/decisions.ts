@@ -1,6 +1,6 @@
 import { decisionRecordSchema, updateDecisionRecordSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
-import type { FastifyInstance } from 'fastify';
+import { readBody, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
 import { fieldError, notFound } from '../errors';
 
@@ -27,11 +27,10 @@ export async function createDecision(tx: Tx, projectId: string, data: Omit<Prism
   return tx.decision.create({ data: { ...data, projectId, number: lastDecisionNumber }, include: decisionInclude });
 }
 
-export async function decisionRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function decisionRoutes(app: App) {
   const base = '/api/projects/:id/decisions';
 
-  const assertLinks = async (projectId: string, input: { changeRequestId?: string | null; incidentId?: string | null }) => {
+  const assertLinks = async (prisma: PrismaClient, projectId: string, input: { changeRequestId?: string | null; incidentId?: string | null }) => {
     if (input.changeRequestId && !(await prisma.changeRequest.findFirst({ where: { id: input.changeRequestId, projectId }, select: { id: true } }))) {
       throw fieldError('changeRequestId', 'La solicitud de cambio no pertenece al proyecto');
     }
@@ -40,38 +39,42 @@ export async function decisionRoutes(app: FastifyInstance) {
     }
   };
 
-  const findDecision = async (projectId: string, decisionId: string) => {
+  const findDecision = async (prisma: PrismaClient, projectId: string, decisionId: string) => {
     const decision = await prisma.decision.findFirst({ where: { id: decisionId, projectId } });
     if (!decision) throw notFound('Decisión no encontrada');
     return decision;
   };
 
-  app.get<{ Params: { id: string } }>(base, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
+  app.get(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
     const items = await prisma.decision.findMany({ where: { projectId: project.id }, include: decisionInclude, orderBy: { number: 'desc' } });
-    return items.map(toDecisionDto);
+    return c.json(items.map(toDecisionDto));
   });
 
-  app.post<{ Params: { id: string } }>(base, async (req, reply) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const input = decisionRecordSchema.parse(req.body);
-    await assertLinks(project.id, input);
+  app.post(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const input = decisionRecordSchema.parse(await readBody(c));
+    await assertLinks(c.var.deps.prisma, project.id, input);
     const created = await prisma.$transaction((tx) => createDecision(tx, project.id, input));
-    return reply.status(201).send(toDecisionDto(created));
+    return c.json(toDecisionDto(created), 201);
   });
 
-  app.patch<{ Params: ItemParams }>(`${base}/:decisionId`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const decision = await findDecision(project.id, req.params.decisionId);
-    const input = updateDecisionRecordSchema.parse(req.body);
-    await assertLinks(project.id, input);
-    return toDecisionDto(await prisma.decision.update({ where: { id: decision.id }, data: input, include: decisionInclude }));
+  app.patch(`${base}/:decisionId`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const decision = await findDecision(c.var.deps.prisma, project.id, c.req.param('decisionId'));
+    const input = updateDecisionRecordSchema.parse(await readBody(c));
+    await assertLinks(c.var.deps.prisma, project.id, input);
+    return c.json(toDecisionDto(await prisma.decision.update({ where: { id: decision.id }, data: input, include: decisionInclude })));
   });
 
-  app.delete<{ Params: ItemParams }>(`${base}/:decisionId`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const decision = await findDecision(project.id, req.params.decisionId);
+  app.delete(`${base}/:decisionId`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const decision = await findDecision(c.var.deps.prisma, project.id, c.req.param('decisionId'));
     await prisma.decision.delete({ where: { id: decision.id } });
-    return { ok: true };
+    return c.json({ ok: true });
   });
 }

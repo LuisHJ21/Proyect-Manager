@@ -1,13 +1,8 @@
 import { CLOSED_PROJECT_STATUS } from '@pm/shared';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { PrismaClient } from '@prisma/client';
+import { matchedRoutes } from 'hono/route';
 import { AppError } from './errors';
-
-declare module 'fastify' {
-  interface FastifyInstance {
-    /** Todas las rutas registradas; la prueba de cobertura del guardia las recorre. */
-    routeList: { method: string; url: string }[];
-  }
-}
+import type { App, Ctx } from './http';
 
 const WRITE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
 
@@ -20,14 +15,26 @@ function isException(method: string, pattern: string) {
   return method === 'POST' && pattern === '/api/projects/:id/reopen';
 }
 
+/** Patrón de la ruta que responderá: la primera coincidencia que no es un middleware general (`app.use`). */
+function routePatternOf(c: Ctx): string | null {
+  return matchedRoutes(c).find((route) => route.method !== 'ALL')?.path ?? null;
+}
+
 /**
- * El proyecto afectado sale del patrón de la ruta y de los parámetros ya decodificados por Fastify,
- * nunca de la URL cruda: así un id con caracteres codificados (%61…) no se salta el guardia.
+ * El id sale del segmento de la ruta de la petición ya decodificado, nunca de la URL cruda:
+ * así un id con caracteres codificados (%61…) no se salta el guardia.
  */
-async function projectIdOf(req: FastifyRequest, pattern: string): Promise<string | null> {
-  const id = (req.params as { id?: string } | undefined)?.id;
-  if (!id) return null;
-  const { prisma } = req.server;
+function idOf(c: Ctx): string | null {
+  const segment = c.req.path.split('/')[3];
+  if (!segment) return null;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
+async function projectIdOf(prisma: PrismaClient, id: string, pattern: string): Promise<string | null> {
   if (under(pattern, '/api/projects/:id')) return id;
   if (under(pattern, '/api/tasks/:id')) return (await prisma.task.findUnique({ where: { id }, select: { projectId: true } }))?.projectId ?? null;
   if (pattern === '/api/attachments/:id') return (await prisma.attachment.findUnique({ where: { id }, select: { projectId: true } }))?.projectId ?? null;
@@ -38,25 +45,21 @@ async function projectIdOf(req: FastifyRequest, pattern: string): Promise<string
  * Un proyecto cerrado o cancelado es de solo lectura: toda escritura sobre él responde 409.
  * Sin sesión, sin acceso o con un id inexistente se deja pasar para que la ruta responda como siempre (401/404).
  */
-export function registerClosedGuard(app: FastifyInstance) {
-  app.decorate('routeList', [] as { method: string; url: string }[]);
-  app.addHook('onRoute', (route) => {
-    const methods = Array.isArray(route.method) ? route.method : [route.method];
-    for (const method of methods) app.routeList.push({ method, url: route.url });
-  });
-
-  app.addHook('preHandler', async (req) => {
-    if (!WRITE_METHODS.has(req.method) || !req.user) return;
-    const pattern = req.routeOptions.url;
-    if (!pattern || isException(req.method, pattern)) return;
-    const projectId = await projectIdOf(req, pattern);
-    if (!projectId) return;
-    const project = await app.prisma.project.findUnique({ where: { id: projectId }, select: { status: true } });
-    if (!project || !(CLOSED_PROJECT_STATUS as readonly string[]).includes(project.status)) return;
-    if (req.user.role !== 'PM') {
-      const member = await app.prisma.projectMember.findUnique({ where: { projectId_userId: { projectId, userId: req.user.id } } });
-      if (!member) return;
+export function registerClosedGuard(app: App) {
+  app.use('/api/*', async (c, next) => {
+    const user = c.var.user;
+    const pattern = WRITE_METHODS.has(c.req.method) && user ? routePatternOf(c) : null;
+    const id = pattern && !isException(c.req.method, pattern) ? idOf(c) : null;
+    if (user && pattern && id) {
+      const { prisma } = c.var.deps;
+      const projectId = await projectIdOf(prisma, id, pattern);
+      const project = projectId ? await prisma.project.findUnique({ where: { id: projectId }, select: { status: true } }) : null;
+      if (projectId && project && (CLOSED_PROJECT_STATUS as readonly string[]).includes(project.status)) {
+        const member =
+          user.role === 'PM' || (await prisma.projectMember.findUnique({ where: { projectId_userId: { projectId, userId: user.id } } }));
+        if (member) throw new AppError(409, 'project_closed', 'El proyecto está cerrado. Reábrelo para hacer cambios.');
+      }
     }
-    throw new AppError(409, 'project_closed', 'El proyecto está cerrado. Reábrelo para hacer cambios.');
+    await next();
   });
 }

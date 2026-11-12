@@ -1,6 +1,6 @@
 import { LESSON_CATEGORY, LESSON_TYPE, lessonSchema, updateLessonSchema } from '@pm/shared';
-import type { Lesson, Prisma, User } from '@prisma/client';
-import type { FastifyInstance } from 'fastify';
+import type { Lesson, Prisma, User, PrismaClient } from '@prisma/client';
+import { readBody, readQuery, type App, type Ctx } from '../http';
 import { getProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { fieldError, forbidden, notFound } from '../errors';
@@ -33,56 +33,60 @@ function singleParam(query: Record<string, unknown>, name: string, allowed?: rea
   return value;
 }
 
-export async function lessonRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function lessonRoutes(app: App) {
   const base = '/api/projects/:id/lessons';
   type ItemParams = { id: string; lessonId: string };
 
-  const findEditable = async (projectId: string, lessonId: string, viewer: User) => {
+  const findEditable = async (prisma: PrismaClient, projectId: string, lessonId: string, viewer: User) => {
     const lesson = await prisma.lesson.findFirst({ where: { id: lessonId, projectId } });
     if (!lesson) throw notFound('Lección no encontrada');
     if (!canEdit(lesson, viewer)) throw forbidden('Solo el autor o el Project Manager pueden cambiar esta lección');
     return lesson;
   };
 
-  app.get<{ Params: { id: string } }>(base, async (req) => {
-    const { project } = await getProjectAccess(req, req.params.id);
-    const viewer = requireUser(req);
+  app.get(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const { project } = await getProjectAccess(c, c.req.param('id'));
+    const viewer = requireUser(c);
     const items = await prisma.lesson.findMany({ where: { projectId: project.id }, include, orderBy: { createdAt: 'desc' } });
-    return items.map((l) => toLessonDto(l, viewer));
+    return c.json(items.map((l) => toLessonDto(l, viewer)));
   });
 
-  app.post<{ Params: { id: string } }>(base, async (req, reply) => {
-    const { project } = await getProjectAccess(req, req.params.id);
-    const viewer = requireUser(req);
-    const input = lessonSchema.parse(req.body);
+  app.post(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const { project } = await getProjectAccess(c, c.req.param('id'));
+    const viewer = requireUser(c);
+    const input = lessonSchema.parse(await readBody(c));
     const created = await prisma.lesson.create({ data: { ...input, projectId: project.id, authorId: viewer.id }, include });
-    return reply.status(201).send(toLessonDto(created, viewer));
+    return c.json(toLessonDto(created, viewer), 201);
   });
 
-  app.patch<{ Params: ItemParams }>(`${base}/:lessonId`, async (req) => {
-    const { project } = await getProjectAccess(req, req.params.id);
-    const viewer = requireUser(req);
-    const lesson = await findEditable(project.id, req.params.lessonId, viewer);
-    const input = updateLessonSchema.parse(req.body);
-    return toLessonDto(await prisma.lesson.update({ where: { id: lesson.id }, data: input, include }), viewer);
+  app.patch(`${base}/:lessonId`, async (c) => {
+    const { prisma } = c.var.deps;
+    const { project } = await getProjectAccess(c, c.req.param('id'));
+    const viewer = requireUser(c);
+    const lesson = await findEditable(c.var.deps.prisma, project.id, c.req.param('lessonId'), viewer);
+    const input = updateLessonSchema.parse(await readBody(c));
+    return c.json(toLessonDto(await prisma.lesson.update({ where: { id: lesson.id }, data: input, include }), viewer));
   });
 
-  app.delete<{ Params: ItemParams }>(`${base}/:lessonId`, async (req) => {
-    const { project } = await getProjectAccess(req, req.params.id);
-    const viewer = requireUser(req);
-    const lesson = await findEditable(project.id, req.params.lessonId, viewer);
+  app.delete(`${base}/:lessonId`, async (c) => {
+    const { prisma } = c.var.deps;
+    const { project } = await getProjectAccess(c, c.req.param('id'));
+    const viewer = requireUser(c);
+    const lesson = await findEditable(c.var.deps.prisma, project.id, c.req.param('lessonId'), viewer);
     await prisma.lesson.delete({ where: { id: lesson.id } });
-    return { ok: true };
+    return c.json({ ok: true });
   });
 
   /** Lecciones de todos los proyectos: conocimiento de la organización, visible para cualquier usuario. */
-  app.get<{ Querystring: Record<string, unknown> }>('/api/lessons', async (req) => {
-    const viewer = requireUser(req);
-    const q = singleParam(req.query, 'q')?.trim();
-    const category = singleParam(req.query, 'category', LESSON_CATEGORY);
-    const type = singleParam(req.query, 'type', LESSON_TYPE);
-    const projectId = singleParam(req.query, 'projectId');
+  app.get('/api/lessons', async (c) => {
+    const { prisma } = c.var.deps;
+    const viewer = requireUser(c);
+    const q = singleParam(readQuery(c), 'q')?.trim();
+    const category = singleParam(readQuery(c), 'category', LESSON_CATEGORY);
+    const type = singleParam(readQuery(c), 'type', LESSON_TYPE);
+    const projectId = singleParam(readQuery(c), 'projectId');
     const items = await prisma.lesson.findMany({
       where: {
         ...(category ? { category } : {}),
@@ -96,6 +100,6 @@ export async function lessonRoutes(app: FastifyInstance) {
     // y solo ignora mayúsculas en ASCII. El volumen de lecciones de una instalación local es pequeño.
     const needle = q?.toLocaleLowerCase('es');
     const matches = needle ? items.filter((l) => `${l.situation} ${l.recommendation}`.toLocaleLowerCase('es').includes(needle)) : items;
-    return matches.slice(0, 200).map((l) => toLessonDto(l, viewer));
+    return c.json(matches.slice(0, 200).map((l) => toLessonDto(l, viewer)));
   });
 }

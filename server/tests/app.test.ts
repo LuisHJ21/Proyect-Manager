@@ -1,7 +1,10 @@
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { buildApp } from '../src/app';
 import { AppError } from '../src/errors';
+import { readBody } from '../src/http';
+import { withStatic } from '../src/static';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
 const fixtureDist = resolve(__dirname, 'fixtures/client-dist');
@@ -9,7 +12,7 @@ const fixtureDist = resolve(__dirname, 'fixtures/client-dist');
 describe('aplicación', () => {
   let ctx: TestCtx;
   beforeEach(async () => {
-    ctx = await createTestApp({ clientDist: fixtureDist });
+    ctx = await createTestApp({ build: (opts) => withStatic(buildApp(opts), fixtureDist) });
   });
   afterEach(() => ctx.close());
 
@@ -26,7 +29,7 @@ describe('aplicación', () => {
   });
 
   it('convierte ZodError en 400 con errores por campo', async () => {
-    ctx.app.post('/api/__zod', async (req) => z.object({ name: z.string().min(1, 'Requerido') }).parse(req.body));
+    ctx.app.post('/api/__zod', async (c) => c.json(z.object({ name: z.string().min(1, 'Requerido') }).parse(await readBody(c))));
     const res = await ctx.anon.post('/api/__zod', { name: '' });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('validation_error');
@@ -52,8 +55,9 @@ describe('aplicación', () => {
     expect(res.body).not.toContain('secreto');
   });
 
-  it('usa el reloj inyectado', () => {
+  it('usa el reloj inyectado', async () => {
+    ctx.app.get('/api/__now', (c) => c.json({ hours: c.var.deps.now().getHours() }));
     ctx.clock.set('2026-11-06T08:00:00');
-    expect(ctx.app.now().getHours()).toBe(8);
+    expect((await ctx.anon.get('/api/__now')).json().hours).toBe(8);
   });
 });

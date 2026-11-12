@@ -105,7 +105,7 @@ describe('autenticación', () => {
 
   it('con mustChangePassword solo permite me, logout y change-password', async () => {
     const c = await ctx.makeUser({ role: 'COLLABORATOR', mustChangePassword: true });
-    ctx.app.get('/api/__protected', async () => ({ ok: true }));
+    ctx.app.get('/api/__protected', (c) => c.json({ ok: true }));
     const res = await ctx.as(c).get('/api/__protected');
     expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe('password_change_required');

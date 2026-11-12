@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { Role } from '@pm/shared';
 import { PrismaClient, type User } from '@prisma/client';
 import { inject } from 'vitest';
-import { buildApp } from '../../src/app';
+import { buildApp, type BuildAppOptions } from '../../src/app';
 import type { App } from '../../src/http';
 import { hashPassword } from '../../src/auth/passwords';
 import { createSession } from '../../src/auth/sessions';
@@ -58,14 +58,14 @@ function httpClient(app: App, cookie?: string) {
 
 export type HttpClient = ReturnType<typeof httpClient>;
 
-export async function createTestApp(_opts: { clientDist?: string } = {}) {
+export async function createTestApp(opts: { build?: (options: BuildAppOptions) => App } = {}) {
   const dataDir = mkdtempSync(join(tmpdir(), 'pm-test-'));
   copyFileSync(inject('templateDb'), join(dataDir, 'app.db'));
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(dataDir) } } });
 
   let current = new Date('2026-11-06T12:00:00');
   let userCount = 0;
-  const app = buildApp({ prisma, dataDir, now: () => current });
+  const app = (opts.build ?? buildApp)({ prisma, dataDir, now: () => current });
 
   return {
     app,

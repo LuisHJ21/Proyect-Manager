@@ -1,5 +1,3 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import type { Project, User } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
@@ -59,15 +57,5 @@ describe('las tareas solo se asignan a colaboradores', () => {
     const task = await ctx.makeTask(project.id, { assignees: [collaborator] });
     await ctx.as(pm).patch(`/api/users/${collaborator.id}`, { name: 'Otro nombre' });
     expect(await ctx.prisma.taskAssignee.count({ where: { taskId: task.id } })).toBe(1);
-  });
-
-  it('la migración elimina solo asignaciones de usuarios con rol PM', async () => {
-    const task = await ctx.makeTask(project.id, { assignees: [otherPm, collaborator] });
-    const dir = resolve(__dirname, '../prisma/migrations');
-    const name = readdirSync(dir).find((entry) => entry.endsWith('_remove_pm_assignments'));
-    expect(name).toBeTruthy();
-    await ctx.prisma.$executeRawUnsafe(readFileSync(resolve(dir, name!, 'migration.sql'), 'utf8'));
-    const left = await ctx.prisma.taskAssignee.findMany({ where: { taskId: task.id } });
-    expect(left.map((a) => a.userId)).toEqual([collaborator.id]);
   });
 });

@@ -1,0 +1,15 @@
+# PostgreSQL local para desarrollo y pruebas. Arranca con: docker compose up -d
+services:
+  db:
+    image: postgres:16
+    command: ['postgres', '-c', 'max_connections=300']
+    environment:
+      POSTGRES_USER: pm
+      POSTGRES_PASSWORD: pm
+    ports:
+      - '5433:5432'
+    volumes:
+      - pm-db:/var/lib/postgresql/data
+
+volumes:
+  pm-db:

@@ -1,4 +1,5 @@
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Role } from '@pm/shared';
@@ -8,7 +9,7 @@ import { buildApp, type BuildAppOptions } from '../../src/app';
 import type { App } from '../../src/http';
 import { hashPassword } from '../../src/auth/passwords';
 import { createSession } from '../../src/auth/sessions';
-import { databaseUrl } from '../../src/config';
+import { databaseUrlFor } from './globalSetup';
 
 type Headers = Record<string, string>;
 
@@ -58,10 +59,20 @@ function httpClient(app: App, cookie?: string) {
 
 export type HttpClient = ReturnType<typeof httpClient>;
 
+let adminClient: PrismaClient | undefined;
+/** Conexión de administración del proceso de pruebas: crea y borra las bases de cada prueba. */
+function admin(): PrismaClient {
+  adminClient ??= new PrismaClient({ datasources: { db: { url: inject('adminUrl') } } });
+  return adminClient;
+}
+
 export async function createTestApp(opts: { build?: (options: BuildAppOptions) => App } = {}) {
   const dataDir = mkdtempSync(join(tmpdir(), 'pm-test-'));
-  copyFileSync(inject('templateDb'), join(dataDir, 'app.db'));
-  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(dataDir) } } });
+  const database = `pm_test_${randomBytes(6).toString('hex')}`;
+  await admin().$executeRawUnsafe(`CREATE DATABASE "${database}" TEMPLATE "${inject('templateDb')}"`);
+  const url = new URL(databaseUrlFor(inject('adminUrl'), database));
+  url.searchParams.set('connection_limit', '5');
+  const prisma = new PrismaClient({ datasources: { db: { url: url.toString() } } });
 
   let current = new Date('2026-11-06T12:00:00');
   let userCount = 0;
@@ -132,6 +143,7 @@ export async function createTestApp(opts: { build?: (options: BuildAppOptions) =
     },
     async close() {
       await prisma.$disconnect();
+      await admin().$executeRawUnsafe(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
       rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     },
   };

@@ -6,16 +6,17 @@ import { serve } from '@hono/node-server';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { PrismaClient } from '@prisma/client';
 import { buildApp } from './app';
-import { databaseUrl, resolveDataDir, resolvePort } from './config';
+import { resolveDatabaseUrl, resolvePort } from './config';
 import { withStatic } from './static';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(here, '../..');
-const dataDir = resolveDataDir(process.env, rootDir);
+// Carpeta de anexos en disco hasta que llegue el almacén intercambiable (Task 8).
+const dataDir = process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : resolve(rootDir, 'data');
 const port = resolvePort(process.env);
 const clientDist = resolve(rootDir, 'client/dist');
 
-const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(dataDir) } } });
+const prisma = new PrismaClient({ datasources: { db: { url: resolveDatabaseUrl(process.env) } } });
 const api = buildApp({ prisma, dataDir, clientIp: (c) => getConnInfo(c).remote.address ?? '127.0.0.1' });
 let app = api;
 if (existsSync(clientDist)) app = withStatic(api, clientDist);

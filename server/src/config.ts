@@ -1,11 +1,7 @@
-import { resolve } from 'node:path';
-
-export function databaseUrl(dataDir: string): string {
-  return `file:${dataDir.replace(/\\/g, '/')}/app.db?connection_limit=1`;
-}
-
-export function resolveDataDir(env: NodeJS.ProcessEnv, rootDir: string): string {
-  return env.DATA_DIR ? resolve(env.DATA_DIR) : resolve(rootDir, 'data');
+export function resolveDatabaseUrl(env: NodeJS.ProcessEnv): string {
+  const url = env.DATABASE_URL;
+  if (!url) throw new Error('Falta DATABASE_URL');
+  return url;
 }
 
 export function resolvePort(env: NodeJS.ProcessEnv): number {

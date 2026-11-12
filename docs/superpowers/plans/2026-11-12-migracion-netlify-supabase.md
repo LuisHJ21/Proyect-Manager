@@ -166,9 +166,9 @@ it('responde 404 con el formato común en una ruta de API inexistente', async ()
 - Produces: `resolveDatabaseUrl(env: NodeJS.ProcessEnv): string` en `server/src/config.ts` (lanza `Error('Falta DATABASE_URL')` si no existe). Se eliminan `databaseUrl` y `resolveDataDir`.
 - Produces: `createTestApp()` conserva su forma actual; `ctx.dataDir` sigue existiendo como carpeta temporal para archivos.
 
-- [ ] **Step 1:** `docker-compose.yml` con un servicio `db` (`postgres:16`, usuario y clave `pm`, puerto `5433:5432`). `.env.example` con todas las variables de la sección 8 de la especificación y `TEST_DATABASE_URL=postgresql://pm:pm@localhost:5433/postgres`.
-- [ ] **Step 2:** En `schema.prisma`: `provider = "postgresql"`, `directUrl = env("DIRECT_URL")`, y en el generador `binaryTargets = ["native", "rhel-openssl-3.0.x"]`.
-- [ ] **Step 3:** Escribir `server/tests/rls.test.ts`:
+- [x] **Step 1:** `docker-compose.yml` con un servicio `db` (`postgres:16`, usuario y clave `pm`, puerto `5433:5432`). `.env.example` con todas las variables de la sección 8 de la especificación y `TEST_DATABASE_URL=postgresql://pm:pm@localhost:5433/postgres`.
+- [x] **Step 2:** En `schema.prisma`: `provider = "postgresql"`, `directUrl = env("DIRECT_URL")`, y en el generador `binaryTargets = ["native", "rhel-openssl-3.0.x"]`.
+- [x] **Step 3:** Escribir `server/tests/rls.test.ts`:
 
 ```ts
 it('todas las tablas públicas tienen RLS activado', async () => {
@@ -178,11 +178,11 @@ it('todas las tablas públicas tienen RLS activado', async () => {
 });
 ```
 
-- [ ] **Step 4:** Borrar las migraciones de SQLite. Con Docker en marcha: `npx prisma migrate dev --name init` en `server/` con `DATABASE_URL` y `DIRECT_URL` apuntando a una base local `pm_dev`. Añadir al final del `migration.sql` generado un bloque `DO $$ … $$` que ejecute `ALTER TABLE … ENABLE ROW LEVEL SECURITY` para cada tabla de `public`.
-- [ ] **Step 5:** `globalSetup.ts`: crea la base `pm_template_<pid>` en `TEST_DATABASE_URL`, aplica `prisma migrate deploy` sobre ella, activa RLS también en `_prisma_migrations`, y la publica como `templateDb` (nombre de la base). Al terminar, la borra. `testApp.ts`: `CREATE DATABASE pm_test_<aleatorio> TEMPLATE <templateDb>`, conecta Prisma a esa base y en `close()` desconecta y la borra con `DROP DATABASE … WITH (FORCE)`.
-- [ ] **Step 6:** `config.ts`: implementar `resolveDatabaseUrl`; actualizar `config.test.ts` (caso con variable, caso sin variable que lanza).
-- [ ] **Step 7:** `npm test -w server`. Corregir las pruebas que dependan de SQLite (orden por texto con acentos y mayúsculas, mensajes de restricción). Esperado: todo en verde, incluida `rls.test.ts`.
-- [ ] **Step 8:** Commit `feat: PostgreSQL como base de datos y RLS en todas las tablas`.
+- [x] **Step 4:** Borrar las migraciones de SQLite. Con Docker en marcha: `npx prisma migrate dev --name init` en `server/` con `DATABASE_URL` y `DIRECT_URL` apuntando a una base local `pm_dev`. Añadir al final del `migration.sql` generado un bloque `DO $$ … $$` que ejecute `ALTER TABLE … ENABLE ROW LEVEL SECURITY` para cada tabla de `public`.
+- [x] **Step 5:** `globalSetup.ts`: crea la base `pm_template_<pid>` en `TEST_DATABASE_URL`, aplica `prisma migrate deploy` sobre ella, activa RLS también en `_prisma_migrations`, y la publica como `templateDb` (nombre de la base). Al terminar, la borra. `testApp.ts`: `CREATE DATABASE pm_test_<aleatorio> TEMPLATE <templateDb>`, conecta Prisma a esa base y en `close()` desconecta y la borra con `DROP DATABASE … WITH (FORCE)`.
+- [x] **Step 6:** `config.ts`: implementar `resolveDatabaseUrl`; actualizar `config.test.ts` (caso con variable, caso sin variable que lanza).
+- [x] **Step 7:** `npm test -w server`. Corregir las pruebas que dependan de SQLite (orden por texto con acentos y mayúsculas, mensajes de restricción). Esperado: todo en verde, incluida `rls.test.ts`.
+- [x] **Step 8:** Commit `feat: PostgreSQL como base de datos y RLS en todas las tablas`.
 
 ### Task 6: "Hoy" con zona horaria configurable
 

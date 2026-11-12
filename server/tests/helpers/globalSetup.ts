@@ -1,23 +1,50 @@
 import { execSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
+import { PrismaClient } from '@prisma/client';
 import type { TestProject } from 'vitest/node';
-import { databaseUrl } from '../../src/config';
 
 declare module 'vitest' {
   export interface ProvidedContext {
+    /** Nombre de la base plantilla, ya migrada. */
     templateDb: string;
+    /** Conexión de administración (TEST_DATABASE_URL). */
+    adminUrl: string;
   }
 }
 
-export default function setup(project: TestProject) {
-  const dir = mkdtempSync(join(tmpdir(), 'pm-template-'));
+/** La misma conexión apuntando a otra base del servidor. */
+export function databaseUrlFor(adminUrl: string, database: string): string {
+  const url = new URL(adminUrl);
+  url.pathname = `/${database}`;
+  return url.toString();
+}
+
+export default async function setup(project: TestProject) {
+  const adminUrl = process.env.TEST_DATABASE_URL;
+  if (!adminUrl) {
+    throw new Error('Falta TEST_DATABASE_URL. Arranca PostgreSQL con "docker compose up -d" y define la variable (ver .env.example).');
+  }
+  const templateDb = `pm_template_${process.pid}`;
+  const templateUrl = databaseUrlFor(adminUrl, templateDb);
+
+  const admin = new PrismaClient({ datasources: { db: { url: adminUrl } } });
+  await admin.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${templateDb}" WITH (FORCE)`);
+  await admin.$executeRawUnsafe(`CREATE DATABASE "${templateDb}"`);
+
   execSync('npx prisma migrate deploy', {
     cwd: resolve(__dirname, '../..'),
-    env: { ...process.env, DATABASE_URL: databaseUrl(dir) },
+    env: { ...process.env, DATABASE_URL: templateUrl, DIRECT_URL: templateUrl },
     stdio: 'pipe',
   });
-  project.provide('templateDb', join(dir, 'app.db'));
-  return () => rmSync(dir, { recursive: true, force: true });
+  const template = new PrismaClient({ datasources: { db: { url: templateUrl } } });
+  await template.$executeRawUnsafe('ALTER TABLE "_prisma_migrations" ENABLE ROW LEVEL SECURITY');
+  await template.$disconnect();
+
+  project.provide('templateDb', templateDb);
+  project.provide('adminUrl', adminUrl);
+
+  return async () => {
+    await admin.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${templateDb}" WITH (FORCE)`);
+    await admin.$disconnect();
+  };
 }

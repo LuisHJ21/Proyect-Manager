@@ -413,12 +413,12 @@ export const config: Config = { schedule: '0 10 * * *' };
 - Modify: `server/scripts/reset-password.ts`, `e2e/serve.mjs`, `README.md`, `.gitignore`
 - Create: `.gitattributes`
 
-- [ ] **Step 1:** `reset-password.ts` usa `DATABASE_URL` del entorno (cargado de `.env`) y lo indica si falta.
-- [ ] **Step 2:** `e2e/serve.mjs`: crea la base `pm_e2e` desde cero en `TEST_DATABASE_URL`, fija `DATABASE_URL` y `DIRECT_URL` a ella y arranca `start.mjs`. `start.mjs` y `migrate.mjs` dejan de crear la carpeta de datos y de fijar `DATABASE_URL`.
-- [ ] **Step 3:** `.gitattributes` con `* text=auto` y renormalizar (`git add --renormalize .`). `.gitignore` añade `.env` y `.netlify`.
-- [ ] **Step 4:** Reescribir en el README: requisitos (Node 24, Docker), desarrollo local, variables de entorno, despliegue en Netlify, creación del proyecto y bucket en Supabase, primer ingreso con código, restablecer contraseña, respaldos. Eliminar firewall de Windows, red local y "Sin cifrado".
-- [ ] **Step 5:** `npm run build && npm run test:e2e`. Verde.
-- [ ] **Step 6:** Commit `docs: operación en Netlify y Supabase; chore: normalizar finales de línea`.
+- [x] **Step 1:** `reset-password.ts` usa `DATABASE_URL` del entorno (cargado de `.env`) y lo indica si falta.
+- [x] **Step 2:** `e2e/serve.mjs`: crea la base `pm_e2e` desde cero en `TEST_DATABASE_URL`, fija `DATABASE_URL` y `DIRECT_URL` a ella y arranca `start.mjs`. `start.mjs` y `migrate.mjs` dejan de crear la carpeta de datos y de fijar `DATABASE_URL`.
+- [x] **Step 3:** `.gitattributes` con `* text=auto` y renormalizar (`git add --renormalize .`). `.gitignore` añade `.env` y `.netlify`.
+- [x] **Step 4:** Reescribir en el README: requisitos (Node 24, Docker), desarrollo local, variables de entorno, despliegue en Netlify, creación del proyecto y bucket en Supabase, primer ingreso con código, restablecer contraseña, respaldos. Eliminar firewall de Windows, red local y "Sin cifrado".
+- [x] **Step 5:** `npm run build && npm run test:e2e`. Verde.
+- [x] **Step 6:** Commit `docs: operación en Netlify y Supabase; chore: normalizar finales de línea`.
 
 ### Task 14: Primer despliegue y verificación
 

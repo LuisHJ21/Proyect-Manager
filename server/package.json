@@ -4,13 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/migrate.mjs && tsx watch src/index.ts",
+    "dev": "node --env-file-if-exists=../.env scripts/migrate.mjs && tsx watch --env-file-if-exists=../.env src/index.ts",
     "build": "tsup",
-    "start": "node scripts/start.mjs",
+    "start": "node --env-file-if-exists=../.env scripts/start.mjs",
     "test": "vitest run",
-    "migrate": "node scripts/migrate.mjs",
+    "migrate": "node --env-file-if-exists=../.env scripts/migrate.mjs",
     "postinstall": "prisma generate",
-    "reset-password": "tsx scripts/reset-password.ts"
+    "reset-password": "tsx --env-file-if-exists=../.env scripts/reset-password.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.8",

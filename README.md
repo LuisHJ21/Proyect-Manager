@@ -1,6 +1,6 @@
 # Gestor de proyectos PMBOK 7
 
-Aplicación web para gestionar proyectos según PMBOK 7 en una red local. Incluye panel general, calendario, acta de constitución, tareas con varios asignados y dependencias, anexos, interesados, riesgos, presupuesto e indicadores.
+Aplicación web para gestionar proyectos según PMBOK 7. Se publica en Netlify, con la base de datos y los anexos en Supabase. Incluye panel general, calendario, acta de constitución, tareas con varios asignados y dependencias, anexos, interesados, riesgos, presupuesto e indicadores.
 
 ## Roles
 
@@ -67,89 +67,139 @@ Esta función es solo para el Project Manager; los colaboradores no ven la pesta
   - Su autor y el Project Manager pueden editarla o borrarla.
   - La página **Lecciones** de la navegación principal reúne las de todos los proyectos, con búsqueda y filtros, para cualquier usuario.
 
+## Cómo está montada
+
+- **Interfaz:** archivos estáticos publicados por Netlify.
+- **API:** una función de Netlify (`netlify/functions/api.mts`) atiende todas las direcciones `/api/*`.
+- **Base de datos:** PostgreSQL de Supabase.
+- **Anexos:** un bucket privado de Supabase Storage. El navegador sube y descarga cada archivo con una dirección firmada que dura poco; la clave de servicio de Supabase solo la conoce la API.
+- **Tarea diaria:** otra función (`netlify/functions/daily.mts`) se ejecuta cada día a las 10:00 UTC (5:00 en Lima). Borra sesiones vencidas, intentos de inicio de sesión antiguos y anexos que nunca terminaron de subirse, y guarda la foto diaria de valor ganado de los proyectos activos con línea base.
+
 ## Requisitos
 
 - Node.js 24
-- Windows, Linux o macOS
+- Docker Desktop, para la base de datos local de desarrollo y pruebas
+- Una cuenta de Netlify y otra de Supabase, para publicar
 
-## Instalación y arranque
+## Variables de entorno
+
+Copia `.env.example` como `.env` en la raíz del proyecto y completa los valores. El archivo `.env` no se sube a git. En Netlify, las mismas variables se cargan en **Site configuration → Environment variables**.
+
+| Variable | Para qué sirve | En producción |
+|---|---|---|
+| `DATABASE_URL` | Conexión de la API | Pooler de Supabase en modo transacción (puerto 6543), con `?pgbouncer=true&connection_limit=1` al final |
+| `DIRECT_URL` | Conexión de las migraciones | Pooler de Supabase en modo sesión (puerto 5432) |
+| `SUPABASE_URL` | Dirección del proyecto de Supabase | Obligatoria |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave de servicio para Storage | Obligatoria. Nunca la pongas en la interfaz ni la compartas |
+| `SUPABASE_BUCKET` | Nombre del bucket de anexos | `anexos` (valor por omisión) |
+| `APP_TIMEZONE` | Zona horaria para calcular "hoy" | `America/Lima` (valor por omisión) |
+| `SETUP_TOKEN` | Código que pide la configuración inicial | Obligatoria |
+| `TEST_DATABASE_URL` | PostgreSQL local para las pruebas | No se usa |
+
+Si falta una variable obligatoria, la API no arranca y el registro de la función dice cuál es.
+
+## Desarrollo local
+
+1. Instala las dependencias:
+
+   ```bash
+   npm install
+   ```
+
+2. Arranca PostgreSQL en Docker (escucha en el puerto 5433):
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. Crea el archivo `.env` a partir de `.env.example`. Los valores de ejemplo ya apuntan a la base de Docker.
+
+4. Arranca la API y la interfaz:
+
+   ```bash
+   npm run dev
+   ```
+
+   La consola indica la dirección de la interfaz (normalmente `http://localhost:5173`). La API usa el puerto 3080, aplica las migraciones al arrancar y guarda los anexos en la carpeta `data/`.
+
+Pruebas:
 
 ```bash
-npm install
+npm test
 ```
+
+Las pruebas del servidor crean sus propias bases en el PostgreSQL de Docker usando `TEST_DATABASE_URL`.
+
+La prueba de extremo a extremo usa Microsoft Edge, crea desde cero la base `pm_e2e` y necesita compilar antes:
 
 ```bash
 npm run build
 ```
 
 ```bash
-npm start
+npm run test:e2e
 ```
 
-**Antes de actualizar** a una versión nueva, detén la aplicación y copia la carpeta `data/`: al arrancar, la base de datos se actualiza sola y no se puede deshacer sin esa copia.
+## Preparar Supabase
 
-Al arrancar, la consola muestra las direcciones de acceso, por ejemplo `http://192.168.1.20:3080`. La base de datos se crea o actualiza sola.
+1. Crea un proyecto en [supabase.com](https://supabase.com). Elige una región cercana, por ejemplo São Paulo, y guarda la contraseña de la base en un lugar seguro.
+2. En **Storage**, crea un bucket llamado `anexos`:
+   - Déjalo **privado** (sin acceso público).
+   - Pon un límite de 25 MB por archivo.
+3. En **Connect** (o **Project Settings → Database**), copia las cadenas de conexión del pooler:
+   - **Modo transacción** (puerto 6543) para `DATABASE_URL`. Añade `?pgbouncer=true&connection_limit=1` al final.
+   - **Modo sesión** (puerto 5432) para `DIRECT_URL`.
+4. En **Project Settings → API**, copia la dirección del proyecto (`SUPABASE_URL`) y la clave `service_role` (`SUPABASE_SERVICE_ROLE_KEY`).
 
-Para cambiar el puerto o la carpeta de datos, usa las variables de entorno `PORT` y `DATA_DIR`.
+Todas las tablas tienen activada la seguridad por filas (RLS) sin políticas: solo la API, que entra con la conexión de la base, puede leerlas.
+
+## Publicar en Netlify
+
+1. En Netlify, crea un sitio nuevo desde el repositorio de GitHub. La configuración de compilación ya está en `netlify.toml`; deja la carpeta base vacía (la raíz del repositorio).
+2. Carga las variables de la tabla anterior.
+3. Genera el código de configuración inicial y guárdalo como `SETUP_TOKEN`:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
+   ```
+
+4. Despliega. Cada despliegue compila la interfaz y aplica las migraciones pendientes a la base de Supabase antes de publicar.
+
+Conviene publicar primero una vista previa (por ejemplo desde una rama) y comprobarla antes de pasar a producción.
 
 ## Primer ingreso
 
-1. Abre la dirección en el navegador y crea tu cuenta de Project Manager.
+1. Abre la dirección del sitio y crea tu cuenta de Project Manager. La aplicación pide el **código de configuración**: es el valor de `SETUP_TOKEN`. Sin él nadie más puede crear la primera cuenta.
 2. En **Usuarios**, crea las cuentas de tus colaboradores con una contraseña temporal y compártela con cada persona. Deberán cambiarla al entrar.
 3. Crea un proyecto y añade a tus colaboradores al equipo desde la pestaña **Resumen**. Solo verán los proyectos de los que son miembros.
 4. Crea tareas y asígnalas a los colaboradores del proyecto.
 
 ## Olvidé mi contraseña
 
-Si el Project Manager olvida su contraseña, en el equipo que aloja la aplicación abre una terminal en la carpeta del proyecto y ejecuta:
+Si el Project Manager olvida su contraseña, en un equipo con este repositorio pon en `.env` la `DATABASE_URL` de producción y ejecuta:
 
 ```bash
 npm run reset-password -- tu-correo@ejemplo.com
 ```
 
-La consola muestra una contraseña temporal. Al entrar con ella, la aplicación pide cambiarla. Sin correo, el comando lista los Project Managers registrados. Un colaborador también puede pedirle al Project Manager que le restablezca la contraseña desde **Usuarios**.
+La consola muestra una contraseña temporal. Al entrar con ella, la aplicación pide cambiarla. Sin correo, el comando lista los Project Managers registrados. Al terminar, vuelve a dejar en `.env` la base local.
 
-## Permitir el acceso desde otros equipos (Windows)
-
-Abre PowerShell como administrador y permite el puerto en el firewall:
-
-```powershell
-New-NetFirewallRule -DisplayName "Gestor PMBOK" -Direction Inbound -Protocol TCP -LocalPort 3080 -Action Allow
-```
-
-Si usas otro puerto, cambia `3080` por ese valor.
+Un colaborador también puede pedirle al Project Manager que le restablezca la contraseña desde **Usuarios**.
 
 ## Respaldos
 
-Los datos y los anexos están en la carpeta `data/`. Para respaldar:
+- **Base de datos:** Supabase guarda copias de seguridad según el plan contratado; en el plan gratuito son limitadas. Para tener una copia propia, descarga un volcado con la cadena de `DIRECT_URL` (la imagen de Docker debe ser de la misma versión de PostgreSQL que tu proyecto de Supabase, o más nueva):
 
-1. Detén el servidor.
-2. Copia la carpeta `data/` a otro disco.
-3. Vuelve a arrancar el servidor.
+  ```bash
+  docker run --rm postgres:17 pg_dump "<DIRECT_URL>" > respaldo.sql
+  ```
 
-Los respaldos no son automáticos. Si el disco falla, se pierde lo que no hayas copiado.
+  Guarda el archivo fuera del repositorio; contiene todos los datos.
+- **Anexos:** los archivos del bucket `anexos` se descargan desde **Storage** en el panel de Supabase.
 
-Para restaurar, detén el servidor y reemplaza la carpeta `data/` por la copia.
+Los respaldos propios no son automáticos: lo que no copies se pierde si se borra el proyecto de Supabase.
 
 ## Limitaciones
 
-- **Sin cifrado:** el acceso es por `http://`, así que las contraseñas y los datos viajan sin cifrar por la red. Úsala solo en una red de oficina de confianza, no en una Wi-Fi compartida. Se puede añadir HTTPS poniendo un proxy delante.
-- **Disponibilidad:** tus colaboradores solo pueden entrar mientras el equipo que aloja la aplicación esté encendido y con la aplicación en marcha.
-
-## Desarrollo
-
-```bash
-npm run dev
-```
-
-La consola indica la dirección de la interfaz (normalmente `http://localhost:5173`). La API usa el puerto 3080.
-
-```bash
-npm test
-```
-
-La prueba de extremo a extremo usa Microsoft Edge y necesita haber compilado antes con `npm run build`:
-
-```bash
-npm run test:e2e
-```
+- **Pausa por inactividad:** los proyectos gratuitos de Supabase se pausan si pasan días sin uso. Mientras esté pausado, la aplicación no responde; se reactiva desde el panel de Supabase.
+- **Tamaño de anexos:** 25 MB por archivo.

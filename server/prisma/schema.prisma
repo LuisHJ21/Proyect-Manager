@@ -257,6 +257,8 @@ model Attachment {
   storedName   String   @unique
   mimeType     String
   size         Int
+  /// Nulo mientras el archivo no se ha subido y confirmado.
+  uploadedAt   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

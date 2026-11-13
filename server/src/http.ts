@@ -1,10 +1,11 @@
 import type { PrismaClient, User } from '@prisma/client';
 import type { Context, Hono } from 'hono';
 import { AppError } from './errors';
+import type { FileStore } from './storage/fileStore';
 
 export type Deps = {
   prisma: PrismaClient;
-  dataDir: string;
+  files: FileStore;
   now(): Date;
   /** Fecha de hoy (YYYY-MM-DD) en la zona configurada. */
   today(): string;

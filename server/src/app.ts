@@ -5,6 +5,8 @@ import { registerAuthHook } from './auth/guards';
 import { registerClosedGuard } from './closedGuard';
 import { errorHandler, notFoundHandler } from './errors';
 import type { App, AppEnv, Ctx, Deps } from './http';
+import { DiskFileStore } from './storage/diskFileStore';
+import type { FileStore } from './storage/fileStore';
 import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
 import { calendarRoutes } from './routes/calendar';
@@ -17,6 +19,7 @@ import { deliverableReviewRoutes } from './routes/deliverableReviews';
 import { deliverableRoutes } from './routes/deliverables';
 import { dependencyRoutes } from './routes/dependencies';
 import { incidentRoutes } from './routes/incidents';
+import { localUploadRoutes } from './routes/localUploads';
 import { indicatorRoutes } from './routes/indicators';
 import { lessonRoutes } from './routes/lessons';
 import { memberRoutes } from './routes/members';
@@ -30,7 +33,7 @@ import { userRoutes } from './routes/users';
 
 export type BuildAppOptions = {
   prisma: PrismaClient;
-  dataDir: string;
+  files: FileStore;
   now?: () => Date;
   /** Zona para calcular "hoy" (APP_TIMEZONE). Sin ella, la del sistema. */
   timeZone?: string;
@@ -42,7 +45,7 @@ export function buildApp(opts: BuildAppOptions): App {
   const now = opts.now ?? (() => new Date());
   const deps: Deps = {
     prisma: opts.prisma,
-    dataDir: opts.dataDir,
+    files: opts.files,
     now,
     today: () => localToday(now(), opts.timeZone),
     clientIp: opts.clientIp ?? (() => '127.0.0.1'),
@@ -77,6 +80,7 @@ export function buildApp(opts: BuildAppOptions): App {
   taskStepRoutes(app);
   dependencyRoutes(app);
   attachmentRoutes(app);
+  if (opts.files instanceof DiskFileStore) localUploadRoutes(app, opts.files);
   indicatorRoutes(app);
   dashboardRoutes(app);
   calendarRoutes(app);

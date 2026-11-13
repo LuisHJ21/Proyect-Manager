@@ -37,7 +37,10 @@ function idOf(c: Ctx): string | null {
 async function projectIdOf(prisma: PrismaClient, id: string, pattern: string): Promise<string | null> {
   if (under(pattern, '/api/projects/:id')) return id;
   if (under(pattern, '/api/tasks/:id')) return (await prisma.task.findUnique({ where: { id }, select: { projectId: true } }))?.projectId ?? null;
-  if (pattern === '/api/attachments/:id') return (await prisma.attachment.findUnique({ where: { id }, select: { projectId: true } }))?.projectId ?? null;
+  if (under(pattern, '/api/attachments/:id')) return (await prisma.attachment.findUnique({ where: { id }, select: { projectId: true } }))?.projectId ?? null;
+  if (pattern === '/api/local-uploads/:storedName') {
+    return (await prisma.attachment.findUnique({ where: { storedName: id }, select: { projectId: true } }))?.projectId ?? null;
+  }
   return null;
 }
 

@@ -13,14 +13,11 @@ export class ApiError extends Error {
 type ApiOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
-  formData?: FormData;
 };
 
 export async function api<T = unknown>(path: string, options: ApiOptions = {}): Promise<T> {
   const init: RequestInit = { method: options.method ?? 'GET', credentials: 'same-origin' };
-  if (options.formData) {
-    init.body = options.formData;
-  } else if (options.body !== undefined) {
+  if (options.body !== undefined) {
     init.body = JSON.stringify(options.body);
     init.headers = { 'content-type': 'application/json' };
   }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { diffDays, isValidCalendarDate } from './dates';
+import { MAX_FILE_BYTES } from './fileTypes';
 import {
   APPROACH,
   CLOSED_PROJECT_STATUS,
@@ -407,4 +408,11 @@ export const updateLessonSchema = z.object({
   category: z.enum(LESSON_CATEGORY).optional(),
   situation: required('Describe la situación').max(2000, 'Máximo 2000 caracteres').optional(),
   recommendation: lessonText.optional(),
+});
+
+/** Datos del archivo que se va a subir como anexo. */
+export const uploadRequestSchema = z.object({
+  filename: required('Selecciona un archivo'),
+  mimeType: z.string(),
+  size: z.number().int().positive('Selecciona un archivo').max(MAX_FILE_BYTES, 'El archivo supera el límite de 25 MB'),
 });

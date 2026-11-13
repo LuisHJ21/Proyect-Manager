@@ -9,6 +9,7 @@ import { buildApp, type BuildAppOptions } from '../../src/app';
 import type { App } from '../../src/http';
 import { hashPassword } from '../../src/auth/passwords';
 import { createSession } from '../../src/auth/sessions';
+import { DiskFileStore } from '../../src/storage/diskFileStore';
 import { databaseUrlFor } from './globalSetup';
 
 type Headers = Record<string, string>;
@@ -59,6 +60,22 @@ function httpClient(app: App, cookie?: string) {
 
 export type HttpClient = ReturnType<typeof httpClient>;
 
+/** Sube un anexo con los tres pasos (solicitar, enviar y confirmar) y devuelve el anexo confirmado. */
+export async function uploadFile(
+  client: HttpClient,
+  base: string,
+  file: { name: string; type: string; content: Buffer },
+): Promise<{ id: string } & Record<string, any>> {
+  const requested = await client.post(base, { filename: file.name, mimeType: file.type, size: file.content.length });
+  if (requested.statusCode !== 201) throw new Error(`Solicitud de subida: ${requested.statusCode} ${requested.body}`);
+  const { attachment, upload } = requested.json();
+  const sent = await client.put(upload.url, file.content, upload.headers);
+  if (sent.statusCode !== 200) throw new Error(`Envío del archivo: ${sent.statusCode} ${sent.body}`);
+  const done = await client.post(`/api/attachments/${attachment.id}/complete`);
+  if (done.statusCode !== 200) throw new Error(`Confirmación: ${done.statusCode} ${done.body}`);
+  return done.json();
+}
+
 let adminClient: PrismaClient | undefined;
 /** Conexión de administración del proceso de pruebas: crea y borra las bases de cada prueba. */
 function admin(): PrismaClient {
@@ -76,12 +93,14 @@ export async function createTestApp(opts: { build?: (options: BuildAppOptions) =
 
   let current = new Date('2026-11-06T12:00:00');
   let userCount = 0;
-  const app = (opts.build ?? buildApp)({ prisma, dataDir, now: () => current, timeZone: opts.timeZone });
+  const files = new DiskFileStore(join(dataDir, 'uploads'));
+  const app = (opts.build ?? buildApp)({ prisma, files, now: () => current, timeZone: opts.timeZone });
 
   return {
     app,
     prisma,
     dataDir,
+    files,
     clock: {
       set(iso: string) {
         current = new Date(iso);

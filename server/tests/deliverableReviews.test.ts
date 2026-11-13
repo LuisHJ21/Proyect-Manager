@@ -22,7 +22,7 @@ describe('revisiones de entregables', () => {
     mkdirSync(join(ctx.dataDir, 'uploads'), { recursive: true });
     const storedName = `f-${name}-${projectId}`;
     writeFileSync(join(ctx.dataDir, 'uploads', storedName), 'x');
-    return ctx.prisma.attachment.create({ data: { projectId, uploadedById: pm.id, originalName: name, storedName, mimeType: 'application/pdf', size: 1 } });
+    return ctx.prisma.attachment.create({ data: { projectId, uploadedById: pm.id, originalName: name, storedName, mimeType: 'application/pdf', size: 1, uploadedAt: new Date() } });
   };
 
   beforeEach(async () => {

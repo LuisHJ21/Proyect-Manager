@@ -261,7 +261,7 @@ export interface FileStore {
   - `GET /api/attachments/:id/download`: 302 si el almacén devuelve `redirect`; si devuelve `stream`, la respuesta actual.
 - Produces, en `testApp.ts`: `ctx.files: DiskFileStore` (el almacén de la aplicación de prueba, sobre `ctx.dataDir`) y `uploadFile(client: HttpClient, base: string, file: { name: string; type: string; content: Buffer }): Promise<{ id: string }>` que hace los tres pasos.
 
-- [ ] **Step 1:** Reescribir `server/tests/attachments.test.ts` sobre el flujo nuevo conservando cada caso existente (permisos por rol, tipo no permitido, acceso sin sesión, borrado) y añadir:
+- [x] **Step 1:** Reescribir `server/tests/attachments.test.ts` sobre el flujo nuevo conservando cada caso existente (permisos por rol, tipo no permitido, acceso sin sesión, borrado) y añadir:
 
 ```ts
 it('no confirma un anexo que nunca se subió', async () => {
@@ -283,12 +283,12 @@ it('rechaza y borra un archivo mayor al límite aunque se declarara pequeño', a
 ```
 
   Y: `un anexo pendiente no se puede usar como evidencia de un entregable` (400 en `attachmentId`), `solo quien lo subió puede confirmarlo` (403), `no se puede confirmar en un proyecto cerrado` (409 `project_closed`).
-- [ ] **Step 2:** Verlas fallar.
-- [ ] **Step 3:** Implementar `FileStore`, `DiskFileStore` (con un método propio `put(storedName: string, data: Buffer | Readable): Promise<void>` que usan la ruta local y las pruebas; la API nunca expone `storedName`) y la migración.
-- [ ] **Step 4:** Reescribir `routes/attachments.ts`; quitar la lectura con `parseBody` y su `bodyLimit`; listas y selección de evidencia filtran `uploadedAt: { not: null }`; `projects.ts` y `tasks.ts` llaman `c.var.deps.files.remove`. Comprobar que el guardia de solo lectura cubre `/api/attachments/:id/complete` y añadir esa ruta a su prueba de cobertura.
-- [ ] **Step 5:** `AttachmentList.tsx`: `mutationFn` hace `POST` con `{ filename, mimeType, size }`, luego `fetch(upload.url, { method: upload.method, headers: upload.headers, body: file })` y, si responde bien, `POST …/complete`. Un fallo en la subida muestra "No se pudo subir el archivo. Inténtalo de nuevo.". Actualizar la prueba del componente.
-- [ ] **Step 6:** `npm test`. Verde.
-- [ ] **Step 7:** Commit `feat: anexos con subida directa y almacén intercambiable`.
+- [x] **Step 2:** Verlas fallar.
+- [x] **Step 3:** Implementar `FileStore`, `DiskFileStore` (con un método propio `put(storedName: string, data: Buffer | Readable): Promise<void>` que usan la ruta local y las pruebas; la API nunca expone `storedName`) y la migración.
+- [x] **Step 4:** Reescribir `routes/attachments.ts`; quitar la lectura con `parseBody` y su `bodyLimit`; listas y selección de evidencia filtran `uploadedAt: { not: null }`; `projects.ts` y `tasks.ts` llaman `c.var.deps.files.remove`. Comprobar que el guardia de solo lectura cubre `/api/attachments/:id/complete` y añadir esa ruta a su prueba de cobertura.
+- [x] **Step 5:** `AttachmentList.tsx`: `mutationFn` hace `POST` con `{ filename, mimeType, size }`, luego `fetch(upload.url, { method: upload.method, headers: upload.headers, body: file })` y, si responde bien, `POST …/complete`. Un fallo en la subida muestra "No se pudo subir el archivo. Inténtalo de nuevo.". Actualizar la prueba del componente.
+- [x] **Step 6:** `npm test`. Verde.
+- [x] **Step 7:** Commit `feat: anexos con subida directa y almacén intercambiable`.
 
 ### Task 9: Almacén en Supabase Storage
 

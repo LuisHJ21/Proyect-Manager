@@ -37,6 +37,7 @@ describe('guardia de solo lectura', () => {
       ['/api/projects/:id', () => project.id],
       ['/api/tasks/:id', () => task.id],
       ['/api/attachments/:id', () => attachment.id],
+      ['/api/local-uploads/:storedName', () => attachment.storedName],
     ];
     const routes = listRoutes(ctx.app)
       .filter((r) => ['POST', 'PATCH', 'PUT', 'DELETE'].includes(r.method))
@@ -46,11 +47,14 @@ describe('guardia de solo lectura', () => {
     const failures: string[] = [];
     for (const route of routes) {
       const [, idOf] = prefixes.find(([prefix]) => route.url === prefix || route.url.startsWith(`${prefix}/`))!;
-      const path = route.url.replace(':id', idOf()).replace(/:\w+/g, 'x');
+      const path = route.url.replace(/:\w+/, idOf()).replace(/:\w+/g, 'x');
       const res = await ctx.as(pm)[route.method.toLowerCase() as 'post'](path, {});
       if (res.statusCode !== 409 || res.json().error?.code !== 'project_closed') failures.push(`${route.method} ${route.url} → ${res.statusCode}`);
     }
     expect(failures).toEqual([]);
+    expect(routes.map((r) => `${r.method} ${r.url}`)).toEqual(
+      expect.arrayContaining(['POST /api/attachments/:id/complete', 'PUT /api/local-uploads/:storedName']),
+    );
   });
 
   it('las excepciones siguen funcionando', async () => {

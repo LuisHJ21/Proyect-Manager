@@ -21,7 +21,7 @@ export function deliverableReviewRoutes(app: App) {
       : null;
     if (input.stakeholderId && !stakeholder) throw fieldError('stakeholderId', 'El interesado no pertenece al proyecto');
     const attachment = input.attachmentId
-      ? await prisma.attachment.findFirst({ where: { id: input.attachmentId, projectId: project.id }, select: { originalName: true } })
+      ? await prisma.attachment.findFirst({ where: { id: input.attachmentId, projectId: project.id, uploadedAt: { not: null } }, select: { originalName: true } })
       : null;
     if (input.attachmentId && !attachment) throw fieldError('attachmentId', 'El anexo no pertenece al proyecto');
 

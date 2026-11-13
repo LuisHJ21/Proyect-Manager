@@ -15,7 +15,6 @@ import { requireUser } from '../auth/guards';
 import { checkProgressChange } from '../domain/dependencies';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
-import { removeStoredFiles } from '../files';
 import { incidentAccess } from '../domain/incidents';
 import { taskInclude, toTaskDto } from './taskDto';
 
@@ -168,7 +167,7 @@ export function taskRoutes(app: App) {
     const task = await requireTaskPm(c, c.req.param('id'));
     const attachments = await prisma.attachment.findMany({ where: { taskId: task.id }, select: { storedName: true } });
     await prisma.task.delete({ where: { id: task.id } });
-    await removeStoredFiles(c.var.deps.dataDir, attachments.map((a) => a.storedName));
+    await c.var.deps.files.remove(attachments.map((a) => a.storedName));
     return c.json({ ok: true });
   });
 

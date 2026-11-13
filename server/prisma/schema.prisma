@@ -52,6 +52,14 @@ model Session {
   @@index([userId])
 }
 
+/// Fallos de inicio de sesión por correo e IP, en ventanas de 15 minutos.
+model LoginAttempt {
+  key          String    @id
+  failures     Int
+  windowStart  DateTime
+  blockedUntil DateTime?
+}
+
 model Project {
   id                    String    @id @default(cuid())
   name                  String

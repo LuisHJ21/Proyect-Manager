@@ -220,14 +220,14 @@ it('calcula la fecha en la zona indicada', () => {
 - Produces: modelo `LoginAttempt { key String @id, failures Int, windowStart DateTime, blockedUntil DateTime? }`.
 - Produces: `class LoginLimiter { constructor(prisma: PrismaClient); retryAfterSeconds(key: string, now: Date): Promise<number>; recordFailure(key: string, now: Date): Promise<void>; reset(key: string): Promise<void>; purge(now: Date): Promise<number> }`.
 
-- [ ] **Step 1:** Pruebas nuevas en `auth.test.ts`:
+- [x] **Step 1:** Pruebas nuevas en `auth.test.ts`:
   - `los fallos de hace más de 15 minutos no cuentan`: 4 fallos, avanzar el reloj 16 minutos, 1 fallo más, el siguiente intento con la clave correcta responde 200.
   - `fallos simultáneos no se pierden`: 5 inicios de sesión fallidos lanzados con `Promise.all`; el sexto responde 429.
-- [ ] **Step 2:** Verlas fallar.
-- [ ] **Step 3:** Implementar. `recordFailure` hace todo en una sola sentencia `INSERT … ON CONFLICT (key) DO UPDATE` con `$executeRaw`: si `windowStart` tiene más de 15 minutos reinicia a 1 fallo y nueva ventana; si no, incrementa; fija `blockedUntil = now + 15 min` cuando el resultado llega a 5. `purge` borra filas con ventana vencida y sin bloqueo vigente.
-- [ ] **Step 4:** `routes/auth.ts`: `new LoginLimiter(prisma)` y `await` en las tres llamadas.
-- [ ] **Step 5:** `npm test -w server`. Verde, incluidas las pruebas de bloqueo que ya existían.
-- [ ] **Step 6:** Commit `feat: intentos de inicio de sesión en la base de datos`.
+- [x] **Step 2:** Verlas fallar.
+- [x] **Step 3:** Implementar. `recordFailure` hace todo en una sola sentencia `INSERT … ON CONFLICT (key) DO UPDATE` con `$executeRaw`: si `windowStart` tiene más de 15 minutos reinicia a 1 fallo y nueva ventana; si no, incrementa; fija `blockedUntil = now + 15 min` cuando el resultado llega a 5. `purge` borra filas con ventana vencida y sin bloqueo vigente.
+- [x] **Step 4:** `routes/auth.ts`: `new LoginLimiter(prisma)` y `await` en las tres llamadas.
+- [x] **Step 5:** `npm test -w server`. Verde, incluidas las pruebas de bloqueo que ya existían.
+- [x] **Step 6:** Commit `feat: intentos de inicio de sesión en la base de datos`.
 
 ### Task 8: Almacén de archivos y subida en tres pasos
 

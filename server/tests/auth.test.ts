@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
+import { LoginLimiter } from '../src/auth/loginLimiter';
 
 const PASSWORD = 'contraseña-larga';
 
@@ -101,6 +102,33 @@ describe('autenticación', () => {
     expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(200);
     for (let i = 0; i < 4; i++) await login('ana@x.com', 'incorrecta-123');
     expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(200);
+  });
+
+  it('los fallos de hace más de 15 minutos no cuentan', async () => {
+    await setup();
+    ctx.clock.set('2026-11-06T08:00:00');
+    for (let i = 0; i < 4; i++) await login('ana@x.com', 'incorrecta-123');
+    ctx.clock.set('2026-11-06T08:16:00');
+    expect((await login('ana@x.com', 'incorrecta-123')).statusCode).toBe(401);
+    expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(200);
+  });
+
+  it('purge borra las ventanas vencidas y conserva los bloqueos vigentes', async () => {
+    const limiter = new LoginLimiter(ctx.prisma);
+    const start = new Date('2026-11-06T08:00:00Z');
+    await limiter.recordFailure('viejo', start);
+    for (let i = 0; i < 5; i++) await limiter.recordFailure('bloqueado', new Date('2026-11-06T08:10:00Z'));
+    await limiter.recordFailure('reciente', new Date('2026-11-06T08:19:00Z'));
+    expect(await limiter.purge(new Date('2026-11-06T08:20:00Z'))).toBe(1);
+    const keys = (await ctx.prisma.loginAttempt.findMany()).map((a) => a.key).sort();
+    expect(keys).toEqual(['bloqueado', 'reciente']);
+  });
+
+  it('fallos simultáneos no se pierden', async () => {
+    await setup();
+    const results = await Promise.all(Array.from({ length: 5 }, () => login('ana@x.com', 'incorrecta-123')));
+    for (const res of results) expect(res.statusCode).toBe(401);
+    expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(429);
   });
 
   it('con mustChangePassword solo permite me, logout y change-password', async () => {

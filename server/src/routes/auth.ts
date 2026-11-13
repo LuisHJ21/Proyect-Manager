@@ -9,8 +9,6 @@ import { AppError, fieldError } from '../errors';
 import { readBody, type App, type Ctx } from '../http';
 
 export function authRoutes(app: App) {
-  const limiter = new LoginLimiter();
-
   const startSession = async (c: Ctx, userId: string) => {
     const token = await createSession(c.var.deps.prisma, userId, c.var.deps.now());
     setCookie(c, SESSION_COOKIE, token, {
@@ -39,11 +37,12 @@ export function authRoutes(app: App) {
 
   app.post('/api/auth/login', async (c) => {
     const { prisma } = c.var.deps;
+    const limiter = new LoginLimiter(prisma);
     const { email, password } = loginSchema.parse(await readBody(c));
     const key = `${email}|${c.var.deps.clientIp(c)}`;
     const now = c.var.deps.now();
 
-    const retryAfterSeconds = limiter.retryAfterSeconds(key, now);
+    const retryAfterSeconds = await limiter.retryAfterSeconds(key, now);
     if (retryAfterSeconds > 0) {
       const minutes = Math.ceil(retryAfterSeconds / 60);
       const wait = minutes === 1 ? '1 minuto' : `${minutes} minutos`;
@@ -55,11 +54,11 @@ export function authRoutes(app: App) {
     const user = await prisma.user.findUnique({ where: { email } });
     const valid = user?.active && (await verifyPassword(user.passwordHash, password));
     if (!user || !valid) {
-      limiter.recordFailure(key, now);
+      await limiter.recordFailure(key, now);
       throw new AppError(401, 'invalid_credentials', 'Correo o contraseña incorrectos');
     }
 
-    limiter.reset(key);
+    await limiter.reset(key);
     await startSession(c, user.id);
     return c.json(toUserDto(user));
   });

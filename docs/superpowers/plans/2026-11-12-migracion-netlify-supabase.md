@@ -300,10 +300,10 @@ it('rechaza y borra un archivo mayor al límite aunque se declarara pequeño', a
 - Consumes: `FileStore` de Task 8.
 - Produces: `class SupabaseFileStore implements FileStore { constructor(opts: { url: string; serviceRoleKey: string; bucket: string }) }`.
 
-- [ ] **Step 1:** Prueba con el cliente de Supabase simulado (`vi.mock('@supabase/supabase-js')`): `createUpload` llama `createSignedUploadUrl(storedName)` y devuelve su `signedUrl` con método `PUT` y `content-type`; `download` llama `createSignedUrl(storedName, 60, { download: filename })` y devuelve `{ redirect }`; `stat` devuelve `null` cuando el objeto no existe; `remove([])` no llama a la API.
-- [ ] **Step 2:** Verla fallar e implementar. Antes de fijar el método y los encabezados de subida, leer en `node_modules/@supabase/storage-js` cómo `uploadToSignedUrl` envía el archivo y replicar exactamente eso en `UploadTarget`.
-- [ ] **Step 3:** `npm test -w server`. Verde.
-- [ ] **Step 4:** Commit `feat: almacén de anexos en Supabase Storage`.
+- [x] **Step 1:** Prueba con el cliente de Supabase simulado (`vi.mock('@supabase/supabase-js')`): `createUpload` llama `createSignedUploadUrl(storedName)` y devuelve su `signedUrl` con método `PUT` y `content-type`; `download` llama `createSignedUrl(storedName, 60, { download: filename })` y devuelve `{ redirect }`; `stat` devuelve `null` cuando el objeto no existe; `remove([])` no llama a la API.
+- [x] **Step 2:** Verla fallar e implementar. Antes de fijar el método y los encabezados de subida, leer en `node_modules/@supabase/storage-js` cómo `uploadToSignedUrl` envía el archivo y replicar exactamente eso en `UploadTarget`.
+- [x] **Step 3:** `npm test -w server`. Verde.
+- [x] **Step 4:** Commit `feat: almacén de anexos en Supabase Storage`.
 
 ### Task 10: Seguridad para internet
 

@@ -166,6 +166,36 @@ describe('anexos', () => {
     expect((await pm.delete(`/api/attachments/${up.id}`)).statusCode).toBe(200);
   });
 
+  it('un tipo vacío se guarda y se envía como application/octet-stream', async () => {
+    const res = await request(pm, projectUrl(), 'datos.csv', '', 3);
+    expect(res.statusCode).toBe(201);
+    expect(res.json().attachment.mimeType).toBe('application/octet-stream');
+    expect(res.json().upload.headers['content-type']).toBe('application/octet-stream');
+  });
+
+  it('si falla el borrado del archivo, el anexo se elimina igual y responde 200', async () => {
+    const up = await send(pm, projectUrl());
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(ctx.files, 'remove').mockRejectedValueOnce(new Error('Storage caído'));
+    expect((await pm.delete(`/api/attachments/${up.id}`)).statusCode).toBe(200);
+    expect(await ctx.prisma.attachment.count()).toBe(0);
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it('si la limpieza diaria borra el anexo mientras se confirma, responde 404', async () => {
+    const res = await request(pm, projectUrl());
+    const { attachment, upload } = res.json();
+    await pm.put(upload.url, Buffer.from('pdf'), upload.headers);
+    const stat = ctx.files.stat.bind(ctx.files);
+    vi.spyOn(ctx.files, 'stat').mockImplementationOnce(async (name) => {
+      const found = await stat(name);
+      await ctx.prisma.attachment.delete({ where: { id: attachment.id } });
+      return found;
+    });
+    expect((await pm.post(`/api/attachments/${attachment.id}/complete`)).statusCode).toBe(404);
+  });
+
   it('no confirma un anexo que nunca se subió', async () => {
     const res = await pm.post(`/api/projects/${project.id}/attachments`, { filename: 'a.pdf', mimeType: 'application/pdf', size: 10 });
     const done = await pm.post(`/api/attachments/${res.json().attachment.id}/complete`);

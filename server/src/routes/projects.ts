@@ -6,6 +6,7 @@ import { requirePm, requireUser } from '../auth/guards';
 import { countTasksOutside, type ProjectRange } from '../domain/projectDates';
 import { fieldError } from '../errors';
 import { sanitizeFields } from '../richText';
+import { removeAfterDelete } from '../storage/fileStore';
 import { loadProjectSummaries } from './projectStats';
 
 export function projectRoutes(app: App) {
@@ -84,7 +85,7 @@ export function projectRoutes(app: App) {
     }
     const attachments = await prisma.attachment.findMany({ where: { projectId: project.id }, select: { storedName: true } });
     await prisma.project.delete({ where: { id: project.id } });
-    await c.var.deps.files.remove(attachments.map((a) => a.storedName));
+    await removeAfterDelete(c.var.deps.files, attachments.map((a) => a.storedName));
     return c.json({ ok: true });
   });
 }

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { User } from '@prisma/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
 describe('proyectos y miembros', () => {
@@ -93,6 +93,19 @@ describe('proyectos y miembros', () => {
     });
     expect((await ctx.as(pm).delete(`/api/projects/${p.id}`, { confirmName: 'Portal' })).statusCode).toBe(200);
     expect(existsSync(file)).toBe(false);
+  });
+
+  it('si falla el borrado de archivos, el proyecto y su tarea se borran igual y responden 200', async () => {
+    const p = await ctx.makeProject({ name: 'Portal' });
+    const task = await ctx.makeTask(p.id);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const remove = vi.spyOn(ctx.files, 'remove').mockRejectedValue(new Error('Storage caído'));
+    expect((await ctx.as(pm).delete(`/api/tasks/${task.id}`)).statusCode).toBe(200);
+    expect((await ctx.as(pm).delete(`/api/projects/${p.id}`, { confirmName: 'Portal' })).statusCode).toBe(200);
+    expect(await ctx.prisma.project.count()).toBe(0);
+    expect(error).toHaveBeenCalled();
+    remove.mockRestore();
+    error.mockRestore();
   });
 
   it('añade miembros, rechaza inactivos y duplicados', async () => {

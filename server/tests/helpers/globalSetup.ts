@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import type { TestProject } from 'vitest/node';
@@ -20,6 +21,9 @@ export function databaseUrlFor(adminUrl: string, database: string): string {
 }
 
 export default async function setup(project: TestProject) {
+  // Como los demás scripts: el .env de la raíz completa lo que no venga del entorno.
+  const rootEnv = resolve(__dirname, '../../../.env');
+  if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
   const adminUrl = process.env.TEST_DATABASE_URL;
   if (!adminUrl) {
     throw new Error('Falta TEST_DATABASE_URL. Arranca PostgreSQL con "docker compose up -d" y define la variable (ver .env.example).');

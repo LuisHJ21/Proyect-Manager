@@ -15,3 +15,15 @@ export interface FileStore {
   /** Borra los archivos. Ignora los que ya no existan. */
   remove(storedNames: string[]): Promise<void>;
 }
+
+/**
+ * Borra los archivos de registros que ya se eliminaron. Si el almacén falla, lo anota en el registro
+ * y sigue: el borrado en la base ya ocurrió y la petición no debe responder como fallida.
+ */
+export async function removeAfterDelete(files: FileStore, storedNames: string[]): Promise<void> {
+  try {
+    await files.remove(storedNames);
+  } catch (error) {
+    console.error(`No se pudieron borrar ${storedNames.length} archivos del almacén: ${storedNames.join(', ')}`, error);
+  }
+}

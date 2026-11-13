@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { User } from '@prisma/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSession } from '../src/auth/sessions';
 import { LoginLimiter } from '../src/auth/loginLimiter';
 import { runDailyJobs } from '../src/jobs/daily';
@@ -85,6 +85,18 @@ describe('tarea diaria', () => {
     const snapshots = await ctx.prisma.evmSnapshot.findMany();
     expect(snapshots.map((s) => [s.projectId, s.date])).toEqual([[active.id, ctx.deps.today()]]);
     expect(snapshots[0]!.bacCents).toBe(100_000n);
+  });
+
+  it('si Storage falla, guarda igual las fotos y termina con error', async () => {
+    const active = await projectWithBaseline('Activo');
+    await ctx.prisma.attachment.create({
+      data: { projectId: active.id, uploadedById: pm.id, originalName: 'a.pdf', storedName: 'viejo', mimeType: 'application/pdf', size: 1, createdAt: new Date(now.getTime() - 25 * HOUR) },
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(ctx.files, 'remove').mockRejectedValueOnce(new Error('Storage caído'));
+    await expect(runDailyJobs(ctx.deps)).rejects.toThrow(/anexos pendientes/);
+    expect(await ctx.prisma.evmSnapshot.count()).toBe(1);
+    error.mockRestore();
   });
 
   it('devuelve los cuatro contadores', async () => {

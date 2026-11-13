@@ -1,11 +1,10 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
+import { utc } from '../sqlTime';
 
 const MAX_FAILURES = 5;
 const WINDOW_MS = 15 * 60_000;
 const BLOCK_MS = 15 * 60_000;
 
-/** Instante como `timestamp` en UTC, sin depender de la zona de la sesión de PostgreSQL. */
-const utc = (date: Date) => Prisma.sql`(CAST(${date.toISOString()} AS timestamptz) AT TIME ZONE 'UTC')`;
 
 /** Fallos de inicio de sesión por clave (correo|IP), guardados en la base para que valgan entre funciones. */
 export class LoginLimiter {

@@ -7,6 +7,7 @@ import { requireUser } from '../auth/guards';
 import { AppError, forbidden, notFound } from '../errors';
 import { contentDisposition, normalizeUploadName } from '../files';
 import { readBody, type App, type Ctx } from '../http';
+import { removeAfterDelete } from '../storage/fileStore';
 import { getTaskAccess } from './tasks';
 
 const uploadedByInclude = { uploadedBy: { select: { id: true, name: true } } };
@@ -40,7 +41,8 @@ async function requestUpload(c: Ctx, projectId: string, taskId: string | null) {
       uploadedById: requireUser(c).id,
       originalName,
       storedName: randomUUID(),
-      mimeType: input.mimeType,
+      // Sin tipo declarado, el navegador no reconoció la extensión: se guarda como binario genérico.
+      mimeType: input.mimeType.trim() || 'application/octet-stream',
       size: input.size,
     },
     include: uploadedByInclude,
@@ -104,12 +106,18 @@ export function attachmentRoutes(app: App) {
       if (!stored) throw new AppError(409, 'upload_missing', 'El archivo no llegó a subirse. Inténtalo de nuevo.');
       if (stored.size > MAX_FILE_BYTES) {
         await files.remove([attachment.storedName]);
-        await prisma.attachment.delete({ where: { id: attachment.id } });
+        await prisma.attachment.deleteMany({ where: { id: attachment.id } });
         throw new AppError(413, 'file_too_large', 'El archivo supera el límite de 25 MB');
       }
-      await prisma.attachment.update({ where: { id: attachment.id }, data: { uploadedAt: c.var.deps.now(), size: stored.size } });
+      // Solo si sigue pendiente: la limpieza diaria pudo borrarlo mientras tanto.
+      await prisma.attachment.updateMany({
+        where: { id: attachment.id, uploadedAt: null },
+        data: { uploadedAt: c.var.deps.now(), size: stored.size },
+      });
     }
-    return c.json(toDto(await prisma.attachment.findUniqueOrThrow({ where: { id: attachment.id }, include: uploadedByInclude })));
+    const confirmed = await prisma.attachment.findUnique({ where: { id: attachment.id }, include: uploadedByInclude });
+    if (!confirmed) throw notFound('Anexo no encontrado');
+    return c.json(toDto(confirmed));
   });
 
   app.get('/api/attachments/:id/download', async (c) => {
@@ -139,7 +147,7 @@ export function attachmentRoutes(app: App) {
     const { isPm } = await getProjectAccess(c, attachment.projectId);
     if (!isPm && attachment.uploadedById !== user.id) throw forbidden('Solo puedes eliminar los anexos que subiste');
     await c.var.deps.prisma.attachment.delete({ where: { id: attachment.id } });
-    await c.var.deps.files.remove([attachment.storedName]);
+    await removeAfterDelete(c.var.deps.files, [attachment.storedName]);
     return c.json({ ok: true });
   });
 }

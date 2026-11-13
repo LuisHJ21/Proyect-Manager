@@ -42,7 +42,10 @@ export class SupabaseFileStore implements FileStore {
       if (isNotFound(error)) return null;
       throw error;
     }
-    return { size: data.size ?? 0 };
+    const size = data.size ?? (data.metadata as { size?: unknown } | undefined)?.size;
+    // Sin tamaño no se puede comprobar el límite de 25 MB: mejor fallar que aceptar a ciegas.
+    if (typeof size !== 'number') throw new Error(`Storage no informó el tamaño de ${storedName}`);
+    return { size };
   }
 
   async download(storedName: string, filename: string): Promise<DownloadTarget> {

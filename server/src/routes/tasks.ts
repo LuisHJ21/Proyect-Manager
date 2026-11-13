@@ -10,6 +10,7 @@ import {
   updateTaskSchema,
 } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
+import { removeAfterDelete } from '../storage/fileStore';
 import { getProjectAccess, requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { checkProgressChange } from '../domain/dependencies';
@@ -167,7 +168,7 @@ export function taskRoutes(app: App) {
     const task = await requireTaskPm(c, c.req.param('id'));
     const attachments = await prisma.attachment.findMany({ where: { taskId: task.id }, select: { storedName: true } });
     await prisma.task.delete({ where: { id: task.id } });
-    await c.var.deps.files.remove(attachments.map((a) => a.storedName));
+    await removeAfterDelete(c.var.deps.files, attachments.map((a) => a.storedName));
     return c.json({ ok: true });
   });
 

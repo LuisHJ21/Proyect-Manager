@@ -54,6 +54,13 @@ describe('almacén en Supabase Storage', () => {
     expect(await store.stat('no-existe')).toBeNull();
   });
 
+  it('stat usa metadata.size si falta size y falla si no hay tamaño', async () => {
+    bucket.info.mockResolvedValueOnce({ data: { metadata: { size: 99 } }, error: null });
+    expect(await store.stat('s1')).toEqual({ size: 99 });
+    bucket.info.mockResolvedValueOnce({ data: { name: 's1' }, error: null });
+    await expect(store.stat('s1')).rejects.toThrow(/tamaño/);
+  });
+
   it('stat propaga otros errores', async () => {
     bucket.info.mockResolvedValueOnce({ data: null, error: Object.assign(new Error('caído'), { status: 500 }) });
     await expect(store.stat('s1')).rejects.toThrow('caído');

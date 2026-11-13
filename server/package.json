@@ -8,6 +8,7 @@
     "build": "tsup",
     "start": "node scripts/start.mjs",
     "test": "vitest run",
+    "migrate": "node scripts/migrate.mjs",
     "postinstall": "prisma generate",
     "reset-password": "tsx scripts/reset-password.ts"
   },

@@ -371,9 +371,9 @@ export default async () => {
 export const config: Config = { schedule: '0 10 * * *' };
 ```
 
-- [ ] **Step 1:** Prueba en `production.test.ts`: `createProductionApp({})` lanza un error cuyo mensaje contiene `DATABASE_URL`; con todas las variables presentes y sin `SETUP_TOKEN`, el mensaje contiene `SETUP_TOKEN`.
-- [ ] **Step 2:** Verla fallar e implementar `production.ts` y las dos funciones.
-- [ ] **Step 3:** `netlify.toml`:
+- [x] **Step 1:** Prueba en `production.test.ts`: `createProductionApp({})` lanza un error cuyo mensaje contiene `DATABASE_URL`; con todas las variables presentes y sin `SETUP_TOKEN`, el mensaje contiene `SETUP_TOKEN`.
+- [x] **Step 2:** Verla fallar e implementar `production.ts` y las dos funciones.
+- [x] **Step 3:** `netlify.toml`:
 
 ```toml
 [build]
@@ -403,9 +403,9 @@ export const config: Config = { schedule: '0 10 * * *' };
     Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none'"
 ```
 
-- [ ] **Step 4:** Script `"migrate": "node scripts/migrate.mjs"` en `server/package.json`; `migrate.mjs` solo ejecuta `prisma migrate deploy`. `"engines": { "node": ">=24" }` en la raíz.
-- [ ] **Step 5:** `npm test` en verde. Con la CLI de Netlify instalada, `npx netlify build` termina sin errores con un `.env` local que apunte a la base de Docker.
-- [ ] **Step 6:** Commit `feat: funciones y configuración para Netlify`.
+- [x] **Step 4:** Script `"migrate": "node scripts/migrate.mjs"` en `server/package.json`; `migrate.mjs` solo ejecuta `prisma migrate deploy`. `"engines": { "node": ">=24" }` en la raíz.
+- [x] **Step 5:** `npm test` en verde. Con la CLI de Netlify instalada, `npx netlify build` termina sin errores con un `.env` local que apunte a la base de Docker.
+- [x] **Step 6:** Commit `feat: funciones y configuración para Netlify`.
 
 ### Task 13: Scripts, prueba de extremo a extremo y documentación
 

@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { changePasswordSchema, loginSchema, setupSchema } from '@pm/shared';
 import { deleteCookie, setCookie } from 'hono/cookie';
 import { requireUser } from '../auth/guards';
@@ -8,22 +9,36 @@ import { toUserDto } from '../auth/userDto';
 import { AppError, fieldError } from '../errors';
 import { readBody, type App, type Ctx } from '../http';
 
+/** Compara el código en tiempo constante. Los resúmenes igualan el largo, así no se filtra por la duración. */
+function sameToken(given: string | undefined, expected: string): boolean {
+  if (given === undefined) return false;
+  const digest = (value: string) => createHash('sha256').update(value).digest();
+  return timingSafeEqual(digest(given), digest(expected));
+}
+
 export function authRoutes(app: App) {
   const startSession = async (c: Ctx, userId: string) => {
     const token = await createSession(c.var.deps.prisma, userId, c.var.deps.now());
     setCookie(c, SESSION_COOKIE, token, {
       path: '/',
       httpOnly: true,
+      secure: c.var.deps.secureCookies,
       sameSite: 'Lax',
       maxAge: SESSION_HOURS * 3600,
     });
   };
 
-  app.get('/api/setup/status', async (c) => c.json({ needsSetup: (await c.var.deps.prisma.user.count()) === 0 }));
+  app.get('/api/setup/status', async (c) =>
+    c.json({ needsSetup: (await c.var.deps.prisma.user.count()) === 0, requiresToken: Boolean(c.var.deps.setupToken) }),
+  );
 
   app.post('/api/setup', async (c) => {
     const { prisma } = c.var.deps;
     const input = setupSchema.parse(await readBody(c));
+    const { setupToken } = c.var.deps;
+    if (setupToken && !sameToken(input.token, setupToken)) {
+      throw new AppError(403, 'setup_token_invalid', 'El código de configuración no es correcto');
+    }
     const passwordHash = await hashPassword(input.password);
     const user = await prisma.$transaction(async (tx) => {
       if ((await tx.user.count()) > 0) {
@@ -66,7 +81,7 @@ export function authRoutes(app: App) {
   app.post('/api/auth/logout', async (c) => {
     const token = c.var.sessionToken;
     if (token) await deleteSession(c.var.deps.prisma, token);
-    deleteCookie(c, SESSION_COOKIE, { path: '/' });
+    deleteCookie(c, SESSION_COOKIE, { path: '/', secure: c.var.deps.secureCookies });
     return c.json({ ok: true });
   });
 

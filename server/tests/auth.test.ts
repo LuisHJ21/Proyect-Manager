@@ -131,6 +131,53 @@ describe('autenticación', () => {
     expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(429);
   });
 
+  describe('con código de configuración inicial', () => {
+    let guarded: TestCtx;
+    beforeEach(async () => {
+      guarded = await createTestApp({ setupToken: 'abc' });
+    });
+    afterEach(() => guarded.close());
+    const body = { name: 'Ana', email: 'ana@x.com', password: PASSWORD };
+
+    it('el estado indica que se pide el código', async () => {
+      expect((await guarded.anon.get('/api/setup/status')).json()).toEqual({ needsSetup: true, requiresToken: true });
+      expect((await ctx.anon.get('/api/setup/status')).json()).toEqual({ needsSetup: true, requiresToken: false });
+    });
+
+    it('sin código o con otro valor responde 403 y no crea la cuenta', async () => {
+      for (const token of [undefined, 'otro', 'abcd', '']) {
+        const res = await guarded.anon.post('/api/setup', { ...body, token });
+        expect(res.statusCode).toBe(403);
+        expect(res.json().error.code).toBe('setup_token_invalid');
+      }
+      expect(await guarded.prisma.user.count()).toBe(0);
+    });
+
+    it('con el código correcto crea la cuenta', async () => {
+      expect((await guarded.anon.post('/api/setup', { ...body, token: 'abc' })).statusCode).toBe(201);
+    });
+  });
+
+  it('con secureCookies la cookie de sesión es Secure; sin la opción, no', async () => {
+    await setup();
+    expect(String((await login('ana@x.com', PASSWORD)).headers['set-cookie'])).not.toContain('Secure');
+    const secure = await createTestApp({ secureCookies: true });
+    try {
+      await secure.anon.post('/api/setup', { name: 'Ana', email: 'ana@x.com', password: PASSWORD });
+      const header = String((await secure.anon.post('/api/auth/login', { email: 'ana@x.com', password: PASSWORD })).headers['set-cookie']);
+      expect(header).toContain('Secure');
+    } finally {
+      await secure.close();
+    }
+  });
+
+  it('las respuestas de la API traen cabeceras de seguridad', async () => {
+    for (const res of [await ctx.anon.get('/api/setup/status'), await ctx.anon.get('/api/auth/me'), await ctx.anon.get('/api/no-existe')]) {
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['x-frame-options']).toBeTruthy();
+    }
+  });
+
   it('con mustChangePassword solo permite me, logout y change-password', async () => {
     const c = await ctx.makeUser({ role: 'COLLABORATOR', mustChangePassword: true });
     ctx.app.get('/api/__protected', (c) => c.json({ ok: true }));

@@ -39,13 +39,14 @@ function useSubmit<T>(run: () => Promise<T>, onDone: (result: T) => void) {
 }
 
 export function SetupPage() {
-  const { needsSetup, isLoading, signedIn } = useAuth();
+  const { needsSetup, requiresToken, isLoading, signedIn } = useAuth();
   const navigate = useNavigate();
+  const [token, setToken] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { errors, busy, submit } = useSubmit(
-    () => api<User>('/api/setup', { method: 'POST', body: { name, email, password } }),
+    () => api<User>('/api/setup', { method: 'POST', body: { name, email, password, ...(requiresToken ? { token } : {}) } }),
     (user) => {
       signedIn(user);
       navigate('/', { replace: true });
@@ -59,6 +60,11 @@ export function SetupPage() {
     <AuthCard title="Configuración inicial" description="Crea tu cuenta de Project Manager para empezar.">
       <form onSubmit={submit} className="space-y-4" noValidate>
         <FormMessage message={errors.message} />
+        {requiresToken && (
+          <FormField label="Código de configuración" error={errors.fields.token} hint="Lo encuentras en la variable SETUP_TOKEN del servidor">
+            <input className={inputClass} value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
+          </FormField>
+        )}
         <FormField label="Nombre" error={errors.fields.name}>
           <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
         </FormField>

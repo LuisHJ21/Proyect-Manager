@@ -314,14 +314,14 @@ it('rechaza y borra un archivo mayor al límite aunque se declarara pequeño', a
 - Produces: opciones de `buildApp` `secureCookies?: boolean` y `setupToken?: string`, disponibles en `Deps`.
 - Produces: `GET /api/setup/status` → `{ needsSetup: boolean, requiresToken: boolean }`; `setupSchema` añade `token: z.string().optional()`.
 
-- [ ] **Step 1:** Pruebas en `auth.test.ts`:
+- [x] **Step 1:** Pruebas en `auth.test.ts`:
   - con `setupToken: 'abc'`: `POST /api/setup` sin `token` o con otro valor → 403 `setup_token_invalid` y `user.count() === 0`; con `token: 'abc'` → 201.
   - con `secureCookies: true`: la cookie de inicio de sesión contiene `Secure`.
   - cualquier respuesta de `/api/*` trae `x-content-type-options: nosniff` y `x-frame-options`.
-- [ ] **Step 2:** Verlas fallar e implementar: comparación del código con `timingSafeEqual`; `secureHeaders()` de `hono/secure-headers` en `/api/*`; `secure: deps.secureCookies` al fijar la cookie.
-- [ ] **Step 3:** `SetupPage` muestra el campo "Código de configuración" cuando `requiresToken` es verdadero; prueba del componente.
-- [ ] **Step 4:** `npm test`. Verde.
-- [ ] **Step 5:** Commit `feat: cookie segura, cabeceras y código de configuración inicial`.
+- [x] **Step 2:** Verlas fallar e implementar: comparación del código con `timingSafeEqual`; `secureHeaders()` de `hono/secure-headers` en `/api/*`; `secure: deps.secureCookies` al fijar la cookie.
+- [x] **Step 3:** `SetupPage` muestra el campo "Código de configuración" cuando `requiresToken` es verdadero; prueba del componente.
+- [x] **Step 4:** `npm test`. Verde.
+- [x] **Step 5:** Commit `feat: cookie segura, cabeceras y código de configuración inicial`.
 
 ### Task 11: Tarea diaria
 

@@ -45,6 +45,8 @@ export const setupSchema = z.object({
   name: required('Escribe tu nombre'),
   email: emailSchema,
   password: passwordSchema,
+  /** Código de configuración inicial (SETUP_TOKEN), cuando el servidor lo exige. */
+  token: z.string().optional(),
 });
 export const loginSchema = z.object({
   email: emailSchema,

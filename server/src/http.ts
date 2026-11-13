@@ -10,6 +10,10 @@ export type Deps = {
   /** Fecha de hoy (YYYY-MM-DD) en la zona configurada. */
   today(): string;
   clientIp(c: Ctx): string;
+  /** Cookie de sesión con `Secure` (producción, HTTPS). */
+  secureCookies: boolean;
+  /** Código que exige la configuración inicial (SETUP_TOKEN). */
+  setupToken?: string;
 };
 export type AppEnv = { Variables: { deps: Deps; user: User | null; sessionToken: string | null } };
 export type App = Hono<AppEnv>;

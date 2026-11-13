@@ -83,7 +83,9 @@ function admin(): PrismaClient {
   return adminClient;
 }
 
-export async function createTestApp(opts: { build?: (options: BuildAppOptions) => App; timeZone?: string } = {}) {
+export async function createTestApp(
+  opts: { build?: (options: BuildAppOptions) => App } & Pick<BuildAppOptions, 'timeZone' | 'setupToken' | 'secureCookies'> = {},
+) {
   const dataDir = mkdtempSync(join(tmpdir(), 'pm-test-'));
   const database = `pm_test_${randomBytes(6).toString('hex')}`;
   await admin().$executeRawUnsafe(`CREATE DATABASE "${database}" TEMPLATE "${inject('templateDb')}"`);
@@ -94,7 +96,8 @@ export async function createTestApp(opts: { build?: (options: BuildAppOptions) =
   let current = new Date('2026-11-06T12:00:00');
   let userCount = 0;
   const files = new DiskFileStore(join(dataDir, 'uploads'));
-  const app = (opts.build ?? buildApp)({ prisma, files, now: () => current, timeZone: opts.timeZone });
+  const { build = buildApp, ...appOptions } = opts;
+  const app = build({ prisma, files, now: () => current, ...appOptions });
 
   return {
     app,

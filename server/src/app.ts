@@ -1,6 +1,7 @@
 import { localToday } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { Hono } from 'hono';
+import { secureHeaders } from 'hono/secure-headers';
 import { registerAuthHook } from './auth/guards';
 import { registerClosedGuard } from './closedGuard';
 import { errorHandler, notFoundHandler } from './errors';
@@ -38,6 +39,10 @@ export type BuildAppOptions = {
   /** Zona para calcular "hoy" (APP_TIMEZONE). Sin ella, la del sistema. */
   timeZone?: string;
   clientIp?: (c: Ctx) => string;
+  /** Cookie de sesión con `Secure`. Activar en producción. */
+  secureCookies?: boolean;
+  /** Si existe, `POST /api/setup` exige este código. */
+  setupToken?: string;
 };
 
 export function buildApp(opts: BuildAppOptions): App {
@@ -49,10 +54,13 @@ export function buildApp(opts: BuildAppOptions): App {
     now,
     today: () => localToday(now(), opts.timeZone),
     clientIp: opts.clientIp ?? (() => '127.0.0.1'),
+    secureCookies: opts.secureCookies ?? false,
+    setupToken: opts.setupToken || undefined,
   };
 
   app.onError(errorHandler);
   app.notFound(notFoundHandler);
+  app.use('/api/*', secureHeaders());
   app.use(async (c, next) => {
     c.set('deps', deps);
     c.set('user', null);

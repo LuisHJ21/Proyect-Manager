@@ -45,10 +45,10 @@ export type BuildAppOptions = {
   setupToken?: string;
 };
 
-export function buildApp(opts: BuildAppOptions): App {
-  const app = new Hono<AppEnv>();
+/** Dependencias de la API a partir de sus opciones. La tarea diaria usa las mismas. */
+export function createDeps(opts: BuildAppOptions): Deps {
   const now = opts.now ?? (() => new Date());
-  const deps: Deps = {
+  return {
     prisma: opts.prisma,
     files: opts.files,
     now,
@@ -57,6 +57,11 @@ export function buildApp(opts: BuildAppOptions): App {
     secureCookies: opts.secureCookies ?? false,
     setupToken: opts.setupToken || undefined,
   };
+}
+
+export function buildApp(opts: BuildAppOptions): App {
+  const app = new Hono<AppEnv>();
+  const deps = createDeps(opts);
 
   app.onError(errorHandler);
   app.notFound(notFoundHandler);

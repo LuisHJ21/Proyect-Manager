@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Role } from '@pm/shared';
 import { PrismaClient, type User } from '@prisma/client';
 import { inject } from 'vitest';
-import { buildApp, type BuildAppOptions } from '../../src/app';
+import { buildApp, createDeps, type BuildAppOptions } from '../../src/app';
 import type { App } from '../../src/http';
 import { hashPassword } from '../../src/auth/passwords';
 import { createSession } from '../../src/auth/sessions';
@@ -97,13 +97,17 @@ export async function createTestApp(
   let userCount = 0;
   const files = new DiskFileStore(join(dataDir, 'uploads'));
   const { build = buildApp, ...appOptions } = opts;
-  const app = build({ prisma, files, now: () => current, ...appOptions });
+  const options: BuildAppOptions = { prisma, files, now: () => current, ...appOptions };
+  const app = build(options);
+  /** Las mismas dependencias que usa la aplicación de prueba (para la tarea diaria). */
+  const deps = createDeps(options);
 
   return {
     app,
     prisma,
     dataDir,
     files,
+    deps,
     clock: {
       set(iso: string) {
         current = new Date(iso);

@@ -33,6 +33,25 @@ export async function loadEvmInput(prisma: PrismaClient, projectId: string): Pro
   };
 }
 
+/**
+ * Guarda (o actualiza) la foto de valor ganado del día. Un proyecto cerrado no acumula fotos: su
+ * curva S queda congelada. Devuelve false si no hay foto que guardar (cerrado o sin línea base).
+ */
+export async function saveEvmSnapshot(prisma: PrismaClient, projectId: string, today: string): Promise<boolean> {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { status: true } });
+  if (!project || (CLOSED_PROJECT_STATUS as readonly string[]).includes(project.status)) return false;
+  const input = await loadEvmInput(prisma, projectId);
+  if (!input) return false;
+  const { metrics } = computeEvm(input, today);
+  const snapshot = { bacCents: BigInt(metrics.bacCents), pvCents: BigInt(metrics.pvCents), evCents: BigInt(metrics.evCents), acCents: BigInt(metrics.acCents) };
+  await prisma.evmSnapshot.upsert({
+    where: { projectId_date: { projectId, date: today } },
+    update: snapshot,
+    create: { projectId, date: today, ...snapshot },
+  });
+  return true;
+}
+
 type BaselineWithRelations = {
   version: number;
   reason: string;
@@ -111,13 +130,7 @@ export function performanceRoutes(app: App) {
 
     const today = c.var.deps.today();
     const { metrics, tasks, outsideBaseline } = computeEvm(input, today);
-    const snapshot = { bacCents: BigInt(metrics.bacCents), pvCents: BigInt(metrics.pvCents), evCents: BigInt(metrics.evCents), acCents: BigInt(metrics.acCents) };
-    // Un proyecto cerrado no acumula fotos: su curva S queda congelada.
-    if (!(CLOSED_PROJECT_STATUS as readonly string[]).includes(project.status)) await prisma.evmSnapshot.upsert({
-      where: { projectId_date: { projectId: project.id, date: today } },
-      update: snapshot,
-      create: { projectId: project.id, date: today, ...snapshot },
-    });
+    await saveEvmSnapshot(prisma, project.id, today);
 
     const snapshots = new Map(
       (await prisma.evmSnapshot.findMany({ where: { projectId: project.id } })).map((s) => [s.date, s]),

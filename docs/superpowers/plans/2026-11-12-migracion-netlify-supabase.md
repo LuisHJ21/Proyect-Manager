@@ -334,10 +334,10 @@ it('rechaza y borra un archivo mayor al límite aunque se declarara pequeño', a
 - Produces: `runDailyJobs(deps: Deps): Promise<{ sessions: number; loginAttempts: number; pendingUploads: number; snapshots: number }>`.
 - Produces: `saveEvmSnapshot(prisma: PrismaClient, projectId: string, today: string): Promise<boolean>` exportada desde `performance.ts`, usada por el GET actual y por la tarea diaria.
 
-- [ ] **Step 1:** Pruebas en `daily.test.ts`, llamando `runDailyJobs` con las dependencias de la aplicación de prueba: borra una sesión vencida y conserva una vigente; borra un anexo pendiente de 25 horas (registro y archivo) y conserva uno de 1 hora; crea un `EvmSnapshot` para un proyecto activo con línea base y ninguno para uno cerrado; devuelve los cuatro contadores. `createTestApp` expone `ctx.deps`.
-- [ ] **Step 2:** Verlas fallar e implementar.
-- [ ] **Step 3:** `npm test -w server`. Verde.
-- [ ] **Step 4:** Commit `feat: tarea diaria de limpieza y foto de valor ganado`.
+- [x] **Step 1:** Pruebas en `daily.test.ts`, llamando `runDailyJobs` con las dependencias de la aplicación de prueba: borra una sesión vencida y conserva una vigente; borra un anexo pendiente de 25 horas (registro y archivo) y conserva uno de 1 hora; crea un `EvmSnapshot` para un proyecto activo con línea base y ninguno para uno cerrado; devuelve los cuatro contadores. `createTestApp` expone `ctx.deps`.
+- [x] **Step 2:** Verlas fallar e implementar.
+- [x] **Step 3:** `npm test -w server`. Verde.
+- [x] **Step 4:** Commit `feat: tarea diaria de limpieza y foto de valor ganado`.
 
 ### Task 12: Funciones y configuración de Netlify
 

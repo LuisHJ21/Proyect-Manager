@@ -49,9 +49,9 @@
   - `LABELS.activityEntity` (nombres para el filtro, p. ej. `task: 'Tarea'`, `step: 'Paso'`, `change: 'Solicitud de cambio'`, `raci: 'RACI'`), `LABELS.activityField` (ver Task 8)
   - `SECTIONS` incluye `'activity'`
 
-- [ ] **Step 1: Pruebas que fallan.** En `shared/tests/access.test.ts` añadir `activity: ['read', 'none', 'none']` a `EXPECTED`. En `shared/tests/activity.test.ts`: `ACTIVITY_ENTITY` y `ACTIVITY_ACTION` tienen exactamente los valores de arriba, y cada entidad tiene etiqueta en `LABELS.activityEntity`.
-- [ ] **Step 2:** `npm test -w shared` → FAIL (falta `activity`, falta el módulo).
-- [ ] **Step 3: Implementar.** Las constantes viven en `shared/src/enums.ts` junto a las demás. Modelo Prisma como en la sección 4.1 de la especificación. SQL de la migración (copia exacta):
+- [x] **Step 1: Pruebas que fallan.** En `shared/tests/access.test.ts` añadir `activity: ['read', 'none', 'none']` a `EXPECTED`. En `shared/tests/activity.test.ts`: `ACTIVITY_ENTITY` y `ACTIVITY_ACTION` tienen exactamente los valores de arriba, y cada entidad tiene etiqueta en `LABELS.activityEntity`.
+- [x] **Step 2:** `npm test -w shared` → FAIL (falta `activity`, falta el módulo).
+- [x] **Step 3: Implementar.** Las constantes viven en `shared/src/enums.ts` junto a las demás. Modelo Prisma como en la sección 4.1 de la especificación. SQL de la migración (copia exacta):
 
 ```sql
 CREATE TABLE "ActivityLog" (
@@ -74,8 +74,8 @@ ALTER TABLE "ActivityLog" ENABLE ROW LEVEL SECURITY;
 ```
 
   Después: `npx prisma generate` en `server/` y comprobar con `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url <TEST_DATABASE_URL>` que no queda diferencia.
-- [ ] **Step 4:** `npm test -w shared` → PASS; en `server/`, `rls.test.ts` y `accessMatrix.test.ts` → PASS (la matriz no cambia hasta Task 7 porque aún no hay rutas `activity`).
-- [ ] **Step 5: Commit** `feat: modelo de la bitácora de actividad y su sección de acceso`
+- [x] **Step 4:** `npm test -w shared` → PASS; en `server/`, `rls.test.ts` y `accessMatrix.test.ts` → PASS (la matriz no cambia hasta Task 7 porque aún no hay rutas `activity`).
+- [x] **Step 5: Commit** `feat: modelo de la bitácora de actividad y su sección de acceso`
 
 ### Task 2: Contexto de ruta compartido
 
@@ -87,9 +87,9 @@ ALTER TABLE "ActivityLog" ENABLE ROW LEVEL SECURITY;
 **Interfaces:**
 - Produces: `routePatternOf(c: Ctx): string | null`, `idOf(c: Ctx): string | null`, `projectIdOf(prisma: PrismaClient, id: string, pattern: string): Promise<string | null>`, `under(pattern: string, prefix: string): boolean`, `WRITE_METHODS: ReadonlySet<string>` — mismas firmas y cuerpos que hoy en `closedGuard.ts`, movidos.
 
-- [ ] **Step 1:** Mover las funciones y exportarlas; `closedGuard.ts` las importa.
-- [ ] **Step 2:** `closedGuard.test.ts` y `observerGuard.test.ts` → PASS.
-- [ ] **Step 3: Commit** `refactor: el contexto de ruta de los guardias queda en un módulo común`
+- [x] **Step 1:** Mover las funciones y exportarlas; `closedGuard.ts` las importa.
+- [x] **Step 2:** `closedGuard.test.ts` y `observerGuard.test.ts` → PASS.
+- [x] **Step 3: Commit** `refactor: el contexto de ruta de los guardias queda en un módulo común`
 
 ### Task 3: Comparación de fotos (regla pura)
 
@@ -104,7 +104,7 @@ ALTER TABLE "ActivityLog" ENABLE ROW LEVEL SECURITY;
   - `diffSnapshots(before: Snapshot | null, after: Snapshot | null, watched: readonly string[]): ActivityChange[]`
   - `toActivityValue(value: unknown): ActivityValue` (BigInt → number; Date → ISO; `undefined` → `null`; arreglos → copia ordenada de strings)
 
-- [ ] **Step 1: Pruebas que fallan:**
+- [x] **Step 1: Pruebas que fallan:**
   - campo vigilado cambiado → `{ field: 'status', from: 'IN_PROGRESS', to: 'DONE' }`
   - campo no vigilado cambiado → `{ field: 'description' }` (sin `from`/`to`)
   - sin cambios → `[]`
@@ -113,10 +113,10 @@ ALTER TABLE "ActivityLog" ENABLE ROW LEVEL SECURITY;
   - listas con el mismo contenido en otro orden → sin cambio; `['Ana']` → `['Ana','Luis']` sí cambia
   - orden del resultado: primero los vigilados en el orden de `watched`, luego los demás en orden alfabético
   - `toActivityValue(10n) === 10`
-- [ ] **Step 2:** ejecutar → FAIL (módulo no existe).
-- [ ] **Step 3:** Implementar.
-- [ ] **Step 4:** ejecutar → PASS.
-- [ ] **Step 5: Commit** `feat: comparación de valores antes y después para la bitácora`
+- [x] **Step 2:** ejecutar → FAIL (módulo no existe).
+- [x] **Step 3:** Implementar.
+- [x] **Step 4:** ejecutar → PASS.
+- [x] **Step 5: Commit** `feat: comparación de valores antes y después para la bitácora`
 
 ### Task 4: Middleware, tabla base y cobertura
 
@@ -150,7 +150,7 @@ export type ActivityEntry = {
 
   Orden dentro del middleware: si no es escritura, no hay usuario o no hay entrada → `next()`. Antes de `next()`: `projectId` con `projectIdOf` (para `POST /api/projects`, después, desde `response.id`), `key = await target(c)`, `before = key && método ≠ POST-de-creación ? load(key) : null`. Después de `next()`, solo con estado 2xx: leer `await c.res.clone().json()`, completar `key`/`projectId` si faltaban, `after = método ≠ DELETE ? load(key) : null`, aplicar `skip`, insertar `{ projectId, userId, action, entity, entityId: key, entityLabel: (after ?? before).label, changes: diffSnapshots(before, after, fields) }`. Todo lo posterior a `next()` dentro de `try/catch` → `console.error('bitácora', error)`.
 
-- [ ] **Step 1: Pruebas que fallan (`activityLog.test.ts`):**
+- [x] **Step 1: Pruebas que fallan (`activityLog.test.ts`):**
   - PM crea tarea → registro `{ entity: 'task', action: 'created', entityLabel: 'Diseño', changes: [] }`, `userId` = PM.
   - colaborador asignado cambia avance por `PATCH /api/tasks/:id/progress` de `TODO` a `IN_PROGRESS` → `changes` contiene `{ field: 'status', from: 'TODO', to: 'IN_PROGRESS' }`.
   - PM cambia la descripción → `changes` = `[{ field: 'description' }]`, `action: 'updated'`.
@@ -159,11 +159,11 @@ export type ActivityEntry = {
   - `PATCH /api/projects/:id` cambiando `endDate` → `{ field: 'endDate', from: …, to: '2026-12-31' }`; `POST /api/projects` → registro `project` `created` en el proyecto nuevo.
   - respuesta 400 (validación) → ningún registro; observador intenta escribir (403) → ninguno; escritura sobre proyecto cerrado (409) → ninguno.
   - fallo al registrar: `await ctx.prisma.$executeRawUnsafe('DROP TABLE "ActivityLog"')` y luego `PATCH /api/tasks/:id` → 200 con el mismo cuerpo que sin bitácora.
-- [ ] **Step 2: Prueba de cobertura (`activityCoverage.test.ts`):** toda ruta de `listRoutes(ctx.app)` con método de escritura está en `ACTIVITY_TABLE` o en `NOT_LOGGED`, y ninguna en ambas; `NOT_LOGGED` contiene exactamente las rutas de la sección 4.3 de la especificación (auth, setup, users, solicitudes de subida de anexos, `PUT /api/local-uploads/:storedName`, `DELETE /api/projects/:id`). En esta tarea la tabla cubre: proyecto (`POST /api/projects`, `PATCH /api/projects/:id`), tareas, progreso, asignados, pasos y comentarios; el resto se añade en Tasks 5 y 6, así que la prueba de cobertura se marca `it.todo` hasta Task 6 y se activa allí.
-- [ ] **Step 3:** ejecutar → FAIL.
-- [ ] **Step 4:** Implementar.
-- [ ] **Step 5:** ejecutar `activityLog.test.ts` → PASS; suite completa del servidor → PASS.
-- [ ] **Step 6: Commit** `feat: middleware de la bitácora con tareas, pasos, comentarios y proyecto`
+- [x] **Step 2: Prueba de cobertura (`activityCoverage.test.ts`):** toda ruta de `listRoutes(ctx.app)` con método de escritura está en `ACTIVITY_TABLE` o en `NOT_LOGGED`, y ninguna en ambas; `NOT_LOGGED` contiene exactamente las rutas de la sección 4.3 de la especificación (auth, setup, users, solicitudes de subida de anexos, `PUT /api/local-uploads/:storedName`, `DELETE /api/projects/:id`). En esta tarea la tabla cubre: proyecto (`POST /api/projects`, `PATCH /api/projects/:id`), tareas, progreso, asignados, pasos y comentarios; el resto se añade en Tasks 5 y 6, así que la prueba de cobertura se marca `it.todo` hasta Task 6 y se activa allí.
+- [x] **Step 3:** ejecutar → FAIL.
+- [x] **Step 4:** Implementar.
+- [x] **Step 5:** ejecutar `activityLog.test.ts` → PASS; suite completa del servidor → PASS.
+- [x] **Step 6: Commit** `feat: middleware de la bitácora con tareas, pasos, comentarios y proyecto`
 
 ### Task 5: Registros, incidentes, decisiones, cambios y lecciones
 
@@ -177,11 +177,11 @@ export type ActivityEntry = {
 - Etiquetas: incidente «INC-n Título»; desde riesgo «INC-n Título (desde el riesgo «Descripción»)»; solicitud de cambio «CC-n Título» (usar el prefijo que ya muestra la interfaz de cambios); decisión «DEC-n Título» (ídem); riesgo y objetivo = descripción en texto plano (sin HTML, cortada a 120 caracteres).
 - `POST …/change-requests/:crId/decision` → `action: 'decided'`. `POST …/risks/:riskId/incident` → `entity: 'incident'`, `action: 'created'`, target `responseId`.
 
-- [ ] **Step 1: Pruebas que fallan:** por cada tipo, crear/editar/borrar deja `created`/`updated`/`deleted` con su etiqueta; riesgo cambiando `ownerId` de Ana a Luis → `{ field: 'ownerId', from: 'Ana', to: 'Luis' }`; después renombrar a Ana (`PATCH /api/users/:id`) y el registro sigue diciendo `'Ana'`; gasto `amountCents` 1000 → 2500 → `{ from: 1000, to: 2500 }`; decidir un cambio → `action: 'decided'`, `{ field: 'status', from: 'PENDING', to: 'APPROVED' }`; incidente desde riesgo → `entity: 'incident'` con la etiqueta «(desde el riesgo «…»)»; lección creada en proyecto cerrado → registrada.
-- [ ] **Step 2:** ejecutar → FAIL.
-- [ ] **Step 3:** Implementar las entradas (las cinco rutas de `registerProjectCrud` comparten forma: un ayudante `crudEntries(path, entry)` que devuelve las tres claves).
-- [ ] **Step 4:** ejecutar → PASS.
-- [ ] **Step 5: Commit** `feat: la bitácora cubre registros, incidentes, decisiones, cambios y lecciones`
+- [x] **Step 1: Pruebas que fallan:** por cada tipo, crear/editar/borrar deja `created`/`updated`/`deleted` con su etiqueta; riesgo cambiando `ownerId` de Ana a Luis → `{ field: 'ownerId', from: 'Ana', to: 'Luis' }`; después renombrar a Ana (`PATCH /api/users/:id`) y el registro sigue diciendo `'Ana'`; gasto `amountCents` 1000 → 2500 → `{ from: 1000, to: 2500 }`; decidir un cambio → `action: 'decided'`, `{ field: 'status', from: 'PENDING', to: 'APPROVED' }`; incidente desde riesgo → `entity: 'incident'` con la etiqueta «(desde el riesgo «…»)»; lección creada en proyecto cerrado → registrada.
+- [x] **Step 2:** ejecutar → FAIL.
+- [x] **Step 3:** Implementar las entradas (las cinco rutas de `registerProjectCrud` comparten forma: un ayudante `crudEntries(path, entry)` que devuelve las tres claves).
+- [x] **Step 4:** ejecutar → PASS.
+- [x] **Step 5: Commit** `feat: la bitácora cubre registros, incidentes, decisiones, cambios y lecciones`
 
 ### Task 6: Entregables, miembros, RACI, dependencias, anexos y acta
 
@@ -201,11 +201,11 @@ export type ActivityEntry = {
   - `POST /api/attachments/:id/complete` → `entity: 'attachment'`, `action: 'uploaded'`, `skip` si `before.values.uploadedAt` no es null; `DELETE /api/attachments/:id` → `deleted`. Etiqueta = nombre del archivo.
   - `PUT …/charter` → `project` `updated`; `POST …/charter/approve` → `approved`; `POST …/closure` → `closed`; `POST …/reopen` → `reopened`; `POST …/baselines` → `baselined`.
 
-- [ ] **Step 1: Pruebas que fallan:** asignar rol R en RACI → `raci` `created` `{ field: 'role', from: null, to: 'R' }`; cambiarlo a A → `updated`; quitarlo (`role: null`) → `deleted`; criterio marcado → `{ field: 'met', from: false, to: true }` con etiqueta «Portal · Funciona en móvil»; completar un anexo dos veces → un solo registro `uploaded`; añadir dependencia → `task` `created` «Construcción ← Diseño»; aprobar acta → `approved`; editar el acta cambiando su alcance → `changes` contiene `{ field: 'charter.scope' }` (usar el nombre real del campo del modelo `Charter`); revisión de entregable → `reviewed`.
-- [ ] **Step 2:** activar la prueba de cobertura; ejecutar ambas → FAIL.
-- [ ] **Step 3:** Implementar.
-- [ ] **Step 4:** ejecutar → PASS; suite completa del servidor → PASS.
-- [ ] **Step 5: Commit** `feat: la bitácora cubre entregables, RACI, miembros, anexos y acta`
+- [x] **Step 1: Pruebas que fallan:** asignar rol R en RACI → `raci` `created` `{ field: 'role', from: null, to: 'R' }`; cambiarlo a A → `updated`; quitarlo (`role: null`) → `deleted`; criterio marcado → `{ field: 'met', from: false, to: true }` con etiqueta «Portal · Funciona en móvil»; completar un anexo dos veces → un solo registro `uploaded`; añadir dependencia → `task` `created` «Construcción ← Diseño»; aprobar acta → `approved`; editar el acta cambiando su alcance → `changes` contiene `{ field: 'charter.scope' }` (usar el nombre real del campo del modelo `Charter`); revisión de entregable → `reviewed`.
+- [x] **Step 2:** activar la prueba de cobertura; ejecutar ambas → FAIL.
+- [x] **Step 3:** Implementar.
+- [x] **Step 4:** ejecutar → PASS; suite completa del servidor → PASS.
+- [x] **Step 5: Commit** `feat: la bitácora cubre entregables, RACI, miembros, anexos y acta`
 
 ### Task 7: API de consulta y permisos
 
@@ -220,11 +220,11 @@ export type ActivityEntry = {
   - `GET /api/projects/:id/activity/filters` → `{ users: { id, name }[]; entities: ActivityEntity[] }` (solo los que tienen registros, personas por nombre).
   - Ambas usan `requireProjectAccess(c, id, 'activity', 'read')`. `entity` inválido → 400 con `fieldError('entity', 'Tipo de elemento no válido')`.
 
-- [ ] **Step 1: Pruebas que fallan:** 51 registros → primera página 50 y `nextCursor`, segunda página 1 y `nextCursor: null`; filtro por `userId` y por `entity`; `filters` devuelve personas y tipos presentes; colaborador y observador miembros → 403 en ambas; el colaborador que cambió el estado de su riesgo aparece como autor del registro y aun así recibe 403.
-- [ ] **Step 2:** ejecutar → FAIL; `accessMatrix.test.ts` → FAIL (rutas nuevas sin clasificar).
-- [ ] **Step 3:** Implementar.
-- [ ] **Step 4:** ejecutar → PASS; suite completa del servidor → PASS.
-- [ ] **Step 5: Commit** `feat: consulta de la bitácora solo para el PM`
+- [x] **Step 1: Pruebas que fallan:** 51 registros → primera página 50 y `nextCursor`, segunda página 1 y `nextCursor: null`; filtro por `userId` y por `entity`; `filters` devuelve personas y tipos presentes; colaborador y observador miembros → 403 en ambas; el colaborador que cambió el estado de su riesgo aparece como autor del registro y aun así recibe 403.
+- [x] **Step 2:** ejecutar → FAIL; `accessMatrix.test.ts` → FAIL (rutas nuevas sin clasificar).
+- [x] **Step 3:** Implementar.
+- [x] **Step 4:** ejecutar → PASS; suite completa del servidor → PASS.
+- [x] **Step 5: Commit** `feat: consulta de la bitácora solo para el PM`
 
 ### Task 8: Pestaña «Actividad»
 
@@ -240,24 +240,24 @@ export type ActivityEntry = {
   - `describeChanges(log: ActivityLog, currency: string): { valued: string[]; others: string[] }` → `valued`: «Estado: En curso → Terminada», «Avance: 80 % → 100 %»; `others`: etiquetas de campo («descripción»). Valores: enumeraciones con el `LABELS` del tipo (`status` de `task` → `taskStatus`, de `risk` → `riskStatus`, etc.), `*Cents` con el formateador de moneda existente, fechas `YYYY-MM-DD` con `shortDate`, booleanos «Sí»/«No», `progress` con « %», listas unidas con «, », vacío/null «—».
   - `LABELS.activityField`: `status` «Estado», `startDate` «Inicio», `endDate` «Fin», `dueDate` «Fecha límite», `plannedBudgetCents` «Presupuesto», `progress` «Avance», `plannedCostCents` «Costo planeado», `milestoneId` «Hito», `assignees` «Asignados», `done` «Hecho», `assigneeId` «Responsable», `ownerId` «Responsable», `probability` «Probabilidad», `impact` «Impacto», `amountCents` «Monto», `date` «Fecha», `category` «Categoría», `scheduleImpactDays` «Impacto en plazo (días)», `costImpactCents` «Impacto en costo», `priority` «Prioridad», `decidedOn` «Fecha de decisión», `met` «Cumplido», `type` «Tipo», `projectRole` «Rol en el proyecto», `role` «Rol RACI», `criteriaOrder` «orden de criterios», `description` «descripción». Campo sin etiqueta: se muestra su nombre; `charter.x` → «acta».
 
-- [ ] **Step 1: Pruebas que fallan (`activityText.test.ts`):** los ejemplos de arriba, incluido el dinero («US$ 10,00 → US$ 25,00» o el formato que dé el formateador existente) y «—» para null.
-- [ ] **Step 2: Pruebas que fallan (`activity.test.tsx`):** el PM ve la pestaña «Actividad» y la página lista registros agrupados por día («Hoy» y la fecha corta), con hora, persona, frase y cambios; al elegir persona en el filtro se pide `?userId=`; «Ver más» pide `?before=<último id>` y desaparece con `nextCursor: null`; el colaborador no ve la pestaña y entrar a `/actividad` lo lleva a `resumen`.
-- [ ] **Step 3:** `npm test -w client` → FAIL.
-- [ ] **Step 4:** Implementar con `useInfiniteQuery`. Diseño según el boceto de la sección 4.6 de la especificación; el nombre del elemento no es enlace.
-- [ ] **Step 5:** `npm test -w client` y `npm test -w shared` → PASS.
-- [ ] **Step 6: Commit** `feat: pestaña Actividad del proyecto`
+- [x] **Step 1: Pruebas que fallan (`activityText.test.ts`):** los ejemplos de arriba, incluido el dinero («US$ 10,00 → US$ 25,00» o el formato que dé el formateador existente) y «—» para null.
+- [x] **Step 2: Pruebas que fallan (`activity.test.tsx`):** el PM ve la pestaña «Actividad» y la página lista registros agrupados por día («Hoy» y la fecha corta), con hora, persona, frase y cambios; al elegir persona en el filtro se pide `?userId=`; «Ver más» pide `?before=<último id>` y desaparece con `nextCursor: null`; el colaborador no ve la pestaña y entrar a `/actividad` lo lleva a `resumen`.
+- [x] **Step 3:** `npm test -w client` → FAIL.
+- [x] **Step 4:** Implementar con `useInfiniteQuery`. Diseño según el boceto de la sección 4.6 de la especificación; el nombre del elemento no es enlace.
+- [x] **Step 5:** `npm test -w client` y `npm test -w shared` → PASS.
+- [x] **Step 6: Commit** `feat: pestaña Actividad del proyecto`
 
 ### Task 9: Flujo completo
 
 **Files:**
 - Modify: `e2e/main-flow.spec.ts`
 
-- [ ] **Step 1:** Después del paso 6 (Carlos descarga el anexo), el PM abre `${projectUrl}/actividad` y comprueba: hay una fila con «Beatriz» y «Diseño» que contiene el texto `/Estado: .+ → Hecha/`; Carlos no ve la pestaña «Actividad» en `tabs`.
-- [ ] **Step 2:** `npm run build` y `TEST_DATABASE_URL=postgresql://pm:pm@localhost:5433/postgres npm run test:e2e` → PASS.
-- [ ] **Step 3: Commit** `test: la bitácora en el flujo principal`
+- [x] **Step 1:** Después del paso 6 (Carlos descarga el anexo), el PM abre `${projectUrl}/actividad` y comprueba: hay una fila con «Beatriz» y «Diseño» que contiene el texto `/Estado: .+ → Hecha/`; Carlos no ve la pestaña «Actividad» en `tabs`.
+- [x] **Step 2:** `npm run build` y `TEST_DATABASE_URL=postgresql://pm:pm@localhost:5433/postgres npm run test:e2e` → PASS.
+- [x] **Step 3: Commit** `test: la bitácora en el flujo principal`
 
 ### Task 10: Cierre del plan
 
-- [ ] **Step 1:** `npm test` con `TEST_DATABASE_URL` → todo PASS.
-- [ ] **Step 2:** Marcar las casillas de este plan y en `docs/guia-implementacion-pmbok.md` anotar F3 como hecha en la tabla de la sección 7 (columna Bloques, «F3 ✓»).
-- [ ] **Step 3: Commit** `docs: marca las tareas del plan de la bitácora`
+- [x] **Step 1:** `npm test` con `TEST_DATABASE_URL` → todo PASS.
+- [x] **Step 2:** Marcar las casillas de este plan y en `docs/guia-implementacion-pmbok.md` anotar F3 como hecha en la tabla de la sección 7 (columna Bloques, «F3 ✓»).
+- [x] **Step 3: Commit** `docs: marca las tareas del plan de la bitácora`

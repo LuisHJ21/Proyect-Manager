@@ -1,4 +1,7 @@
 import type {
+  ActivityAction,
+  ActivityChange,
+  ActivityEntity,
   Approach,
   CharterStatus,
   ExpenseCategory,
@@ -324,3 +327,16 @@ export type Lesson = {
   updatedAt: string;
   canEdit: boolean;
 };
+
+export type ActivityLog = {
+  id: string;
+  action: ActivityAction;
+  entity: ActivityEntity;
+  entityId: string | null;
+  entityLabel: string;
+  changes: ActivityChange[];
+  createdAt: string;
+  user: PersonRef;
+};
+export type ActivityPage = { items: ActivityLog[]; nextCursor: string | null };
+export type ActivityFilters = { users: PersonRef[]; entities: ActivityEntity[] };

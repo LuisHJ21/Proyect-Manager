@@ -33,6 +33,7 @@ const TABS: { to: string; label: string; section: Section }[] = [
   { to: 'desempeno', label: 'Desempeño', section: 'performance' },
   { to: 'cambios', label: 'Control de cambios', section: 'changes' },
   { to: 'entregables', label: 'Entregables', section: 'deliverables' },
+  { to: 'actividad', label: 'Actividad', section: 'activity' },
   { to: 'cierre', label: 'Cierre', section: 'closure' },
 ];
 

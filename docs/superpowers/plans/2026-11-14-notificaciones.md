@@ -1,6 +1,6 @@
 # Notificaciones (F2) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Avisos dentro de la aplicación (tarea asignada, comentario en mi tarea, tarea por vencer o vencida, incidente asignado) con una campana en la barra lateral.
 
@@ -45,16 +45,16 @@
 - Produces: `NOTIFICATION_KIND = ['TASK_ASSIGNED','TASK_COMMENTED','TASK_DUE_SOON','TASK_OVERDUE','INCIDENT_ASSIGNED'] as const` y el tipo `NotificationKind`, exportados por `@pm/shared`.
 - Produces: `notify(prisma: PrismaClient, input: { kind: NotificationKind; projectId: string; entityId: string; title: string; userIds: string[]; actorId?: string; actorName?: string; dedupeKey?: string }): Promise<number>`. Devuelve cuántas filas creó y 0 si falla.
 
-- [ ] **Step 1: Escribe las pruebas** en `notify.test.ts`:
+- [x] **Step 1: Escribe las pruebas** en `notify.test.ts`:
   - `crea un aviso por destinatario`: dos usuarios activos → 2 filas con `kind`, `title` y `readAt: null`.
   - `no avisa al actor ni a usuarios inactivos`: `userIds: [actor, inactivo, ana]` con `actorId: actor` → solo la fila de Ana.
   - `quita duplicados de userIds`: `[ana, ana]` → 1 fila.
   - `con la misma dedupeKey no repite`: dos llamadas iguales con `dedupeKey: 'TASK_DUE_SOON:t1:2026-11-07'` → 1 fila; la segunda devuelve 0.
   - `si falla no lanza`: un `projectId` inexistente (falla la clave foránea) → resuelve a 0 y `console.error` se llamó (`vi.spyOn`).
-- [ ] **Step 2: Ejecuta las pruebas.** Esperado: FALLA, no existe `../src/notifications`.
-- [ ] **Step 3: Implementa** el enum, el modelo y la migración (tabla, índice único `(userId, dedupeKey)`, índice `(userId, createdAt)`, claves foráneas en cascada a `User` y `Project`, `ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;`). Luego `notify`: filtra los usuarios activos con un `findMany`, quita el actor y crea con `createMany({ skipDuplicates: true })`. Todo dentro de `try/catch`.
-- [ ] **Step 4: Ejecuta** `npx prisma migrate dev` desde `server/` contra la base local. Luego `notify.test.ts` y `rls.test.ts`. Esperado: PASAN.
-- [ ] **Step 5: Commit** `feat: modelo de avisos y función notify`.
+- [x] **Step 2: Ejecuta las pruebas.** Esperado: FALLA, no existe `../src/notifications`.
+- [x] **Step 3: Implementa** el enum, el modelo y la migración (tabla, índice único `(userId, dedupeKey)`, índice `(userId, createdAt)`, claves foráneas en cascada a `User` y `Project`, `ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;`). Luego `notify`: filtra los usuarios activos con un `findMany`, quita el actor y crea con `createMany({ skipDuplicates: true })`. Todo dentro de `try/catch`.
+- [x] **Step 4: Ejecuta** `npx prisma migrate dev` desde `server/` contra la base local. Luego `notify.test.ts` y `rls.test.ts`. Esperado: PASAN.
+- [x] **Step 5: Commit** `feat: modelo de avisos y función notify`.
 
 ### Task 2: Avisos de tareas (asignación y comentarios)
 
@@ -67,17 +67,17 @@
 
 Regla: responsables nuevos = después − antes (leer los `TaskAssignee` antes de la transacción). `title` = título de la tarea después del cambio. `entityId` = id de la tarea. Comentario: destinatarios = responsables de la tarea; `actorId` y `actorName` = quien comenta.
 
-- [ ] **Step 1: Escribe las pruebas** (PM Paula; colaboradores Ana y Luis, miembros):
+- [x] **Step 1: Escribe las pruebas** (PM Paula; colaboradores Ana y Luis, miembros):
   - `crear una tarea con responsables avisa a cada uno`: `assigneeIds: [ana, luis]` → Ana y Luis reciben un `TASK_ASSIGNED` con `title: 'Diseño'` y `projectId`; Paula no recibe nada.
   - `editar responsables solo avisa a los nuevos`: tarea con [Ana]; `PATCH { assigneeIds: [ana, luis] }` → solo Luis recibe un aviso nuevo; Ana sigue con 0 avisos nuevos.
   - `repetir los mismos responsables no avisa`: `PUT /assignees { userIds: [ana] }` sobre una tarea con [Ana] → 0 avisos nuevos.
   - `el PM que se asigna su tarea no se avisa`: `assigneeIds: [paula]` → 0 avisos.
   - `un comentario avisa a los demás responsables`: tarea con [Ana, Luis]; Ana comenta → Luis recibe `TASK_COMMENTED` con `actorName: 'Ana'`; Ana no recibe nada. El aviso no contiene el cuerpo del comentario (ningún campo lo incluye).
   - `el comentario del PM avisa a todos los responsables`: Paula comenta → Ana y Luis reciben aviso.
-- [ ] **Step 2: Ejecuta.** Esperado: FALLAN (0 avisos).
-- [ ] **Step 3: Implementa** las llamadas a `notify` después de cada escritura.
-- [ ] **Step 4: Ejecuta** `notifyTasks.test.ts`, `tasks.test.ts` y `activityLog.test.ts`. Esperado: PASAN.
-- [ ] **Step 5: Commit** `feat: avisos de tareas asignadas y comentarios`.
+- [x] **Step 2: Ejecuta.** Esperado: FALLAN (0 avisos).
+- [x] **Step 3: Implementa** las llamadas a `notify` después de cada escritura.
+- [x] **Step 4: Ejecuta** `notifyTasks.test.ts`, `tasks.test.ts` y `activityLog.test.ts`. Esperado: PASAN.
+- [x] **Step 5: Commit** `feat: avisos de tareas asignadas y comentarios`.
 
 ### Task 3: Avisos de incidentes
 
@@ -87,16 +87,16 @@ Regla: responsables nuevos = después − antes (leer los `TaskAssignee` antes d
 
 Regla: avisar a `ownerId` cuando queda fijado al crear o cambia en el PATCH (`input.ownerId !== undefined && input.ownerId !== incident.ownerId && input.ownerId`). `title` = `INC-<number> <title>` del incidente guardado.
 
-- [ ] **Step 1: Escribe las pruebas:**
+- [x] **Step 1: Escribe las pruebas:**
   - `crear con responsable avisa al responsable`: el PM crea `{ title: 'Caída', ownerId: ana }` → Ana recibe `INCIDENT_ASSIGNED` con `title: 'INC-1 Caída'`.
   - `cambiar el responsable avisa solo al nuevo`: `PATCH { ownerId: luis }` → Luis recibe un aviso y Ana no recibe uno nuevo.
   - `editar otro campo no avisa`: `PATCH { priority: 'HIGH' }` → 0 avisos nuevos.
   - `desde un riesgo avisa al responsable del riesgo`: un riesgo con `ownerId: ana` y `POST .../incident` → Ana recibe un aviso.
   - `un colaborador que reporta no genera avisos`: Ana reporta `{ title: 'Error' }` → 0 avisos.
-- [ ] **Step 2: Ejecuta.** Esperado: FALLAN.
-- [ ] **Step 3: Implementa** las tres llamadas.
-- [ ] **Step 4: Ejecuta** `notifyIncidents.test.ts` y `incidents.test.ts`. Esperado: PASAN.
-- [ ] **Step 5: Commit** `feat: avisos de incidentes asignados`.
+- [x] **Step 2: Ejecuta.** Esperado: FALLAN.
+- [x] **Step 3: Implementa** las tres llamadas.
+- [x] **Step 4: Ejecuta** `notifyIncidents.test.ts` y `incidents.test.ts`. Esperado: PASAN.
+- [x] **Step 5: Commit** `feat: avisos de incidentes asignados`.
 
 ### Task 4: Vencimientos y limpieza en la tarea diaria
 
@@ -108,17 +108,17 @@ Regla: avisar a `ownerId` cuando queda fijado al crear o cambia en el PATCH (`in
 **Interfaces:**
 - Produces: `runDailyJobs` devuelve además `{ dueSoon: number; overdue: number; oldNotifications: number }` (avisos creados y borrados). Los pasos nuevos corren antes del bloque que puede lanzar por Storage, para que se cuenten igual.
 
-- [ ] **Step 1: Escribe las pruebas** (reloj `2026-11-06T10:00:00Z`, hoy `2026-11-06`; tarea de Ana):
+- [x] **Step 1: Escribe las pruebas** (reloj `2026-11-06T10:00:00Z`, hoy `2026-11-06`; tarea de Ana):
   - `avisa de la tarea que vence mañana`: `dueDate: '2026-11-07'` → `TASK_DUE_SOON` para Ana y `dueSoon: 1`.
   - `avisa de la tarea que venció ayer`: `dueDate: '2026-11-05'` → `TASK_OVERDUE` y `overdue: 1`.
   - `no avisa de tareas hechas, sin fecha o vencidas hace más de un día`: `DONE` con fecha de mañana, sin fecha, y `dueDate: '2026-11-01'` → 0.
   - `no avisa en proyectos cerrados`: proyecto `CLOSED` → 0.
   - `dos corridas el mismo día no duplican, y otra fecha de fin vuelve a avisar`: corre dos veces → 1 aviso. Cambia `dueDate` a `'2026-11-07'` → `'2026-11-05'` (otra clave) → corre → 2 avisos en total.
   - `borra los avisos de más de 90 días`: un aviso con `createdAt` de hace 91 días y otro de hace 89 → queda 1 y `oldNotifications: 1`.
-- [ ] **Step 2: Ejecuta.** Esperado: FALLAN.
-- [ ] **Step 3: Implementa**. Una consulta trae las tareas de proyectos no cerrados con `dueDate` en `[mañana, ayer]` y `status != 'DONE'`, con sus responsables. Por cada tarea llama a `notify` con su `dedupeKey`. Luego hace un `deleteMany` de los avisos con `createdAt < now − 90 días`.
-- [ ] **Step 4: Ejecuta** `notifyDaily.test.ts` y `daily.test.ts`. Esperado: PASAN.
-- [ ] **Step 5: Commit** `feat: avisos de vencimiento y limpieza de avisos en la tarea diaria`.
+- [x] **Step 2: Ejecuta.** Esperado: FALLAN.
+- [x] **Step 3: Implementa**. Una consulta trae las tareas de proyectos no cerrados con `dueDate` en `[mañana, ayer]` y `status != 'DONE'`, con sus responsables. Por cada tarea llama a `notify` con su `dedupeKey`. Luego hace un `deleteMany` de los avisos con `createdAt < now − 90 días`.
+- [x] **Step 4: Ejecuta** `notifyDaily.test.ts` y `daily.test.ts`. Esperado: PASAN.
+- [x] **Step 5: Commit** `feat: avisos de vencimiento y limpieza de avisos en la tarea diaria`.
 
 ### Task 5: API de avisos
 
@@ -133,17 +133,17 @@ Regla: avisar a `ownerId` cuando queda fijado al crear o cambia en el PATCH (`in
 - Produces: `GET /api/notifications/unread-count` → `{ count: number }`. `POST /api/notifications/:id/read` → `{ ok: true }` (404 `notFound('Aviso no encontrado')` si no es del usuario). `POST /api/notifications/read-all` → `{ ok: true }`.
 - Filtro de acceso, el mismo en las cuatro rutas: el PM ve todos sus avisos; los demás, `project: { members: { some: { userId } } }`.
 
-- [ ] **Step 1: Escribe las pruebas:**
+- [x] **Step 1: Escribe las pruebas:**
   - `lista solo los avisos propios, del más reciente al más antiguo` y `sin sesión responde 401`.
   - `pagina de 30 en 30 sin repetir con createdAt iguales`: 31 avisos con el mismo `createdAt` → la página 1 trae 30 y un `nextCursor`; la página 2 trae 1; la unión de ids tiene 31 elementos.
   - `la cuenta solo incluye los no leídos`.
   - `marcar uno lo marca; el de otro usuario responde 404 y no cambia`.
   - `marcar todos solo toca los propios`.
   - `quitado del proyecto, sus avisos de ese proyecto no aparecen`: Ana tiene un aviso; la quitan con la ruta de miembros → la lista y la cuenta dan 0.
-- [ ] **Step 2: Ejecuta.** Esperado: FALLAN (404).
-- [ ] **Step 3: Implementa** las rutas y la entrada en `NOT_LOGGED`.
-- [ ] **Step 4: Ejecuta** el archivo nuevo y luego `npm test -w server`. Esperado: todo PASA.
-- [ ] **Step 5: Commit** `feat: rutas de avisos`.
+- [x] **Step 2: Ejecuta.** Esperado: FALLAN (404).
+- [x] **Step 3: Implementa** las rutas y la entrada en `NOT_LOGGED`.
+- [x] **Step 4: Ejecuta** el archivo nuevo y luego `npm test -w server`. Esperado: todo PASA.
+- [x] **Step 5: Commit** `feat: rutas de avisos`.
 
 ### Task 6: Campana en el cliente
 
@@ -174,7 +174,7 @@ Comportamiento:
   - «Marcar todo como leído» llama a `read-all`.
   - Si la lista está vacía muestra «No tienes avisos». Si hay más páginas, «Ver más».
 
-- [ ] **Step 1: Escribe las pruebas:**
+- [x] **Step 1: Escribe las pruebas:**
   - `notificationText`: las cinco frases, los dos enlaces y `relativeTime` en sus cinco casos.
   - `notifications.test.tsx`:
     - la campana muestra `Avisos, 3 sin leer`, y con 12 muestra el globo `9+`;
@@ -183,10 +183,10 @@ Comportamiento:
     - «Marcar todo como leído» llama a `read-all`;
     - la lista vacía muestra «No tienes avisos»;
     - un observador no ve el botón «Avisos».
-- [ ] **Step 2: Ejecuta** `npx vitest run tests/notificationText.test.ts tests/notifications.test.tsx` desde `client/`. Esperado: FALLAN.
-- [ ] **Step 3: Implementa.**
-- [ ] **Step 4: Ejecuta** `npm test -w client` y `npx tsc --noEmit -p client`. Esperado: PASAN.
-- [ ] **Step 5: Commit** `feat: campana de avisos`.
+- [x] **Step 2: Ejecuta** `npx vitest run tests/notificationText.test.ts tests/notifications.test.tsx` desde `client/`. Esperado: FALLAN.
+- [x] **Step 3: Implementa.**
+- [x] **Step 4: Ejecuta** `npm test -w client` y `npx tsc --noEmit -p client`. Esperado: PASAN.
+- [x] **Step 5: Commit** `feat: campana de avisos`.
 
 ### Task 7: Flujo completo y guía
 
@@ -195,7 +195,7 @@ Comportamiento:
 - Modify: `docs/guia-implementacion-pmbok.md` (etapa 3: «F3 ✓, F2 ✓, F4, C11»; en F2, nota de que «cambio decidido» llega con F4 y que se quitó «entregable en revisión»)
 - Modify: este plan (marcar casillas)
 
-- [ ] **Step 1:** En el flujo principal, después de que el PM asigna la tarea al colaborador, el colaborador abre «Avisos» y ve el botón `Te asignaron la tarea «…»`. Al pulsarlo llega a la página de la tarea.
-- [ ] **Step 2:** `npm run build` y `TEST_DATABASE_URL=... npm run test:e2e`. Esperado: PASA.
-- [ ] **Step 3:** Actualiza la guía y marca el plan.
-- [ ] **Step 4: Commit** `test: avisos en el flujo principal` y `docs: marca F2 en la guía`.
+- [x] **Step 1:** En el flujo principal, después de que el PM asigna la tarea al colaborador, el colaborador abre «Avisos» y ve el botón `Te asignaron la tarea «…»`. Al pulsarlo llega a la página de la tarea.
+- [x] **Step 2:** `npm run build` y `TEST_DATABASE_URL=... npm run test:e2e`. Esperado: PASA.
+- [x] **Step 3:** Actualiza la guía y marca el plan.
+- [x] **Step 4: Commit** `test: avisos en el flujo principal` y `docs: marca F2 en la guía`.

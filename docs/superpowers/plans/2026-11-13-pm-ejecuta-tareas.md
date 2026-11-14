@@ -40,7 +40,7 @@
 **Interfaces:**
 - Produces: `assertAssignable` acepta usuarios con `active: true` y `role` en `['PM', 'COLLABORATOR']` que sean miembros del proyecto.
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 En `tasks.test.ts`:
 - `it('asigna a un PM miembro del proyecto')`: añadir al `pm` como miembro (`ctx.prisma.projectMember.create`), `POST /api/projects/:id/tasks` con `assigneeIds: [pm.id, ana.id]` → 201 y nombres asignados incluyen al PM.
@@ -53,21 +53,21 @@ En `users.test.ts`:
 En `projects.test.ts`:
 - `it('quitar a un PM del proyecto le quita sus tareas del proyecto')`: PM miembro asignado; `DELETE /api/projects/:id/members/:pmId` → la tarea queda sin él.
 
-- [ ] **Step 2: Ejecutar y ver fallar**
+- [x] **Step 2: Ejecutar y ver fallar**
 
 Run: `npx vitest run tests/tasks.test.ts tests/users.test.ts tests/projects.test.ts` (desde `server/`)
 Expected: fallan las de asignar a PM y la de ascenso; las de degradar y quitar miembro pueden pasar ya (cubren comportamiento actual).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `assertAssignable`: filtro `user: { active: true, role: { in: ['PM', 'COLLABORATOR'] } }` y el mensaje nuevo. `users.ts`: borrar `becomesPm` y la transacción que limpia asignaciones; dejar `prisma.user.update` directo. Ajustar la prueba existente cuyo mensaje cite «colaboradores activos» al mensaje nuevo, y la de `closedGuard.test.ts` «ascender a PM no toca las asignaciones de un proyecto cerrado» sigue válida sin cambios.
 
-- [ ] **Step 4: Ejecutar y ver pasar**
+- [x] **Step 4: Ejecutar y ver pasar**
 
 Run: `npm test -w server`
 Expected: todo en verde.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 `git commit -m "feat: el PM miembro del proyecto puede tener tareas asignadas"`
 
@@ -77,25 +77,25 @@ Expected: todo en verde.
 - Modify: `server/src/routes/projects.ts` (`POST /api/projects`, línea 58)
 - Test: `server/tests/projects.test.ts`
 
-- [ ] **Step 1: Escribir la prueba que falla**
+- [x] **Step 1: Escribir la prueba que falla**
 
 `it('quien crea el proyecto queda como miembro con rol Project Manager')`: `POST /api/projects` como `pm` → 201; `GET /api/projects/:id/members` devuelve exactamente un miembro con `userId: pm.id` y `projectRole: 'Project Manager'`.
 
-- [ ] **Step 2: Ejecutar y ver fallar**
+- [x] **Step 2: Ejecutar y ver fallar**
 
 Run: `npx vitest run tests/projects.test.ts`
 Expected: FAIL, la lista de miembros está vacía.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 En el `prisma.project.create`, añadir `members: { create: { userId: user.id, projectRole: 'Project Manager' } }` (escritura anidada, atómica) con el usuario de `requireUser(c)`. Si alguna prueba existente cuenta miembros tras crear un proyecto por la API, ajustarla sumando al creador.
 
-- [ ] **Step 4: Ejecutar y ver pasar**
+- [x] **Step 4: Ejecutar y ver pasar**
 
 Run: `npm test -w server`
 Expected: todo en verde.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 `git commit -m "feat: quien crea un proyecto queda como miembro"`
 
@@ -105,7 +105,7 @@ Expected: todo en verde.
 - Modify: `server/src/domain/dashboard.ts` (línea 103)
 - Test: `server/tests/domain/dashboard.test.ts`, `server/tests/tasks.test.ts`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 En `dashboard.test.ts`, renombrar la prueba de la línea 82 a `'workload: personas activas con abiertas, PM incluidos, de mayor a menor'` y esperar:
 
@@ -121,21 +121,21 @@ Ana va antes que Jefa porque los empates se ordenan por nombre. `off` sigue fuer
 
 En `tasks.test.ts`: `it('GET /api/me/tasks devuelve las tareas asignadas a un PM')` → el PM miembro asignado a una tarea la recibe.
 
-- [ ] **Step 2: Ejecutar y ver fallar**
+- [x] **Step 2: Ejecutar y ver fallar**
 
 Run: `npx vitest run tests/domain/dashboard.test.ts tests/tasks.test.ts`
 Expected: falla la de carga (falta Jefa); la de `/api/me/tasks` puede pasar ya.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 En `buildDashboard`, cambiar la condición a `if (!person.active) continue;`.
 
-- [ ] **Step 4: Ejecutar y ver pasar**
+- [x] **Step 4: Ejecutar y ver pasar**
 
 Run: `npm test -w server`
 Expected: todo en verde.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 `git commit -m "feat: la carga de trabajo del panel incluye a los PM"`
 
@@ -150,7 +150,7 @@ Expected: todo en verde.
 **Interfaces:**
 - Produces: `PM_LINKS` = Inicio, Mis tareas, Calendario, Lecciones, Proyectos, Usuarios (en ese orden).
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 En `layout.test.tsx`:
 - Reemplazar `'PM ve Inicio, Calendario, Proyectos y Usuarios, sin Mis tareas'` por `'PM ve Inicio, Mis tareas con contador, Calendario, Proyectos y Usuarios'`: con `'GET /api/me/tasks': [open, done]`, espera el enlace `Mis tareas, 1 abiertas`.
@@ -158,21 +158,21 @@ En `layout.test.tsx`:
 - `it('en móvil el PM ve Mis tareas en la barra inferior')`: con `vi.stubGlobal('matchMedia', …matches: true…)` como en la prueba de la línea 96, el enlace `Mis tareas, 0 abiertas` está en la navegación `Principal`.
 - La prueba `'el colaborador en /panel vuelve a Mis tareas'` no cambia.
 
-- [ ] **Step 2: Ejecutar y ver fallar**
+- [x] **Step 2: Ejecutar y ver fallar**
 
 Run: `npx vitest run tests/layout.test.tsx` (desde `client/`)
 Expected: FAIL en las tres pruebas nuevas.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Añadir `{ to: '/mis-tareas', label: 'Mis tareas', Icon: CheckSquare }` como segundo elemento de `PM_LINKS`; `useOpenTaskCount(true)`; sacar `/mis-tareas` de `RequireCollaborator` dejándola dentro de `RequireAuth`; borrar `RequireCollaborator` si ya no se usa. `HomeRedirect` no cambia (el PM sigue yendo a `/panel`).
 
-- [ ] **Step 4: Ejecutar y ver pasar**
+- [x] **Step 4: Ejecutar y ver pasar**
 
 Run: `npm test -w client`
 Expected: todo en verde.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 `git commit -m "feat: el PM tiene la página Mis tareas"`
 
@@ -183,26 +183,26 @@ Expected: todo en verde.
 - Modify: `client/src/pages/Calendar.tsx` (línea 86)
 - Test: `client/tests/taskDetail.test.tsx`, `client/tests/calendar.test.tsx`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 - `taskDetail.test.tsx`: reemplazar `'el formulario lista solo colaboradores como asignables'` por `'el formulario lista a los miembros activos, PM incluidos'`: Carlos y Pedro aparecen; un miembro inactivo no asignado no aparece.
 - `calendar.test.tsx`: reemplazar `'… y a todos los colaboradores'` por `'… y a todas las personas activas'`: el filtro Persona ofrece a Diana y a Paula (PM); un usuario inactivo no aparece.
 
-- [ ] **Step 2: Ejecutar y ver fallar**
+- [x] **Step 2: Ejecutar y ver fallar**
 
 Run: `npx vitest run tests/taskDetail.test.tsx tests/calendar.test.tsx`
 Expected: FAIL, Pedro y Paula no aparecen.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `TaskForm`: quitar la condición `m.role === 'COLLABORATOR'` y conservar la de activos o ya asignados. `Calendar`: `filter((u) => u.active)`.
 
-- [ ] **Step 4: Ejecutar y ver pasar**
+- [x] **Step 4: Ejecutar y ver pasar**
 
 Run: `npm test`
 Expected: shared, server y client en verde.
 
-- [ ] **Step 5: Verificación completa y commit**
+- [x] **Step 5: Verificación completa y commit**
 
 Run: `npm run build` y luego `npm run test:e2e` (con `TEST_DATABASE_URL`). Expected: 1 passed.
 Marcar las casillas de este plan.

@@ -146,12 +146,13 @@ describe('página de detalle', () => {
     expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
   });
 
-  it('el formulario lista solo colaboradores como asignables', async () => {
+  it('el formulario lista a los miembros activos, PM incluidos', async () => {
     mockApi({
       ...routes(detail()),
       'GET /api/projects/p1/members': [
         { userId: 'c1', name: 'Carlos', email: '', role: 'COLLABORATOR', projectRole: '', active: true },
         { userId: 'pm2', name: 'Pedro', email: '', role: 'PM', projectRole: '', active: true },
+        { userId: 'c9', name: 'Inés', email: '', role: 'COLLABORATOR', projectRole: '', active: false },
       ],
     });
     open();
@@ -159,7 +160,8 @@ describe('página de detalle', () => {
     await user.click(await screen.findByRole('button', { name: 'Editar tarea' }));
     const dialog = within(await screen.findByRole('dialog'));
     expect(await dialog.findByLabelText('Carlos')).toBeInTheDocument();
-    expect(dialog.queryByLabelText('Pedro')).not.toBeInTheDocument();
+    expect(dialog.getByLabelText('Pedro')).toBeInTheDocument();
+    expect(dialog.queryByLabelText('Inés')).not.toBeInTheDocument();
   });
 });
 

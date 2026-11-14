@@ -49,6 +49,7 @@ const users = [
   { id: 'c1', name: 'Carlos', role: 'COLLABORATOR', active: true },
   { id: 'c2', name: 'Diana', role: 'COLLABORATOR', active: true },
   { id: 'pm', name: 'Paula', role: 'PM', active: true },
+  { id: 'off', name: 'Inés', role: 'COLLABORATOR', active: false },
 ];
 
 const open = async (user0: object = pmUser, data: object = calendar) => {
@@ -130,12 +131,13 @@ describe('calendario', () => {
     expect(main.getByLabelText('Proyecto')).toHaveValue('ALL');
   });
 
-  it('las opciones incluyen proyectos activos sin actividad este mes, y a todos los colaboradores', async () => {
+  it('las opciones incluyen proyectos activos sin actividad este mes, y a todas las personas activas', async () => {
     const { main } = await open(pmUser, emptyCalendar);
     await waitFor(() => expect(within(main.getByLabelText('Proyecto')).getByRole('option', { name: 'ERP' })).toBeInTheDocument());
     expect(within(main.getByLabelText('Proyecto')).queryByRole('option', { name: 'Viejo' })).not.toBeInTheDocument();
     await waitFor(() => expect(within(main.getByLabelText('Persona')).getByRole('option', { name: 'Diana' })).toBeInTheDocument());
-    expect(within(main.getByLabelText('Persona')).queryByRole('option', { name: 'Paula' })).not.toBeInTheDocument();
+    expect(within(main.getByLabelText('Persona')).getByRole('option', { name: 'Paula' })).toBeInTheDocument();
+    expect(within(main.getByLabelText('Persona')).queryByRole('option', { name: 'Inés' })).not.toBeInTheDocument();
   });
 
   it('el colaborador no ve el filtro de persona', async () => {

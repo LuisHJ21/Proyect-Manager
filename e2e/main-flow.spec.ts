@@ -54,8 +54,8 @@ test('flujo principal', async ({ browser }) => {
   await pm.getByRole('button', { name: 'Crear cuenta' }).click();
   await expect(pm.getByRole('heading', { name: /Paula/ })).toBeVisible();
   await expect(pm.getByText(/Crea tu primer proyecto/)).toBeVisible();
-  // El Project Manager no tiene tareas propias.
-  await expect(pm.getByRole('link', { name: /^Mis tareas/ })).toHaveCount(0);
+  // El Project Manager también ejecuta tareas: tiene su página Mis tareas.
+  await expect(pm.getByRole('link', { name: 'Mis tareas, 0 abiertas' })).toBeVisible();
 
   await pm.getByRole('link', { name: 'Usuarios' }).click();
   await createUser(pm, 'Beatriz', 'beatriz@x.com');

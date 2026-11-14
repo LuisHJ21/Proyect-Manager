@@ -12,8 +12,7 @@ describe('cobertura de la bitácora', () => {
   });
   afterEach(() => ctx.close());
 
-  // Se activa en la Task 6 del plan, cuando la tabla cubre todas las rutas.
-  it.skip('toda ruta de escritura está en la tabla o en NOT_LOGGED, y en una sola', () => {
+  it('toda ruta de escritura está en la tabla o en NOT_LOGGED, y en una sola', () => {
     const keys = listRoutes(ctx.app)
       .filter((r) => WRITES.includes(r.method))
       .map((r) => `${r.method} ${r.url}`);

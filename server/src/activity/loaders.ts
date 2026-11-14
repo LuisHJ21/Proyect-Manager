@@ -132,3 +132,68 @@ export async function loadLesson(prisma: PrismaClient, id: string): Promise<Snap
   const item = await prisma.lesson.findUnique({ where: { id } });
   return item ? { label: plainLabel(item.situation), values: scalars(item, ['authorId']) } : null;
 }
+
+/** Claves compuestas: los ids (cuid) nunca llevan «|». */
+export const joinKey = (...parts: string[]) => parts.join('|');
+const splitKey = (key: string) => key.split('|');
+
+export async function loadDeliverable(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.deliverable.findUnique({
+    where: { id },
+    include: { milestone: { select: { name: true } }, criteria: { select: { id: true }, orderBy: { position: 'asc' } } },
+  });
+  if (!item) return null;
+  return {
+    label: item.name,
+    values: { ...scalars(item), milestoneId: item.milestone?.name ?? null, criteriaOrder: item.criteria.map((c) => c.id).join(',') },
+  };
+}
+
+export async function loadCriterion(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.deliverableCriterion.findUnique({ where: { id }, include: { deliverable: { select: { name: true } } } });
+  return item ? { label: `${item.deliverable.name} · ${item.text}`, values: scalars(item, ['deliverableId', 'position']) } : null;
+}
+
+export async function loadMember(prisma: PrismaClient, key: string): Promise<Snapshot | null> {
+  const [projectId, userId] = splitKey(key);
+  const member = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId: projectId!, userId: userId! } },
+    include: { user: { select: { name: true } } },
+  });
+  return member ? { label: member.user.name, values: scalars(member, ['userId']) } : null;
+}
+
+export async function loadRaciActivity(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.raciActivity.findUnique({ where: { id } });
+  return item ? { label: item.title, values: scalars(item) } : null;
+}
+
+/** Una celda de la RACI: existe mientras existan la actividad y la persona; `role` es null si no hay celda. */
+export async function loadRaciCell(prisma: PrismaClient, key: string): Promise<Snapshot | null> {
+  const [activityId, kind, partyId] = splitKey(key);
+  const activity = await prisma.raciActivity.findUnique({ where: { id: activityId! }, select: { title: true } });
+  if (!activity || !partyId) return null;
+  const party =
+    kind === 'member'
+      ? await prisma.user.findUnique({ where: { id: partyId }, select: { name: true } })
+      : await prisma.stakeholder.findUnique({ where: { id: partyId }, select: { name: true } });
+  const cell = await prisma.raciCell.findFirst({
+    where: { activityId: activityId!, ...(kind === 'member' ? { userId: partyId } : { stakeholderId: partyId }) },
+    select: { role: true },
+  });
+  return { label: `${activity.title} · ${party?.name ?? ''}`, values: { role: cell?.role ?? null } };
+}
+
+export async function loadDependency(prisma: PrismaClient, key: string): Promise<Snapshot | null> {
+  const [successorId, predecessorId] = splitKey(key);
+  const dependency = await prisma.taskDependency.findUnique({
+    where: { predecessorId_successorId: { predecessorId: predecessorId!, successorId: successorId! } },
+    include: { successor: { select: { title: true } }, predecessor: { select: { title: true } } },
+  });
+  return dependency ? { label: `${dependency.successor.title} ← ${dependency.predecessor.title}`, values: {} } : null;
+}
+
+export async function loadAttachment(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.attachment.findUnique({ where: { id } });
+  return item ? { label: item.originalName, values: { uploadedAt: toActivityValue(item.uploadedAt) } } : null;
+}

@@ -11,8 +11,8 @@ import {
 } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, readQuery, type App, type Ctx } from '../http';
-import { requireProjectAccess } from '../auth/access';
-import { AppError, fieldError, notFound } from '../errors';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
+import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { sanitizeRichText } from '../richText';
 
 type Params = { id: string; did: string };
@@ -29,8 +29,11 @@ export const deliverableDetailInclude = {
 
 type DeliverableWithAll = Prisma.DeliverableGetPayload<{ include: typeof deliverableDetailInclude }>;
 
-/** Forma pública de un entregable: la de la lista o, con `detail`, la del detalle con criterios e historial. */
-export function toDeliverableDto(d: DeliverableWithAll, today: string, detail: boolean) {
+/**
+ * Forma pública de un entregable: la de la lista o, con `detail`, la del detalle con criterios e historial.
+ * Quien revisó suele ser un interesado: solo el PM recibe su nombre.
+ */
+export function toDeliverableDto(d: DeliverableWithAll, today: string, detail: boolean, isPm = true) {
   const last = d.reviews[0];
   const row = {
     id: d.id,
@@ -42,7 +45,9 @@ export function toDeliverableDto(d: DeliverableWithAll, today: string, detail: b
     milestone: d.milestone,
     criteriaMet: d.criteria.filter((c) => c.met).length,
     criteriaTotal: d.criteria.length,
-    lastReview: last ? { outcome: last.outcome, reviewedOn: last.reviewedOn, stakeholderName: last.stakeholder?.name ?? last.stakeholderName } : null,
+    lastReview: last
+      ? { outcome: last.outcome, reviewedOn: last.reviewedOn, ...(isPm ? { stakeholderName: last.stakeholder?.name ?? last.stakeholderName } : {}) }
+      : null,
   };
   if (!detail) return row;
   return {
@@ -52,8 +57,7 @@ export function toDeliverableDto(d: DeliverableWithAll, today: string, detail: b
     reviews: d.reviews.map((r) => ({
       id: r.id,
       outcome: r.outcome,
-      stakeholder: r.stakeholder,
-      stakeholderName: r.stakeholderName,
+      ...(isPm ? { stakeholder: r.stakeholder, stakeholderName: r.stakeholderName } : {}),
       reviewedOn: r.reviewedOn,
       note: r.note,
       attachment: r.attachment,
@@ -70,9 +74,9 @@ export async function findDeliverable(prisma: PrismaClient, projectId: string, d
   return deliverable;
 }
 
-export async function loadDeliverableDetail(prisma: PrismaClient, id: string, today: string) {
+export async function loadDeliverableDetail(prisma: PrismaClient, id: string, today: string, isPm = true) {
   const d = await prisma.deliverable.findUniqueOrThrow({ where: { id }, include: deliverableDetailInclude });
-  return toDeliverableDto(d, today, true);
+  return toDeliverableDto(d, today, true, isPm);
 }
 
 const acceptedLocked = () => new AppError(409, 'deliverable_accepted', 'El entregable está aceptado: reábrelo para cambiar sus criterios');
@@ -102,7 +106,8 @@ export function deliverableRoutes(app: App) {
 
   app.get(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
+    const { project, can } = await getProjectAccess(c, c.req.param('id'));
+    if (!can.read('deliverables')) throw forbidden();
     const { status } = readQuery(c);
     if (status !== undefined && (typeof status !== 'string' || !(DELIVERABLE_STATUS as readonly string[]).includes(status))) {
       throw fieldError('status', 'Estado no válido');
@@ -112,14 +117,15 @@ export function deliverableRoutes(app: App) {
       include: deliverableDetailInclude,
       orderBy: { number: 'asc' },
     });
-    return c.json(items.map((d) => toDeliverableDto(d, today(c), false)));
+    return c.json(items.map((d) => toDeliverableDto(d, today(c), false, can.write('deliverables'))));
   });
 
   app.get(`${base}/:did`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
+    const { project, can } = await getProjectAccess(c, c.req.param('id'));
+    if (!can.read('deliverables')) throw forbidden();
     const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
-    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c), can.write('deliverables')));
   });
 
   app.post(base, async (c) => {

@@ -35,6 +35,8 @@ describe('cobertura de la bitácora', () => {
         'POST /api/tasks/:id/attachments',
         'PUT /api/local-uploads/:storedName',
         'DELETE /api/projects/:id',
+        'POST /api/notifications/:id/read',
+        'POST /api/notifications/read-all',
       ].sort(),
     );
   });

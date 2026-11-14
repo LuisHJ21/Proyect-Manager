@@ -83,7 +83,7 @@ describe('pestaña Actividad', () => {
   });
 
   it('el colaborador no ve la pestaña y la dirección lo lleva al resumen', async () => {
-    const api = mockApi({ ...routes(collaborator), 'GET /api/projects/p1/indicators': {} });
+    const api = mockApi(routes(collaborator));
     renderApp('/proyectos/p1/actividad');
     const tabs = await screen.findByRole('navigation', { name: 'Secciones del proyecto' });
     expect(within(tabs).queryByRole('link', { name: 'Actividad' })).not.toBeInTheDocument();

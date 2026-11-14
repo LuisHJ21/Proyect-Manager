@@ -5,12 +5,14 @@ import { secureHeaders } from 'hono/secure-headers';
 import { registerAuthHook } from './auth/guards';
 import { registerClosedGuard } from './closedGuard';
 import { registerObserverGuard } from './observerGuard';
+import { registerActivityLog } from './activityLog';
 import { errorHandler, notFoundHandler } from './errors';
 import type { App, AppEnv, Ctx, Deps } from './http';
 import { DiskFileStore } from './storage/diskFileStore';
 import type { FileStore } from './storage/fileStore';
 import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
+import { activityRoutes } from './routes/activity';
 import { calendarRoutes } from './routes/calendar';
 import { changeRequestRoutes } from './routes/changeRequests';
 import { charterRoutes } from './routes/charter';
@@ -76,6 +78,7 @@ export function buildApp(opts: BuildAppOptions): App {
   registerAuthHook(app);
   registerObserverGuard(app);
   registerClosedGuard(app);
+  registerActivityLog(app);
   authRoutes(app);
   userRoutes(app);
   projectRoutes(app);
@@ -99,6 +102,7 @@ export function buildApp(opts: BuildAppOptions): App {
   indicatorRoutes(app);
   dashboardRoutes(app);
   calendarRoutes(app);
+  activityRoutes(app);
 
   return app;
 }

@@ -19,6 +19,7 @@ const EXPECTED = {
   performance: ['write', 'none', 'none'],
   changes: ['write', 'none', 'none'],
   closure: ['write', 'none', 'none'],
+  activity: ['read', 'none', 'none'],
 } as const;
 
 const ROLES: Role[] = ['PM', 'COLLABORATOR', 'OBSERVER'];

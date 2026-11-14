@@ -10,6 +10,8 @@ const ROUTE_SECTION: Record<string, Section> = {
   'PATCH /api/projects/:id': 'project',
   'DELETE /api/projects/:id': 'project',
   'GET /api/projects/:id/indicators': 'project',
+  'GET /api/projects/:id/activity': 'activity',
+  'GET /api/projects/:id/activity/filters': 'activity',
 
   'GET /api/projects/:id/charter': 'planning',
   'PUT /api/projects/:id/charter': 'planning',

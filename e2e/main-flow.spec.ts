@@ -240,6 +240,13 @@ test('flujo principal', async ({ browser }) => {
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('diseño final.pdf');
 
+  // F3: el PM ve en Actividad que Beatriz terminó Diseño; Carlos no tiene la pestaña.
+  await pm.goto(`${projectUrl}/actividad`);
+  await expect(
+    pm.getByRole('listitem', { name: 'Beatriz cambió la tarea «Diseño»' }).filter({ hasText: /Estado: .+ → Hecha/ }),
+  ).toBeVisible();
+  await expect(carlos.getByRole('navigation', { name: 'Secciones del proyecto' }).getByRole('link', { name: 'Actividad' })).toHaveCount(0);
+
   // Incidentes: Carlos reporta uno desde su tarea, el PM lo asigna, Carlos lo resuelve y el PM lo cierra con una decisión.
   await carlos.goto(`${projectUrl}/tareas`);
   await carlos.getByRole('main').getByRole('link', { name: 'Construcción' }).click();

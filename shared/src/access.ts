@@ -19,13 +19,15 @@ export const SECTIONS = [
   'performance',
   'changes',
   'closure',
+  'activity',
 ] as const;
 export type Section = (typeof SECTIONS)[number];
 
 /** `own`: solo los registros donde la persona es responsable o reportante; la ruta filtra. */
 export type AccessLevel = 'write' | 'read' | 'own' | 'none';
 
-const PM_ACCESS = Object.fromEntries(SECTIONS.map((s) => [s, 'write'])) as Record<Section, AccessLevel>;
+// La bitácora solo se consulta: nadie escribe en ella desde la API.
+const PM_ACCESS = { ...Object.fromEntries(SECTIONS.map((s) => [s, 'write'])), activity: 'read' } as Record<Section, AccessLevel>;
 
 export const ACCESS: Record<Role, Record<Section, AccessLevel>> = {
   PM: PM_ACCESS,
@@ -47,6 +49,7 @@ export const ACCESS: Record<Role, Record<Section, AccessLevel>> = {
     performance: 'none',
     changes: 'none',
     closure: 'none',
+    activity: 'none',
   },
   OBSERVER: {
     project: 'read',
@@ -66,6 +69,7 @@ export const ACCESS: Record<Role, Record<Section, AccessLevel>> = {
     performance: 'none',
     changes: 'none',
     closure: 'none',
+    activity: 'none',
   },
 };
 

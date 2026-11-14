@@ -175,8 +175,9 @@ export function incidentRoutes(app: App) {
 
   app.delete(`${base}/:incidentId`, async (c) => {
     const { prisma } = c.var.deps;
-    const { viewer, incident } = await loadVisible(c, c.req.param('id'), c.req.param('incidentId'));
-    if (!incidentAccess(incident, viewer).edit) throw forbidden();
+    // Borrar es del PM: se comprueba antes de buscar el incidente para no responder 404 a quien no puede.
+    await requireProjectAccess(c, c.req.param('id'), 'incidents', 'write');
+    const { incident } = await loadVisible(c, c.req.param('id'), c.req.param('incidentId'));
     await prisma.incident.delete({ where: { id: incident.id } });
     return c.json({ ok: true });
   });

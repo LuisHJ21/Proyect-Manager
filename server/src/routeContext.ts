@@ -35,3 +35,20 @@ export async function projectIdOf(prisma: PrismaClient, id: string, pattern: str
   }
   return null;
 }
+
+/**
+ * Parámetros de la ruta que responderá, leídos desde un middleware general (donde `c.req.param()`
+ * solo ve los del propio middleware). Segmentos ya decodificados, como en `idOf`.
+ */
+export function routeParam(c: Ctx, name: string): string | null {
+  const pattern = routePatternOf(c);
+  if (!pattern) return null;
+  const index = pattern.split('/').indexOf(`:${name}`);
+  const segment = index >= 0 ? c.req.path.split('/')[index] : undefined;
+  if (!segment) return null;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}

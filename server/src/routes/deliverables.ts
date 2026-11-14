@@ -11,7 +11,7 @@ import {
 } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, readQuery, type App, type Ctx } from '../http';
-import { requireProjectPm } from '../auth/access';
+import { requireProjectAccess } from '../auth/access';
 import { AppError, fieldError, notFound } from '../errors';
 import { sanitizeRichText } from '../richText';
 
@@ -102,7 +102,7 @@ export function deliverableRoutes(app: App) {
 
   app.get(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const { status } = readQuery(c);
     if (status !== undefined && (typeof status !== 'string' || !(DELIVERABLE_STATUS as readonly string[]).includes(status))) {
       throw fieldError('status', 'Estado no válido');
@@ -117,14 +117,14 @@ export function deliverableRoutes(app: App) {
 
   app.get(`${base}/:did`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
     return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
   });
 
   app.post(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const { criteria = [], ...input } = deliverableSchema.parse(await readBody(c));
     await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
     const texts = criteria.map((t) => t.trim()).filter(Boolean);
@@ -150,7 +150,7 @@ export function deliverableRoutes(app: App) {
 
   app.patch(`${base}/:did`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
     const input = updateDeliverableSchema.parse(await readBody(c));
     if (input.status === 'ACCEPTED' || input.status === 'REJECTED') {
@@ -169,7 +169,7 @@ export function deliverableRoutes(app: App) {
 
   app.delete(`${base}/:did`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
     await prisma.deliverable.delete({ where: { id: deliverable.id } });
     return c.json({ ok: true });
@@ -177,7 +177,7 @@ export function deliverableRoutes(app: App) {
 
   app.post(`${base}/:did/criteria`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const deliverable = await findOpen(c.var.deps.prisma, project.id, c.req.param('did'));
     const { text } = criterionSchema.parse(await readBody(c));
     const last = await prisma.deliverableCriterion.aggregate({ where: { deliverableId: deliverable.id }, _max: { position: true } });
@@ -188,7 +188,7 @@ export function deliverableRoutes(app: App) {
   // La ruta de orden va antes que la de un criterio para que "order" no se tome como id.
   app.put(`${base}/:did/criteria/order`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const deliverable = await findOpen(c.var.deps.prisma, project.id, c.req.param('did'));
     const { ids } = criteriaOrderSchema.parse(await readBody(c));
     const current = await prisma.deliverableCriterion.findMany({ where: { deliverableId: deliverable.id }, select: { id: true } });
@@ -202,7 +202,7 @@ export function deliverableRoutes(app: App) {
 
   app.patch(`${base}/:did/criteria/:cid`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const deliverable = await findOpen(c.var.deps.prisma, project.id, c.req.param('did'));
     const criterion = await findCriterion(c.var.deps.prisma, deliverable.id, c.req.param('cid'));
     const input = updateCriterionSchema.parse(await readBody(c));
@@ -212,7 +212,7 @@ export function deliverableRoutes(app: App) {
 
   app.delete(`${base}/:did/criteria/:cid`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const deliverable = await findOpen(c.var.deps.prisma, project.id, c.req.param('did'));
     const criterion = await findCriterion(c.var.deps.prisma, deliverable.id, c.req.param('cid'));
     await prisma.deliverableCriterion.delete({ where: { id: criterion.id } });

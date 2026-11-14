@@ -11,7 +11,7 @@ import {
 } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { removeAfterDelete } from '../storage/fileStore';
-import { getProjectAccess, requireProjectPm } from '../auth/access';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { checkProgressChange } from '../domain/dependencies';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
@@ -82,7 +82,7 @@ export function taskRoutes(app: App) {
 
   app.post('/api/projects/:id/tasks', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'tasks', 'write');
     const { assigneeIds, ...input } = createTaskSchema.parse(await readBody(c));
     assertDatesWithinProject(project, input);
     await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);

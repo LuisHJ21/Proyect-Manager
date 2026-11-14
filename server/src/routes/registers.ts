@@ -22,7 +22,7 @@ export function registerRoutes(app: App) {
     delegate: (prisma) => prisma.objective,
     createSchema: createObjectiveSchema,
     updateSchema: updateObjectiveSchema,
-    readAccess: 'member',
+    section: 'planning',
     richTextFields: ['description'],
   });
   registerProjectCrud(app, {
@@ -30,21 +30,21 @@ export function registerRoutes(app: App) {
     delegate: (prisma) => prisma.milestone,
     createSchema: createMilestoneSchema,
     updateSchema: updateMilestoneSchema,
-    readAccess: 'member',
+    section: 'planning',
   });
   registerProjectCrud(app, {
     path: 'stakeholders',
     delegate: (prisma) => prisma.stakeholder,
     createSchema: createStakeholderSchema,
     updateSchema: updateStakeholderSchema,
-    readAccess: 'pm',
+    section: 'stakeholders',
   });
   registerProjectCrud(app, {
     path: 'risks',
     delegate: (prisma) => prisma.risk,
     createSchema: createRiskSchema,
     updateSchema: updateRiskSchema,
-    readAccess: 'pm',
+    section: 'risks',
     richTextFields: ['description', 'responsePlan'],
     include: { incidents: { select: { id: true, number: true, title: true, status: true }, orderBy: { number: 'asc' } } },
     toDto: (risk) => ({ ...risk, score: risk.probability * risk.impact }),
@@ -63,7 +63,7 @@ export function registerRoutes(app: App) {
     delegate: (prisma) => prisma.expense,
     createSchema: createExpenseSchema,
     updateSchema: updateExpenseSchema,
-    readAccess: 'pm',
+    section: 'budget',
     toDto: (expense) => ({ ...expense, amountCents: Number(expense.amountCents) }),
     validate: async (expense, project, prisma) => {
       if (!expense.taskId) return;

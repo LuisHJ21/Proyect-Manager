@@ -1,7 +1,7 @@
 import { changeRequestSchema, decisionSchema, updateChangeRequestSchema } from '@pm/shared';
 import type { ChangeRequest, PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
-import { requireProjectPm } from '../auth/access';
+import { requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError, notFound } from '../errors';
 
@@ -28,14 +28,14 @@ export function changeRequestRoutes(app: App) {
 
   app.get(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'read');
     const items = await prisma.changeRequest.findMany({ where: { projectId: project.id }, include: decidedByInclude, orderBy: { number: 'desc' } });
     return c.json(items.map(toChangeRequestDto));
   });
 
   app.post(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'write');
     const { costImpactCents, ...input } = changeRequestSchema.parse(await readBody(c));
     const created = await prisma.$transaction(async (tx) => {
       // El contador del proyecto evita reutilizar el número de una solicitud borrada.
@@ -54,7 +54,7 @@ export function changeRequestRoutes(app: App) {
 
   app.patch(`${base}/:crId`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'write');
     const cr = await findPending(c.var.deps.prisma, project.id, c.req.param('crId'));
     const { costImpactCents, ...input } = updateChangeRequestSchema.parse(await readBody(c));
     const updated = await prisma.changeRequest.update({
@@ -67,7 +67,7 @@ export function changeRequestRoutes(app: App) {
 
   app.delete(`${base}/:crId`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'write');
     const cr = await findPending(c.var.deps.prisma, project.id, c.req.param('crId'));
     await prisma.changeRequest.delete({ where: { id: cr.id } });
     return c.json({ ok: true });
@@ -75,7 +75,7 @@ export function changeRequestRoutes(app: App) {
 
   app.post(`${base}/:crId/decision`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'write');
     const user = requireUser(c);
     const cr = await findPending(c.var.deps.prisma, project.id, c.req.param('crId'));
     const { status, note } = decisionSchema.parse(await readBody(c));

@@ -1,7 +1,7 @@
 import { createIncidentSchema, reportIncidentSchema, toPlainText, updateIncidentSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, readQuery, type App, type Ctx } from '../http';
-import { getProjectAccess, requireProjectPm } from '../auth/access';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { incidentAccess, isIncidentOverdue, truncateTitle, type IncidentViewer } from '../domain/incidents';
 import { HIGH_RISK_SCORE } from '../domain/indicators';
@@ -160,7 +160,7 @@ export function incidentRoutes(app: App) {
 
   app.post('/api/projects/:id/risks/:riskId/incident', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'risks', 'write');
     const risk = await prisma.risk.findFirst({ where: { id: c.req.param('riskId'), projectId: project.id } });
     if (!risk) throw notFound('Riesgo no encontrado');
     const viewer = { userId: requireUser(c).id, isPm: true };

@@ -1,7 +1,7 @@
 import { CHARTER_REQUIRED_TO_APPROVE, CHARTER_RICH_FIELDS, charterSchema, isBlankRichText } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { readBody, type App } from '../http';
-import { getProjectAccess, requireProjectPm } from '../auth/access';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError } from '../errors';
 import { sanitizeFields, sanitizeRichText } from '../richText';
@@ -17,7 +17,7 @@ export function charterRoutes(app: App) {
 
   app.put('/api/projects/:id/charter', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'planning', 'write');
     const input = charterSchema.parse(sanitizeFields(await readBody(c), CHARTER_RICH_FIELDS));
     const current = await loadCharter(prisma, project.id);
     // Se compara con lo guardado ya limpio: un texto antiguo convertido a párrafos no cuenta como cambio.
@@ -33,7 +33,7 @@ export function charterRoutes(app: App) {
 
   app.post('/api/projects/:id/charter/approve', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'planning', 'write');
     const user = requireUser(c);
     const current = await loadCharter(prisma, project.id);
 

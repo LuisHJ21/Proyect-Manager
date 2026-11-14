@@ -1,7 +1,7 @@
 import { addDays, baselineSchema, CLOSED_PROJECT_STATUS, diffDays } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
-import { requireProjectPm } from '../auth/access';
+import { requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { computeEvm, plannedValueAt, type EvmInput } from '../domain/evm';
 import { AppError, fieldError } from '../errors';
@@ -78,7 +78,7 @@ export function performanceRoutes(app: App) {
 
   app.post('/api/projects/:id/baselines', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'performance', 'write');
     const user = requireUser(c);
     const { reason, changeRequestId } = baselineSchema.parse(await readBody(c) ?? {});
 
@@ -121,7 +121,7 @@ export function performanceRoutes(app: App) {
 
   app.get('/api/projects/:id/performance', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'performance', 'read');
     const history = await prisma.baseline.findMany({ where: { projectId: project.id }, include: baselineInclude, orderBy: { version: 'desc' } });
     const input = await loadEvmInput(prisma, project.id);
     if (!input || history.length === 0) {

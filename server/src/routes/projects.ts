@@ -1,7 +1,7 @@
 import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrderValid, updateProjectSchema } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { readBody, type App } from '../http';
-import { getProjectAccess, requireProjectPm, toProjectDto } from '../auth/access';
+import { getProjectAccess, requireProjectAccess, toProjectDto } from '../auth/access';
 import { requirePm, requireUser } from '../auth/guards';
 import { countTasksOutside, type ProjectRange } from '../domain/projectDates';
 import { fieldError } from '../errors';
@@ -69,7 +69,7 @@ export function projectRoutes(app: App) {
 
   app.patch('/api/projects/:id', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'project', 'write');
     const input = updateProjectSchema.parse(sanitizeFields(await readBody(c), ['description']));
     const startDate = input.startDate === undefined ? project.startDate : input.startDate;
     const endDate = input.endDate === undefined ? project.endDate : input.endDate;
@@ -81,7 +81,7 @@ export function projectRoutes(app: App) {
 
   app.delete('/api/projects/:id', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'project', 'write');
     const { confirmName } = deleteProjectSchema.parse(await readBody(c));
     if (confirmName !== project.name) {
       throw fieldError('confirmName', 'Escribe el nombre exacto del proyecto para confirmar');

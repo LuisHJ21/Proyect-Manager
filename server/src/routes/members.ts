@@ -1,7 +1,7 @@
 import { addMemberSchema, updateMemberSchema } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { readBody, type App } from '../http';
-import { getProjectAccess, requireProjectPm } from '../auth/access';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { AppError, fieldError, notFound } from '../errors';
 
 type MemberParams = { id: string; userId: string };
@@ -35,7 +35,7 @@ export function memberRoutes(app: App) {
 
   app.post('/api/projects/:id/members', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'members', 'write');
     const input = addMemberSchema.parse(await readBody(c));
     const user = await prisma.user.findUnique({ where: { id: input.userId } });
     if (!user || !user.active) throw fieldError('userId', 'Selecciona un usuario activo');
@@ -52,7 +52,7 @@ export function memberRoutes(app: App) {
 
   app.patch('/api/projects/:id/members/:userId', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'members', 'write');
     const member = await findMember(prisma, project.id, c.req.param('userId'));
     const input = updateMemberSchema.parse(await readBody(c));
     const updated = await prisma.projectMember.update({ where: { id: member.id }, data: input, include: { user: true } });
@@ -61,7 +61,7 @@ export function memberRoutes(app: App) {
 
   app.get('/api/projects/:id/members/:userId/impact', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'members', 'write');
     const member = await findMember(prisma, project.id, c.req.param('userId'));
     const [tasks, risks, raciCells, incidents] = await Promise.all([
       prisma.taskAssignee.count({ where: { userId: member.userId, task: { projectId: project.id } } }),
@@ -74,7 +74,7 @@ export function memberRoutes(app: App) {
 
   app.delete('/api/projects/:id/members/:userId', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'members', 'write');
     const member = await findMember(prisma, project.id, c.req.param('userId'));
     await prisma.$transaction([
       prisma.taskAssignee.deleteMany({ where: { userId: member.userId, task: { projectId: project.id } } }),

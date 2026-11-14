@@ -1,7 +1,7 @@
 import { decisionRecordSchema, updateDecisionRecordSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
-import { requireProjectPm } from '../auth/access';
+import { requireProjectAccess } from '../auth/access';
 import { fieldError, notFound } from '../errors';
 
 type ItemParams = { id: string; decisionId: string };
@@ -47,14 +47,14 @@ export function decisionRoutes(app: App) {
 
   app.get(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'decisions', 'read');
     const items = await prisma.decision.findMany({ where: { projectId: project.id }, include: decisionInclude, orderBy: { number: 'desc' } });
     return c.json(items.map(toDecisionDto));
   });
 
   app.post(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'decisions', 'write');
     const input = decisionRecordSchema.parse(await readBody(c));
     await assertLinks(c.var.deps.prisma, project.id, input);
     const created = await prisma.$transaction((tx) => createDecision(tx, project.id, input));
@@ -63,7 +63,7 @@ export function decisionRoutes(app: App) {
 
   app.patch(`${base}/:decisionId`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'decisions', 'write');
     const decision = await findDecision(c.var.deps.prisma, project.id, c.req.param('decisionId'));
     const input = updateDecisionRecordSchema.parse(await readBody(c));
     await assertLinks(c.var.deps.prisma, project.id, input);
@@ -72,7 +72,7 @@ export function decisionRoutes(app: App) {
 
   app.delete(`${base}/:decisionId`, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'decisions', 'write');
     const decision = await findDecision(c.var.deps.prisma, project.id, c.req.param('decisionId'));
     await prisma.decision.delete({ where: { id: decision.id } });
     return c.json({ ok: true });

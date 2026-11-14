@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { isAllowedFile, MAX_FILE_BYTES, uploadRequestSchema } from '@pm/shared';
 import type { Attachment } from '@prisma/client';
-import { getProjectAccess, requireProjectPm } from '../auth/access';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError, forbidden, notFound } from '../errors';
 import { contentDisposition, normalizeUploadName } from '../files';
@@ -78,7 +78,7 @@ export function attachmentRoutes(app: App) {
   });
 
   app.post('/api/projects/:id/attachments', async (c) => {
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'attachments', 'write');
     return c.json(await requestUpload(c, project.id, null), 201);
   });
 

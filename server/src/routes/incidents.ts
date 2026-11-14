@@ -6,6 +6,7 @@ import { requireUser } from '../auth/guards';
 import { incidentAccess, isIncidentOverdue, truncateTitle, type IncidentViewer } from '../domain/incidents';
 import { HIGH_RISK_SCORE } from '../domain/indicators';
 import { fieldError, forbidden, notFound } from '../errors';
+import { assertOwnerCanOwn } from '../domain/owners';
 import { createDecision } from './decisions';
 
 type ItemParams = { id: string; incidentId: string };
@@ -33,10 +34,7 @@ export function toIncidentDto(incident: IncidentWithRelations, viewer: IncidentV
 
 /** Comprueba que el responsable, la tarea y el riesgo sean del proyecto. */
 export async function assertIncidentLinks(prisma: PrismaClient, projectId: string, input: { ownerId?: string | null; taskId?: string | null; riskId?: string | null }) {
-  if (input.ownerId) {
-    const member = await prisma.projectMember.findUnique({ where: { projectId_userId: { projectId, userId: input.ownerId } } });
-    if (!member) throw fieldError('ownerId', 'El responsable debe ser miembro del proyecto');
-  }
+  await assertOwnerCanOwn(prisma, projectId, input.ownerId);
   if (input.taskId && !(await prisma.task.findFirst({ where: { id: input.taskId, projectId }, select: { id: true } }))) {
     throw fieldError('taskId', 'La tarea no pertenece al proyecto');
   }

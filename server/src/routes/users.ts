@@ -1,5 +1,5 @@
 import { ACTIVE_PROJECT_STATUS, createUserSchema, resetPasswordSchema, updateUserSchema } from '@pm/shared';
-import type { User } from '@prisma/client';
+import type { PrismaClient, User } from '@prisma/client';
 import { requirePm } from '../auth/guards';
 import { hashPassword } from '../auth/passwords';
 import { deleteUserSessions } from '../auth/sessions';
@@ -7,6 +7,18 @@ import { toUserDto } from '../auth/userDto';
 import { isOverdue } from '../domain/health';
 import { AppError, notFound } from '../errors';
 import { readBody, type App, type Ctx } from '../http';
+
+/** Trabajo sin terminar de una persona en proyectos activos: lo que impide pasarla a Observador. */
+async function countOpenWork(prisma: PrismaClient, userId: string) {
+  const activeProject = { status: { in: [...ACTIVE_PROJECT_STATUS] } };
+  const [tasks, steps, risks, incidents] = await Promise.all([
+    prisma.taskAssignee.count({ where: { userId, task: { status: { not: 'DONE' }, project: activeProject } } }),
+    prisma.taskStep.count({ where: { assigneeId: userId, done: false, task: { project: activeProject } } }),
+    prisma.risk.count({ where: { ownerId: userId, status: { not: 'CLOSED' }, project: activeProject } }),
+    prisma.incident.count({ where: { ownerId: userId, status: { in: ['OPEN', 'IN_PROGRESS'] }, project: activeProject } }),
+  ]);
+  return { tasks, steps, risks, incidents };
+}
 
 export function userRoutes(app: App) {
   const findUser = async (c: Ctx, id: string): Promise<User> => {
@@ -82,9 +94,16 @@ export function userRoutes(app: App) {
     const target = await findUser(c, c.req.param('id'));
     const input = updateUserSchema.parse(await readBody(c));
 
-    const losesPmAccess = target.role === 'PM' && target.active && (input.active === false || input.role === 'COLLABORATOR');
+    const losesPmAccess = target.role === 'PM' && target.active && (input.active === false || (input.role !== undefined && input.role !== 'PM'));
     if (losesPmAccess && (await prisma.user.count({ where: { role: 'PM', active: true } })) <= 1) {
       throw new AppError(409, 'last_pm', 'Debe quedar al menos un Project Manager activo');
+    }
+
+    if (input.role === 'OBSERVER' && target.role !== 'OBSERVER') {
+      const work = await countOpenWork(prisma, target.id);
+      if (Object.values(work).some((n) => n > 0)) {
+        throw new AppError(409, 'observer_has_work', 'Tiene trabajo abierto: reasígnalo antes de cambiar su perfil a Observador', { details: work });
+      }
     }
 
     // El PM también ejecuta tareas: cambiar de rol no toca sus asignaciones.

@@ -14,6 +14,7 @@ import {
 } from '@pm/shared';
 import type { App } from '../http';
 import { fieldError } from '../errors';
+import { assertOwnerCanOwn } from '../domain/owners';
 import { registerProjectCrud } from './projectCrud';
 
 export function registerRoutes(app: App) {
@@ -50,12 +51,7 @@ export function registerRoutes(app: App) {
     toDto: (risk) => ({ ...risk, score: risk.probability * risk.impact }),
     validate: async (risk, project, prisma) => {
       if (!isResponseValidForType(risk.type, risk.response)) throw fieldError('response', INVALID_RESPONSE_MESSAGE);
-      if (risk.ownerId) {
-        const member = await prisma.projectMember.findUnique({
-          where: { projectId_userId: { projectId: project.id, userId: risk.ownerId } },
-        });
-        if (!member) throw fieldError('ownerId', 'El responsable debe ser miembro del proyecto');
-      }
+      await assertOwnerCanOwn(prisma, project.id, risk.ownerId);
     },
   });
   registerProjectCrud(app, {

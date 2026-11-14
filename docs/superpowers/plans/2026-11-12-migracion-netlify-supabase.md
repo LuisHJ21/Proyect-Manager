@@ -424,9 +424,9 @@ export const config: Config = { schedule: '0 10 * * *' };
 
 Lo ejecuta el responsable con sus cuentas; Claude Code puede guiar cada paso, pero no crea las cuentas ni conoce los secretos.
 
-- [ ] **Step 1:** En Supabase: crear el proyecto, crear el bucket privado `anexos` con límite de 25 MB por archivo y copiar las cadenas de conexión (pooler en modo transacción para `DATABASE_URL`, con `?pgbouncer=true&connection_limit=1`; pooler en modo sesión para `DIRECT_URL`).
-- [ ] **Step 2:** En Netlify: crear el sitio desde el repositorio y cargar las variables de la sección 8 de la especificación. Generar `SETUP_TOKEN` con `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`.
-- [ ] **Step 3:** Desplegar una vista previa y comprobar:
+- [x] **Step 1:** En Supabase: crear el proyecto, crear el bucket privado `anexos` con límite de 25 MB por archivo y copiar las cadenas de conexión (pooler en modo transacción para `DATABASE_URL`, con `?pgbouncer=true&connection_limit=1`; pooler en modo sesión para `DIRECT_URL`).
+- [x] **Step 2:** En Netlify: crear el sitio desde el repositorio y cargar las variables de la sección 8 de la especificación. Generar `SETUP_TOKEN` con `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`.
+- [x] **Step 3:** Desplegar una vista previa y comprobar:
   - `GET /api/setup/status` responde `{"needsSetup":true,"requiresToken":true}`. Si responde un error del motor de Prisma, ajustar `included_files` y `external_node_modules` de `netlify.toml` según el mensaje y volver a desplegar.
   - Recargar una dirección interna de la interfaz (por ejemplo `/proyectos`) muestra la aplicación y `/api/no-existe` responde el JSON de error 404, no `index.html`.
   - La configuración inicial falla sin el código y funciona con él.

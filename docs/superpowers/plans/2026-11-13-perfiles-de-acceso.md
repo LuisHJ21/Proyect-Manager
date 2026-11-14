@@ -52,7 +52,7 @@
   - `canWrite(role: Role, section: Section): boolean`
   - `accessLevel(role: Role, section: Section): AccessLevel`
 
-- [ ] **Step 1: Escribir la prueba que falla.** `access.test.ts` comprueba cada celda contra esta tabla (fila = sección; columnas PM / COLLABORATOR / OBSERVER):
+- [x] **Step 1: Escribir la prueba que falla.** `access.test.ts` comprueba cada celda contra esta tabla (fila = sección; columnas PM / COLLABORATOR / OBSERVER):
 
 ```ts
 const EXPECTED = {
@@ -81,10 +81,10 @@ const EXPECTED = {
   - `canWrite` solo es verdadero para `write`.
   - `ROLE` incluye `'OBSERVER'`.
   - `LABELS.role.OBSERVER === 'Observador'`.
-- [ ] **Step 2: Ejecutar la prueba.** `npx vitest run tests/access.test.ts` en `shared/`. Esperado: FALLA porque `access` no existe.
-- [ ] **Step 3: Implementar.** Escribir `access.ts`, añadir `OBSERVER` a `ROLE` y a `LABELS`, y exportar desde `index.ts`. Un comentario por fila nombra las excepciones que se resuelven en código: avance y pasos del asignado, anexos del asignado, estado del riesgo o incidente propio.
-- [ ] **Step 4: Comprobar que todo compila.** `npm test -w shared`, después `npx tsc --noEmit -p client` y `npx tsc --noEmit -p server`. Esperado: PASA. Si algún `Record<Role, …>` del cliente o del servidor falla por la clave OBSERVER, se corrige en este paso.
-- [ ] **Step 5: Commit.** `feat: tabla de capacidades por perfil y el perfil Observador`
+- [x] **Step 2: Ejecutar la prueba.** `npx vitest run tests/access.test.ts` en `shared/`. Esperado: FALLA porque `access` no existe.
+- [x] **Step 3: Implementar.** Escribir `access.ts`, añadir `OBSERVER` a `ROLE` y a `LABELS`, y exportar desde `index.ts`. Un comentario por fila nombra las excepciones que se resuelven en código: avance y pasos del asignado, anexos del asignado, estado del riesgo o incidente propio.
+- [x] **Step 4: Comprobar que todo compila.** `npm test -w shared`, después `npx tsc --noEmit -p client` y `npx tsc --noEmit -p server`. Esperado: PASA. Si algún `Record<Role, …>` del cliente o del servidor falla por la clave OBSERVER, se corrige en este paso.
+- [x] **Step 5: Commit.** `feat: tabla de capacidades por perfil y el perfil Observador`
 
 ### Task 2: `requireProjectAccess` en el servidor, sin cambio de comportamiento
 
@@ -100,12 +100,12 @@ const EXPECTED = {
   - `requireProjectAccess(c, projectId, section: Section, need: 'read' | 'write'): Promise<Project>`: responde 403 (`forbidden()`) si el nivel no alcanza. Con `need: 'read'`, el nivel `own` pasa y la ruta filtra. `requireProjectPm` se elimina.
   - `ProjectCrudOptions.section: Section`, que sustituye a `readAccess`.
 
-- [ ] **Step 1: Escribir la prueba que falla.** `projectAccess.test.ts` comprueba:
+- [x] **Step 1: Escribir la prueba que falla.** `projectAccess.test.ts` comprueba:
   - Un observador miembro recibe 200 en `GET /api/projects/:id/charter` y 403 en `GET /api/projects/:id/decisions`.
   - Un observador que no es miembro recibe 404 en `GET /api/projects/:id`.
   - Un colaborador recibe 403 en `GET /api/projects/:id/risks`. En esta tarea el nivel `own` todavía responde 403 en el CRUD; la Task 6 lo sustituye.
-- [ ] **Step 2: Ejecutar la prueba.** `npx vitest run tests/projectAccess.test.ts`. Esperado: FALLA, porque el acta no responde 200 al observador o porque la prueba no compila.
-- [ ] **Step 3: Implementar.** Cada `requireProjectPm(c, id)` pasa a `requireProjectAccess(c, id, <sección>, 'write')` si es una escritura, o a `'read'` si es una lectura. Sección de cada ruta:
+- [x] **Step 2: Ejecutar la prueba.** `npx vitest run tests/projectAccess.test.ts`. Esperado: FALLA, porque el acta no responde 200 al observador o porque la prueba no compila.
+- [x] **Step 3: Implementar.** Cada `requireProjectPm(c, id)` pasa a `requireProjectAccess(c, id, <sección>, 'write')` si es una escritura, o a `'read'` si es una lectura. Sección de cada ruta:
   - acta, objetivos e hitos → `planning`
   - miembros → `members`
   - RACI → `raci`
@@ -125,8 +125,8 @@ const EXPECTED = {
   Hay dos excepciones:
   - Los GET de entregables piden `'write'` en esta tarea. La Task 5 los abre junto con el DTO que oculta a quien revisó.
   - En `registerProjectCrud`, el GET responde 403 si `can.level(section)` no es `read` ni `write`.
-- [ ] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: todo pasa sin cambiar ninguna prueba existente, porque el PM y el colaborador se comportan como antes.
-- [ ] **Step 5: Commit.** `refactor: los permisos por proyecto se leen de la tabla de capacidades`
+- [x] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: todo pasa sin cambiar ninguna prueba existente, porque el PM y el colaborador se comportan como antes.
+- [x] **Step 5: Commit.** `refactor: los permisos por proyecto se leen de la tabla de capacidades`
 
 ### Task 3: Guardia global del observador
 
@@ -138,7 +138,7 @@ const EXPECTED = {
 **Interfaces:**
 - Produces: `registerObserverGuard(app: App): void`.
 
-- [ ] **Step 1: Escribir la prueba que falla.** Prueba de cobertura:
+- [x] **Step 1: Escribir la prueba que falla.** Prueba de cobertura:
   - Recorre `listRoutes(ctx.app)` con los métodos POST, PUT, PATCH y DELETE. Excluye `POST /api/auth/logout`, `POST /api/auth/change-password` y las rutas que no necesitan sesión (`/api/setup` y `/api/auth/login`).
   - Envía cada ruta como un observador miembro de un proyecto activo, con ids reales como en `closedGuard.test.ts`.
   - Espera 403 y `error.code === 'observer_read_only'` en todas, con `routes.length >= 40`.
@@ -147,10 +147,10 @@ const EXPECTED = {
   - logout responde 200.
   - change-password con la contraseña actual responde 200.
   - Un colaborador no se ve afectado: `POST /api/tasks/:id/comments` en una tarea que tiene asignada responde 201.
-- [ ] **Step 2: Ejecutar la prueba.** `npx vitest run tests/observerGuard.test.ts`. Esperado: FALLA, porque las rutas responden otros códigos.
-- [ ] **Step 3: Implementar el middleware.** Compara el método y `c.req.path` con las dos excepciones y, si no coinciden, lanza `new AppError(403, 'observer_read_only', 'Tu perfil es de solo lectura')`.
-- [ ] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
-- [ ] **Step 5: Commit.** `feat: el observador no puede escribir en la API`
+- [x] **Step 2: Ejecutar la prueba.** `npx vitest run tests/observerGuard.test.ts`. Esperado: FALLA, porque las rutas responden otros códigos.
+- [x] **Step 3: Implementar el middleware.** Compara el método y `c.req.path` con las dos excepciones y, si no coinciden, lanza `new AppError(403, 'observer_read_only', 'Tu perfil es de solo lectura')`.
+- [x] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
+- [x] **Step 5: Commit.** `feat: el observador no puede escribir en la API`
 
 ### Task 4: Perfiles en Usuarios y quién puede ser responsable
 
@@ -162,7 +162,7 @@ const EXPECTED = {
 **Interfaces:**
 - Produces: el 409 `observer_has_work` con `details: { tasks: number; steps: number; risks: number; incidents: number }`, que lee la Task 11.
 
-- [ ] **Step 1: Escribir las pruebas que fallan.**
+- [x] **Step 1: Escribir las pruebas que fallan.**
   - `POST /api/users` con `role: 'OBSERVER'` responde 201.
   - Cambiar a OBSERVER a una persona con trabajo abierto en proyectos activos responde 409 y no cambia su rol. Su trabajo: 1 tarea abierta, 1 paso sin hacer, 1 riesgo no cerrado del que es responsable y 1 incidente OPEN del que es responsable. La respuesta trae `details` igual a `{ tasks: 1, steps: 1, risks: 1, incidents: 1 }`.
   - El mismo cambio responde 200 si todo está terminado o cerrado, o si el trabajo está solo en proyectos CLOSED.
@@ -170,13 +170,13 @@ const EXPECTED = {
   - Poner a un observador miembro como `ownerId` de un riesgo (POST y PATCH) o de un incidente responde 400 con `fields.ownerId === 'Un observador no puede ser responsable'`.
   - Asignar a un observador miembro a una tarea responde 400 con `fields.assigneeIds`. `assertAssignable` ya lo impide; la prueba lo deja fijado.
   - Un observador puede estar en la RACI: el `PUT` del PM sobre una celda con rol `I` responde 200.
-- [ ] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/observerProfile.test.ts`. Esperado: FALLA.
-- [ ] **Step 3: Implementar.**
+- [x] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/observerProfile.test.ts`. Esperado: FALLA.
+- [x] **Step 3: Implementar.**
   - `losesPmAccess` usa `input.role !== undefined && input.role !== 'PM'`.
   - Los conteos van en una función local `countOpenWork(prisma, userId)` de `users.ts`, con cuatro `count` en paralelo.
   - La regla del responsable va en `assertOwnerCanOwn(prisma, projectId, ownerId)`, en `server/src/domain/owners.ts`. La usan riesgos y `assertIncidentLinks`, y conserva el mensaje actual para quien no es miembro.
-- [ ] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
-- [ ] **Step 5: Commit.** `feat: el PM crea observadores y se protege el trabajo abierto`
+- [x] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
+- [x] **Step 5: Commit.** `feat: el PM crea observadores y se protege el trabajo abierto`
 
 ### Task 5: Entregables en lectura para colaborador y observador
 
@@ -187,16 +187,16 @@ const EXPECTED = {
 **Interfaces:**
 - Produces: `toDeliverableDto(d, today, detail, isPm: boolean)` y `loadDeliverableDetail(prisma, id, today, isPm = true)`. `deliverableReviews.ts` sigue pasando el valor del PM.
 
-- [ ] **Step 1: Escribir las pruebas que fallan.**
+- [x] **Step 1: Escribir las pruebas que fallan.**
   - Un colaborador miembro y un observador miembro reciben 200 en la lista y en el detalle. La respuesta trae `criteria` y `reviews`, con `outcome`, `reviewedOn` y `note`.
   - El texto JSON de la respuesta no contiene el nombre del interesado. Para comprobarlo se crea el interesado «María Pérez» y una revisión con su `stakeholderId`.
   - Las claves `stakeholder` y `stakeholderName` no aparecen ni en `lastReview` ni en `reviews[]`.
   - El PM sigue recibiendo esas claves.
   - Las escrituras del colaborador responden 403: POST de entregable, PATCH de criterio y POST de revisión.
-- [ ] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/deliverablesAccess.test.ts`. Esperado: FALLA con 403.
-- [ ] **Step 3: Implementar.** Los GET piden `'read'` y pasan `can.write('deliverables')` como `isPm`. Para quien no es PM, el DTO omite esas claves en vez de enviarlas como `null`.
-- [ ] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
-- [ ] **Step 5: Commit.** `feat: el equipo ve los entregables sin datos de interesados`
+- [x] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/deliverablesAccess.test.ts`. Esperado: FALLA con 403.
+- [x] **Step 3: Implementar.** Los GET piden `'read'` y pasan `can.write('deliverables')` como `isPm`. Para quien no es PM, el DTO omite esas claves en vez de enviarlas como `null`.
+- [x] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
+- [x] **Step 5: Commit.** `feat: el equipo ve los entregables sin datos de interesados`
 
 ### Task 6: Riesgos propios del colaborador
 
@@ -210,7 +210,7 @@ const EXPECTED = {
   - `riskAccess(risk: { ownerId: string | null }, viewer: { userId: string; isPm: boolean }): { view: boolean; edit: boolean; changeStatus: boolean; remove: boolean }`, con la misma forma que `incidentAccess`.
   - `ProjectCrudOptions.own?: { field: string; editable: readonly string[]; message: string }`, y `toDto(item, isPm)`.
 
-- [ ] **Step 1: Escribir las pruebas que fallan.**
+- [x] **Step 1: Escribir las pruebas que fallan.**
   - `domain/risks.test.ts` cubre al PM, al responsable y a quien no lo es.
   - En `ownRisks.test.ts`, el colaborador es responsable de R1 y no de R2:
     - `GET risks` devuelve solo R1, con `score` y sin `incidents`.
@@ -220,15 +220,15 @@ const EXPECTED = {
     - `POST risks` y `DELETE R1` responden 403.
     - Los indicadores del proyecto siguen sin datos de riesgos para el colaborador.
     - El PM ve R1 y R2, ambos con `incidents`.
-- [ ] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/domain/risks.test.ts tests/ownRisks.test.ts`. Esperado: FALLA.
-- [ ] **Step 3: Implementar.** Con nivel `own`:
+- [x] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/domain/risks.test.ts tests/ownRisks.test.ts`. Esperado: FALLA.
+- [x] **Step 3: Implementar.** Con nivel `own`:
   - El GET filtra por `{ [own.field]: user.id }`.
   - El PATCH busca el registro con ese mismo filtro; si no lo encuentra, responde 404. Si el cuerpo trae una clave fuera de `own.editable`, responde 403 con `own.message`. Después valida con `updateSchema`.
   - POST y DELETE responden 403.
 
   El registro de riesgos declara `own: { field: 'ownerId', editable: ['status'], message: … }` y un `toDto` que omite `incidents` para quien no es PM.
-- [ ] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
-- [ ] **Step 5: Commit.** `feat: el colaborador ve sus riesgos y cambia su estado`
+- [x] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
+- [x] **Step 5: Commit.** `feat: el colaborador ve sus riesgos y cambia su estado`
 
 ### Task 7: Lo que lee el observador
 
@@ -236,21 +236,21 @@ const EXPECTED = {
 - Modify: `server/src/routes/incidents.ts`, `tasks.ts` (`GET /api/tasks/:id` y `GET /api/me/tasks`), `lessons.ts` (`GET /api/lessons`) y `calendar.ts`
 - Test: `server/tests/observerReads.test.ts`
 
-- [ ] **Step 1: Escribir las pruebas que fallan.** El observador es miembro del proyecto A y no del B.
+- [x] **Step 1: Escribir las pruebas que fallan.** El observador es miembro del proyecto A y no del B.
   - Los `GET` de incidentes, lista y detalle, responden 403.
   - `GET /api/tasks/:id` responde 200 sin la clave `comments`. Un colaborador la sigue recibiendo.
   - `GET /api/me/tasks` responde 200 con `[]`, aunque el observador tenga asignada una tarea DONE de antes.
   - `GET /api/lessons` devuelve solo las lecciones de A.
   - `GET /api/calendar` devuelve todas las tareas con fecha de A, asignadas o no, y los hitos de A. No devuelve nada de B.
   - **Ningún dato oculto:** no aparecen `plannedCostCents`, `plannedBudgetCents`, `amountCents`, `spentCents` ni `currency` en estas respuestas: detalle y lista de proyectos, tareas del proyecto, detalle de tarea, indicadores y calendario. Se comprueba igual que en las pruebas del colaborador, con `JSON.stringify` y una búsqueda de las claves.
-- [ ] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/observerReads.test.ts`. Esperado: FALLA.
-- [ ] **Step 3: Implementar.**
+- [x] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/observerReads.test.ts`. Esperado: FALLA.
+- [x] **Step 3: Implementar.**
   - Las rutas de incidentes piden `requireProjectAccess(…, 'incidents', 'read')`. El observador tiene el nivel `none`, así que recibe 403.
   - El detalle de tarea incluye los comentarios solo si `can.read('comments')`.
   - En el calendario, las tareas del observador se buscan con `project.members.some(userId)` en lugar de `assignees`.
   - `/api/lessons` añade `project: { members: { some: { userId } } }` para el observador.
-- [ ] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
-- [ ] **Step 5: Commit.** `feat: el observador lee solo lo que su perfil permite`
+- [x] **Step 4: Ejecutar la suite del servidor.** `npm test -w server`. Esperado: PASA.
+- [x] **Step 5: Commit.** `feat: el observador lee solo lo que su perfil permite`
 
 ### Task 8: Matriz perfil × ruta
 
@@ -260,7 +260,7 @@ const EXPECTED = {
 **Interfaces:**
 - Consumes: `ACCESS` (Task 1), `listRoutes` (`server/src/http.ts`).
 
-- [ ] **Step 1: Escribir la prueba.**
+- [x] **Step 1: Escribir la prueba.**
   - Un mapa `ROUTE_SECTION: Record<string, Section>` con clave `"<MÉTODO> <patrón>"`. Cubre toda ruta bajo `/api/projects/:id` y `/api/tasks/:id`, los mismos prefijos que `closedGuard.test.ts` menos `attachments` y `local-uploads`.
   - Una lista `FINE_GRAINED` con las rutas cuya regla se decide en el código y ya tienen pruebas propias. Para el colaborador no se espera 403 en ellas:
     - PATCH de tarea (avance)
@@ -275,9 +275,9 @@ const EXPECTED = {
     - En los demás casos espera cualquier código distinto de 403.
   - En las escrituras del observador espera el código `observer_read_only`. Las peticiones usan ids reales y cuerpo vacío.
   - Si una ruta registrada no está en `ROUTE_SECTION`, la prueba falla con el mensaje `Ruta sin clasificar: <clave>`.
-- [ ] **Step 2: Ejecutar la prueba.** `npx vitest run tests/accessMatrix.test.ts`. Esperado: PASA. Si una ruta da un código que la tabla no permite, es un fallo de las Tasks 2 a 7: se corrige la ruta, no lo esperado.
-- [ ] **Step 3: Comprobar que la prueba puede fallar.** Cambiar a mano una celda de `ACCESS` (por ejemplo, `OBSERVER.planning = 'none'`), ejecutar la prueba y ver que falla. Después, deshacer el cambio.
-- [ ] **Step 4: Commit.** `test: matriz de permisos por perfil y ruta`
+- [x] **Step 2: Ejecutar la prueba.** `npx vitest run tests/accessMatrix.test.ts`. Esperado: PASA. Si una ruta da un código que la tabla no permite, es un fallo de las Tasks 2 a 7: se corrige la ruta, no lo esperado.
+- [x] **Step 3: Comprobar que la prueba puede fallar.** Cambiar a mano una celda de `ACCESS` (por ejemplo, `OBSERVER.planning = 'none'`), ejecutar la prueba y ver que falla. Después, deshacer el cambio.
+- [x] **Step 4: Commit.** `test: matriz de permisos por perfil y ruta`
 
 ### Task 9: Cliente: acceso, pestañas, menú e inicio
 
@@ -292,7 +292,7 @@ const EXPECTED = {
   - `ProjectSection({ section }: { section: Section })`, que sustituye a `ProjectPmOnly` y redirige a `resumen` si no hay permiso de lectura.
   - `TABS[i].section: Section`, que sustituye a `pmOnly`.
 
-- [ ] **Step 1: Escribir las pruebas que fallan.**
+- [x] **Step 1: Escribir las pruebas que fallan.**
   - Pestañas por perfil:
     - El colaborador ve Resumen, Acta, Tareas, Anexos, Incidentes, Lecciones, Riesgos y Entregables. No ve Interesados, Presupuesto, Desempeño, Control de cambios ni Cierre.
     - El observador ve Resumen, Acta, Tareas, Anexos, Lecciones y Entregables.
@@ -302,8 +302,8 @@ const EXPECTED = {
     - `/` y `/mis-tareas` lo llevan a `/proyectos`.
   - El PM y el colaborador conservan sus menús.
   - Tras un 403 que dispara `pm:forbidden`, `/api/auth/me` responde con el rol OBSERVER y el menú pasa a ser el del observador.
-- [ ] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/projectLayout.test.tsx tests/layout.test.tsx` en `client/`. Esperado: FALLA.
-- [ ] **Step 3: Implementar.** Sección de cada pestaña:
+- [x] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/projectLayout.test.tsx tests/layout.test.tsx` en `client/`. Esperado: FALLA.
+- [x] **Step 3: Implementar.** Sección de cada pestaña:
   - resumen → project
   - acta → planning
   - tareas → tasks
@@ -322,8 +322,8 @@ const EXPECTED = {
   - El router envuelve en `<ProjectSection section=…>` cada ruta de sección que no ven todos los perfiles.
   - `OBSERVER_LINKS` contiene Proyectos, Calendario y Lecciones.
   - `HomeRedirect` lleva al PM a `/panel`, al observador a `/proyectos` y al colaborador a `/mis-tareas`.
-- [ ] **Step 4: Ejecutar la suite del cliente.** `npm test -w client`. Esperado: PASA.
-- [ ] **Step 5: Commit.** `feat: pestañas y menú según el perfil`
+- [x] **Step 4: Ejecutar la suite del cliente.** `npm test -w client`. Esperado: PASA.
+- [x] **Step 5: Commit.** `feat: pestañas y menú según el perfil`
 
 ### Task 10: Cliente: entregables y riesgos del equipo
 
@@ -331,7 +331,7 @@ const EXPECTED = {
 - Modify: `client/src/pages/project/Deliverables.tsx`, `client/src/components/deliverables/DeliverableDetail.tsx`, `client/src/pages/project/Registers.tsx` (`RisksPage`) y `client/src/api/types.ts` (campos opcionales de la revisión y del riesgo)
 - Test: `client/tests/deliverables.test.tsx`, `client/tests/risks.test.tsx`
 
-- [ ] **Step 1: Escribir las pruebas que fallan.**
+- [x] **Step 1: Escribir las pruebas que fallan.**
   - Colaborador en Entregables:
     - No hay botón «Añadir entregable».
     - El detalle muestra los criterios sin casillas y sin acciones de revisión.
@@ -341,14 +341,14 @@ const EXPECTED = {
     - La lista muestra solo lo que devuelve la API.
     - No hay botones para registrar, editar ni borrar.
     - El detalle tiene un selector «Estado del riesgo» que envía `PATCH … { status: 'TREATING' }`.
-- [ ] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/deliverables.test.tsx tests/risks.test.tsx`. Esperado: FALLA.
-- [ ] **Step 3: Implementar.**
+- [x] **Step 2: Ejecutar las pruebas.** `npx vitest run tests/deliverables.test.tsx tests/risks.test.tsx`. Esperado: FALLA.
+- [x] **Step 3: Implementar.**
   - Entregables usa `readOnly || !canWrite('deliverables')`.
   - El historial muestra el nombre de quien revisó solo si llega de la API.
   - `RisksPage` usa `canEdit={!readOnly && canWrite('risks')}`.
   - Con nivel `own` y el proyecto abierto, el detalle del riesgo añade el selector de estado.
-- [ ] **Step 4: Ejecutar la suite del cliente.** `npm test -w client`. Esperado: PASA.
-- [ ] **Step 5: Commit.** `feat: el equipo ve entregables y gestiona el estado de sus riesgos`
+- [x] **Step 4: Ejecutar la suite del cliente.** `npm test -w client`. Esperado: PASA.
+- [x] **Step 5: Commit.** `feat: el equipo ve entregables y gestiona el estado de sus riesgos`
 
 ### Task 11: Cliente: el observador sin controles de escritura, y selectores sin observadores
 
@@ -360,7 +360,7 @@ const EXPECTED = {
   - `client/src/components/users/EditUserModal.tsx` y `client/src/pages/Users.tsx`: muestran el error `observer_has_work`.
 - Test: `client/tests/taskDetail.test.tsx`, `lessons.test.tsx`, `users.test.tsx`, `projectTasks.test.tsx`, `risks.test.tsx`
 
-- [ ] **Step 1: Escribir las pruebas que fallan.**
+- [x] **Step 1: Escribir las pruebas que fallan.**
   - Observador:
     - El detalle de tarea no tiene la sección «Comentarios», ni «Reportar incidente», ni casillas en los pasos.
     - Anexos no tiene botón de subir.
@@ -369,26 +369,26 @@ const EXPECTED = {
   - Usuarios:
     - El selector «Rol» ofrece «Observador».
     - Al guardar con un 409 `observer_has_work` y `details { tasks: 2, steps: 0, risks: 1, incidents: 0 }`, se ve el mensaje de la API y «2 tareas · 1 riesgo». Solo se muestran los conteos mayores que cero, en singular o plural.
-- [ ] **Step 2: Ejecutar las pruebas.** Ejecutar cada archivo de prueba. Esperado: FALLA.
-- [ ] **Step 3: Implementar.** Lo que describen los archivos de esta tarea y las pruebas del paso 1.
-- [ ] **Step 4: Ejecutar la suite del cliente.** `npm test -w client`. Esperado: PASA.
-- [ ] **Step 5: Commit.** `feat: el observador navega sin controles de escritura`
+- [x] **Step 2: Ejecutar las pruebas.** Ejecutar cada archivo de prueba. Esperado: FALLA.
+- [x] **Step 3: Implementar.** Lo que describen los archivos de esta tarea y las pruebas del paso 1.
+- [x] **Step 4: Ejecutar la suite del cliente.** `npm test -w client`. Esperado: PASA.
+- [x] **Step 5: Commit.** `feat: el observador navega sin controles de escritura`
 
 ### Task 12: Tramo e2e del observador y verificación completa
 
 **Files:**
 - Modify: `e2e/main-flow.spec.ts`
 
-- [ ] **Step 1: Añadir el tramo al final del flujo principal**, después de reabrir el proyecto:
+- [x] **Step 1: Añadir el tramo al final del flujo principal**, después de reabrir el proyecto:
   - `createUser` acepta un `role` opcional, que elige la etiqueta en «Rol». `signInFirstTime` acepta el encabezado esperado, por defecto `'Mis tareas'`.
   - El PM crea a «Olga» como Observador y la añade a Portal.
   - Olga inicia sesión y ve el encabezado «Proyectos».
   - Abre Portal y ve el Resumen.
   - No ve «Nueva tarea», ni la pestaña «Riesgos», ni «Añadir lección» en Lecciones.
-- [ ] **Step 2: Compilar y ejecutar.**
+- [x] **Step 2: Compilar y ejecutar.**
   - `npm run build && npm run test:e2e`. Esperado: PASA.
   - Después, `npm test` con `TEST_DATABASE_URL`. Esperado: pasan shared, servidor y cliente.
-- [ ] **Step 3: Commit.** `test: tramo del observador en el flujo principal`
+- [x] **Step 3: Commit.** `test: tramo del observador en el flujo principal`
 
 ---
 

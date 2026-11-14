@@ -9,6 +9,7 @@ import { LessonCard } from '../../components/lessons/LessonCard';
 import { LessonForm, lessonsKey } from '../../components/lessons/LessonForm';
 import { useToast } from '../../components/Toast';
 import { Button, Card, EmptyState, inputClass } from '../../components/ui';
+import { useAccess } from '../../auth/useAccess';
 import { useProject } from './ProjectLayout';
 
 type Dialog = { kind: 'new' } | { kind: 'edit' | 'delete'; item: Lesson };
@@ -16,6 +17,7 @@ type Dialog = { kind: 'new' } | { kind: 'edit' | 'delete'; item: Lesson };
 /** Lecciones aprendidas del proyecto. Todo el equipo las registra, también con el proyecto cerrado. */
 export function LessonsPage() {
   const { project } = useProject();
+  const { canWrite } = useAccess();
   const queryClient = useQueryClient();
   const toast = useToast();
   const list = useQuery({ queryKey: lessonsKey(project.id), queryFn: () => api<Lesson[]>(`/api/projects/${project.id}/lessons`) });
@@ -32,7 +34,7 @@ export function LessonsPage() {
   const visible = list.data?.filter((l) => (!type || l.type === type) && (!category || l.category === category)) ?? [];
 
   return (
-    <Card title="Lecciones aprendidas" actions={<Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir lección</Button>}>
+    <Card title="Lecciones aprendidas" actions={canWrite('lessons') ? <Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir lección</Button> : undefined}>
       <div className="mb-4 flex flex-wrap gap-4">
         <label className="text-sm text-ink-nav">
           <span className="mb-1 block font-medium">Tipo</span>

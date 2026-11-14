@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { secureHeaders } from 'hono/secure-headers';
 import { registerAuthHook } from './auth/guards';
 import { registerClosedGuard } from './closedGuard';
+import { registerObserverGuard } from './observerGuard';
 import { errorHandler, notFoundHandler } from './errors';
 import type { App, AppEnv, Ctx, Deps } from './http';
 import { DiskFileStore } from './storage/diskFileStore';
@@ -73,6 +74,7 @@ export function buildApp(opts: BuildAppOptions): App {
     await next();
   });
   registerAuthHook(app);
+  registerObserverGuard(app);
   registerClosedGuard(app);
   authRoutes(app);
   userRoutes(app);

@@ -32,8 +32,9 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
-  // Solo se asigna a colaboradores. Un inactivo solo aparece si ya estaba asignado, para poder conservarlo o quitarlo.
-  const selectable = members.data?.filter((m) => m.active !== false || task?.assignees.some((a) => a.id === m.userId)) ?? [];
+  // Se asigna a miembros activos que ejecutan tareas (no observadores). Quien ya estaba asignado aparece siempre, para poder conservarlo o quitarlo.
+  const selectable =
+    members.data?.filter((m) => (m.active !== false && m.role !== 'OBSERVER') || task?.assignees.some((a) => a.id === m.userId)) ?? [];
 
   const toggleAssignee = (userId: string) =>
     setAssigneeIds((current) => (current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]));

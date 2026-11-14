@@ -1,4 +1,4 @@
-export const ROLE = ['PM', 'COLLABORATOR'] as const;
+export const ROLE = ['PM', 'COLLABORATOR', 'OBSERVER'] as const;
 export const PROJECT_STATUS = ['PLANNING', 'EXECUTING', 'PAUSED', 'CLOSED', 'CANCELLED'] as const;
 export const APPROACH = ['PREDICTIVE', 'AGILE', 'HYBRID'] as const;
 export const CHARTER_STATUS = ['DRAFT', 'APPROVED'] as const;
@@ -48,7 +48,7 @@ export const REVIEW_OUTCOME = ['ACCEPTED', 'REJECTED'] as const;
 export type ReviewOutcome = (typeof REVIEW_OUTCOME)[number];
 
 export const LABELS = {
-  role: { PM: 'Project Manager', COLLABORATOR: 'Colaborador' },
+  role: { PM: 'Project Manager', COLLABORATOR: 'Colaborador', OBSERVER: 'Observador' },
   projectStatus: {
     PLANNING: 'Planificación',
     EXECUTING: 'En ejecución',

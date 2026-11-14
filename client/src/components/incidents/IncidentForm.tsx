@@ -85,7 +85,7 @@ export function IncidentForm({ projectId, isPm, incident, initialTaskId, onClose
             <FormField label="Responsable" error={errors.fields.ownerId}>
               <select className={inputClass} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
                 <option value="">Sin responsable</option>
-                {members.data?.map((m) => (
+                {members.data?.filter((m) => m.role !== 'OBSERVER' || m.userId === incident?.owner?.id).map((m) => (
                   <option key={m.userId} value={m.userId}>
                     {m.name}
                   </option>

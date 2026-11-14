@@ -4,10 +4,11 @@ const FIRST_PASSWORD = 'contraseña-del-pm-1';
 const TEMP_PASSWORD = 'temporal-12345';
 const NEW_PASSWORD = 'mi-clave-definitiva';
 
-async function createUser(pm: Page, name: string, email: string) {
+async function createUser(pm: Page, name: string, email: string, role?: string) {
   await pm.getByRole('button', { name: 'Nuevo usuario' }).click();
   await pm.getByLabel('Nombre').fill(name);
   await pm.getByLabel('Correo').fill(email);
+  if (role) await pm.getByRole('dialog').getByLabel('Rol').selectOption({ label: role });
   await pm.getByLabel('Contraseña temporal').fill(TEMP_PASSWORD);
   await pm.getByRole('button', { name: 'Crear usuario' }).click();
   await expect(pm.getByText(email)).toBeVisible();
@@ -30,7 +31,7 @@ async function createTask(pm: Page, title: string, assignee: string) {
 }
 
 /** Abre una sesión nueva y cambia la contraseña temporal. */
-async function signInFirstTime(browser: Browser, email: string) {
+async function signInFirstTime(browser: Browser, email: string, heading = 'Mis tareas') {
   const context = await browser.newContext({ acceptDownloads: true });
   const page = await context.newPage();
   await page.goto('/');
@@ -40,7 +41,7 @@ async function signInFirstTime(browser: Browser, email: string) {
   await page.getByLabel('Contraseña actual').fill(TEMP_PASSWORD);
   await page.getByLabel('Contraseña nueva').fill(NEW_PASSWORD);
   await page.getByRole('button', { name: 'Cambiar contraseña' }).click();
-  await expect(page.getByRole('heading', { name: 'Mis tareas' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   return page;
 }
 
@@ -193,7 +194,8 @@ test('flujo principal', async ({ browser }) => {
   await carlos.goto(`${projectUrl}/resumen`);
   await expect(carlos.getByTestId('indicator-progress')).toBeVisible();
   const tabs = carlos.getByRole('navigation', { name: 'Secciones del proyecto' });
-  await expect(tabs.getByRole('link', { name: 'Riesgos' })).toHaveCount(0);
+  // C1: el colaborador ve Riesgos (solo los suyos) y Entregables.
+  await expect(tabs.getByRole('link', { name: 'Riesgos' })).toBeVisible();
   await expect(tabs.getByRole('link', { name: 'Presupuesto' })).toHaveCount(0);
   await carlos.goto(`${projectUrl}/acta`);
   await expect(carlos.getByRole('listitem').filter({ hasText: 'Blog' })).toBeVisible();
@@ -362,4 +364,22 @@ test('flujo principal', async ({ browser }) => {
   await expect(pm.getByText(/solo lectura/)).toHaveCount(0);
   await pm.getByRole('link', { name: 'Tareas', exact: true }).click();
   await expect(pm.getByRole('button', { name: 'Nueva tarea' })).toBeVisible();
+
+  // Perfil Observador: Olga consulta el proyecto sin poder cambiarlo.
+  await pm.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Usuarios' }).click();
+  await createUser(pm, 'Olga', 'olga@x.com', 'Observador');
+  await pm.goto(`${projectUrl}/resumen`);
+  await addMember(pm, 'Olga', 'Patrocinadora');
+  const olga = await signInFirstTime(browser, 'olga@x.com', 'Proyectos');
+  const olgaNav = olga.getByRole('navigation', { name: 'Principal' });
+  await expect(olgaNav.getByRole('link', { name: /Mis tareas/ })).toHaveCount(0);
+  await olga.goto(`${projectUrl}/resumen`);
+  await expect(olga.getByRole('heading', { level: 1, name: 'Portal' })).toBeVisible();
+  await expect(olga.getByRole('button', { name: 'Nueva tarea' })).toHaveCount(0);
+  const olgaTabs = olga.getByRole('navigation', { name: 'Secciones del proyecto' });
+  await expect(olgaTabs.getByRole('link', { name: 'Entregables' })).toBeVisible();
+  await expect(olgaTabs.getByRole('link', { name: 'Riesgos' })).toHaveCount(0);
+  await olgaTabs.getByRole('link', { name: 'Lecciones' }).click();
+  await expect(olga.getByRole('article').first()).toBeVisible();
+  await expect(olga.getByRole('button', { name: 'Añadir lección' })).toHaveCount(0);
 });

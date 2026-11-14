@@ -42,6 +42,7 @@ export function mockApi(routes: Record<string, Handler>) {
 
 export const pmUser = { id: 'pm', name: 'Paula', email: 'p@x.com', role: 'PM', active: true, mustChangePassword: false };
 export const collaborator = { id: 'c1', name: 'Carlos', email: 'c@x.com', role: 'COLLABORATOR', active: true, mustChangePassword: false };
+export const observer = { id: 'o1', name: 'Olga', email: 'o@x.com', role: 'OBSERVER', active: true, mustChangePassword: false };
 
 export const signedInAs = (user: object) => ({
   'GET /api/setup/status': { needsSetup: false },

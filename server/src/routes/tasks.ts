@@ -11,7 +11,7 @@ import {
 } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { removeAfterDelete } from '../storage/fileStore';
-import { getProjectAccess, requireProjectPm } from '../auth/access';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { checkProgressChange } from '../domain/dependencies';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
@@ -26,11 +26,11 @@ export async function getTaskAccess(c: Ctx, taskId: string) {
   const { prisma } = c.var.deps;
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw notFound('Tarea no encontrada');
-  const { isPm } = await getProjectAccess(c, task.projectId).catch(() => {
+  const { isPm, can } = await getProjectAccess(c, task.projectId).catch(() => {
     throw notFound('Tarea no encontrada');
   });
   const assignee = await prisma.taskAssignee.findUnique({ where: { taskId_userId: { taskId, userId: user.id } } });
-  return { task, isPm, isAssignee: Boolean(assignee) };
+  return { task, isPm, can, isAssignee: Boolean(assignee) };
 }
 
 export function taskRoutes(app: App) {
@@ -82,7 +82,7 @@ export function taskRoutes(app: App) {
 
   app.post('/api/projects/:id/tasks', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'tasks', 'write');
     const { assigneeIds, ...input } = createTaskSchema.parse(await readBody(c));
     assertDatesWithinProject(project, input);
     await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
@@ -97,6 +97,8 @@ export function taskRoutes(app: App) {
   app.get('/api/me/tasks', async (c) => {
     const { prisma } = c.var.deps;
     const user = requireUser(c);
+    // El observador no ejecuta tareas: su lista siempre está vacía.
+    if (user.role === 'OBSERVER') return c.json([]);
     const tasks = await prisma.task.findMany({
       where: { assignees: { some: { userId: user.id } }, project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } },
       include: { ...taskInclude, project: { select: { name: true } } },
@@ -107,9 +109,10 @@ export function taskRoutes(app: App) {
 
   app.get('/api/tasks/:id', async (c) => {
     const { prisma } = c.var.deps;
-    const { task, isPm } = await getTaskAccess(c, c.req.param('id'));
+    const { task, isPm, can } = await getTaskAccess(c, c.req.param('id'));
     const viewer = { userId: requireUser(c).id, isPm };
-    const incidents = (
+    // Sin permiso de incidentes (observador) no se envía ninguno, aunque la persona los haya reportado antes.
+    const incidents = !can.read('incidents') ? [] : (
       await prisma.incident.findMany({
         where: { taskId: task.id },
         select: { id: true, number: true, title: true, status: true, reportedById: true, ownerId: true },
@@ -118,7 +121,8 @@ export function taskRoutes(app: App) {
     )
       .filter((i) => incidentAccess(i, viewer).view)
       .map(({ id, number, title, status }) => ({ id, number, title, status }));
-    const comments = await prisma.taskComment.findMany({
+    // El observador no lee la conversación de la tarea.
+    const comments = !can.read('comments') ? null : await prisma.taskComment.findMany({
       where: { taskId: task.id },
       include: { author: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'asc' },
@@ -130,7 +134,7 @@ export function taskRoutes(app: App) {
     });
     return c.json({
       ...(await loadDto(c.var.deps.prisma, task.id, isPm)),
-      comments,
+      ...(comments ? { comments } : {}),
       steps: steps.map((s) => ({ id: s.id, title: s.title, done: s.done, assignee: s.assignee })),
       incidents,
     });

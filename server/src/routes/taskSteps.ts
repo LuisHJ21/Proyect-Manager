@@ -31,8 +31,13 @@ export function taskStepRoutes(app: App) {
 
   const assertAssigned = async (prisma: PrismaClient, taskId: string, assigneeId?: string | null) => {
     if (!assigneeId) return;
-    const assigned = await prisma.taskAssignee.findUnique({ where: { taskId_userId: { taskId, userId: assigneeId } } });
+    const assigned = await prisma.taskAssignee.findUnique({
+      where: { taskId_userId: { taskId, userId: assigneeId } },
+      include: { user: { select: { role: true } } },
+    });
     if (!assigned) throw fieldError('assigneeId', 'La persona debe estar asignada a la tarea');
+    // Quien pasó a Observador puede seguir en una tarea antigua, pero no recibe trabajo nuevo.
+    if (assigned.user.role === 'OBSERVER') throw fieldError('assigneeId', 'Un observador no puede tener pasos asignados');
   };
 
   const findStep = async (prisma: PrismaClient, taskId: string, stepId: string) => {

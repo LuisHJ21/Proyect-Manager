@@ -1,11 +1,12 @@
 import { createIncidentSchema, reportIncidentSchema, toPlainText, updateIncidentSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, readQuery, type App, type Ctx } from '../http';
-import { getProjectAccess, requireProjectPm } from '../auth/access';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { incidentAccess, isIncidentOverdue, truncateTitle, type IncidentViewer } from '../domain/incidents';
 import { HIGH_RISK_SCORE } from '../domain/indicators';
 import { fieldError, forbidden, notFound } from '../errors';
+import { assertOwnerCanOwn } from '../domain/owners';
 import { createDecision } from './decisions';
 
 type ItemParams = { id: string; incidentId: string };
@@ -33,10 +34,7 @@ export function toIncidentDto(incident: IncidentWithRelations, viewer: IncidentV
 
 /** Comprueba que el responsable, la tarea y el riesgo sean del proyecto. */
 export async function assertIncidentLinks(prisma: PrismaClient, projectId: string, input: { ownerId?: string | null; taskId?: string | null; riskId?: string | null }) {
-  if (input.ownerId) {
-    const member = await prisma.projectMember.findUnique({ where: { projectId_userId: { projectId, userId: input.ownerId } } });
-    if (!member) throw fieldError('ownerId', 'El responsable debe ser miembro del proyecto');
-  }
+  await assertOwnerCanOwn(prisma, projectId, input.ownerId);
   if (input.taskId && !(await prisma.task.findFirst({ where: { id: input.taskId, projectId }, select: { id: true } }))) {
     throw fieldError('taskId', 'La tarea no pertenece al proyecto');
   }
@@ -63,7 +61,8 @@ export function incidentRoutes(app: App) {
   const base = '/api/projects/:id/incidents';
 
   const viewerOf = async (c: Ctx, projectId: string) => {
-    const { project, isPm } = await getProjectAccess(c, projectId);
+    const { project, isPm, can } = await getProjectAccess(c, projectId);
+    if (!can.read('incidents')) throw forbidden();
     return { project, viewer: { userId: requireUser(c).id, isPm } satisfies IncidentViewer };
   };
 
@@ -160,7 +159,7 @@ export function incidentRoutes(app: App) {
 
   app.post('/api/projects/:id/risks/:riskId/incident', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'risks', 'write');
     const risk = await prisma.risk.findFirst({ where: { id: c.req.param('riskId'), projectId: project.id } });
     if (!risk) throw notFound('Riesgo no encontrado');
     const viewer = { userId: requireUser(c).id, isPm: true };
@@ -176,8 +175,9 @@ export function incidentRoutes(app: App) {
 
   app.delete(`${base}/:incidentId`, async (c) => {
     const { prisma } = c.var.deps;
-    const { viewer, incident } = await loadVisible(c, c.req.param('id'), c.req.param('incidentId'));
-    if (!incidentAccess(incident, viewer).edit) throw forbidden();
+    // Borrar es del PM: se comprueba antes de buscar el incidente para no responder 404 a quien no puede.
+    await requireProjectAccess(c, c.req.param('id'), 'incidents', 'write');
+    const { incident } = await loadVisible(c, c.req.param('id'), c.req.param('incidentId'));
     await prisma.incident.delete({ where: { id: incident.id } });
     return c.json({ ok: true });
   });

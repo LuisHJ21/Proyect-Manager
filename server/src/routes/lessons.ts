@@ -92,6 +92,8 @@ export function lessonRoutes(app: App) {
         ...(category ? { category } : {}),
         ...(type ? { type } : {}),
         ...(projectId ? { projectId } : {}),
+        // El observador solo consulta las lecciones de los proyectos donde es miembro.
+        ...(viewer.role === 'OBSERVER' ? { project: { members: { some: { userId: viewer.id } } } } : {}),
       },
       include,
       orderBy: { createdAt: 'desc' },

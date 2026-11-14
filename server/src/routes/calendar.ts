@@ -11,7 +11,13 @@ export function calendarRoutes(app: App) {
     const isPm = user.role === 'PM';
 
     const activeProject = { status: { in: [...ACTIVE_PROJECT_STATUS] } };
-    const taskScope = { project: activeProject, ...(isPm ? {} : { assignees: { some: { userId: user.id } } }) };
+    const memberOf = { ...activeProject, members: { some: { userId: user.id } } };
+    // El colaborador ve sus tareas; el observador, todas las de sus proyectos.
+    const taskScope = isPm
+      ? { project: activeProject }
+      : user.role === 'OBSERVER'
+        ? { project: memberOf }
+        : { project: activeProject, assignees: { some: { userId: user.id } } };
     const projectName = { project: { select: { name: true } } };
 
     const [tasks, milestones, undated] = await Promise.all([
@@ -23,7 +29,7 @@ export function calendarRoutes(app: App) {
       prisma.milestone.findMany({
         where: {
           dueDate: { gte: from, lte: to },
-          project: isPm ? activeProject : { ...activeProject, members: { some: { userId: user.id } } },
+          project: isPm ? activeProject : memberOf,
         },
         include: projectName,
         orderBy: { dueDate: 'asc' },

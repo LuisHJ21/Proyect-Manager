@@ -14,6 +14,7 @@ import {
 } from '@pm/shared';
 import type { App } from '../http';
 import { fieldError } from '../errors';
+import { assertOwnerCanOwn } from '../domain/owners';
 import { registerProjectCrud } from './projectCrud';
 
 export function registerRoutes(app: App) {
@@ -22,7 +23,7 @@ export function registerRoutes(app: App) {
     delegate: (prisma) => prisma.objective,
     createSchema: createObjectiveSchema,
     updateSchema: updateObjectiveSchema,
-    readAccess: 'member',
+    section: 'planning',
     richTextFields: ['description'],
   });
   registerProjectCrud(app, {
@@ -30,32 +31,30 @@ export function registerRoutes(app: App) {
     delegate: (prisma) => prisma.milestone,
     createSchema: createMilestoneSchema,
     updateSchema: updateMilestoneSchema,
-    readAccess: 'member',
+    section: 'planning',
   });
   registerProjectCrud(app, {
     path: 'stakeholders',
     delegate: (prisma) => prisma.stakeholder,
     createSchema: createStakeholderSchema,
     updateSchema: updateStakeholderSchema,
-    readAccess: 'pm',
+    section: 'stakeholders',
   });
   registerProjectCrud(app, {
     path: 'risks',
     delegate: (prisma) => prisma.risk,
     createSchema: createRiskSchema,
     updateSchema: updateRiskSchema,
-    readAccess: 'pm',
+    section: 'risks',
     richTextFields: ['description', 'responsePlan'],
     include: { incidents: { select: { id: true, number: true, title: true, status: true }, orderBy: { number: 'asc' } } },
-    toDto: (risk) => ({ ...risk, score: risk.probability * risk.impact }),
+    // El colaborador ve solo los riesgos de los que es responsable y solo cambia su estado.
+    own: { field: 'ownerId', editable: ['status'], message: 'Solo puedes cambiar el estado de los riesgos de los que eres responsable' },
+    // El vínculo con incidentes es del PM, como en el registro de incidentes.
+    toDto: ({ incidents, ...risk }, isPm) => ({ ...risk, score: risk.probability * risk.impact, ...(isPm ? { incidents } : {}) }),
     validate: async (risk, project, prisma) => {
       if (!isResponseValidForType(risk.type, risk.response)) throw fieldError('response', INVALID_RESPONSE_MESSAGE);
-      if (risk.ownerId) {
-        const member = await prisma.projectMember.findUnique({
-          where: { projectId_userId: { projectId: project.id, userId: risk.ownerId } },
-        });
-        if (!member) throw fieldError('ownerId', 'El responsable debe ser miembro del proyecto');
-      }
+      await assertOwnerCanOwn(prisma, project.id, risk.ownerId);
     },
   });
   registerProjectCrud(app, {
@@ -63,7 +62,7 @@ export function registerRoutes(app: App) {
     delegate: (prisma) => prisma.expense,
     createSchema: createExpenseSchema,
     updateSchema: updateExpenseSchema,
-    readAccess: 'pm',
+    section: 'budget',
     toDto: (expense) => ({ ...expense, amountCents: Number(expense.amountCents) }),
     validate: async (expense, project, prisma) => {
       if (!expense.taskId) return;

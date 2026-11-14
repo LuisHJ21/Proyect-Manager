@@ -129,7 +129,8 @@ export type Task = {
 };
 export type Comment = { id: string; body: string; createdAt: string; author: PersonRef };
 export type TaskStep = { id: string; title: string; done: boolean; assignee: PersonRef | null };
-export type TaskDetail = Task & { comments: Comment[]; steps: TaskStep[]; incidents?: IncidentRef[] };
+/** `comments` no llega al observador. */
+export type TaskDetail = Task & { comments?: Comment[]; steps: TaskStep[]; incidents?: IncidentRef[] };
 
 export type Attachment = {
   id: string;
@@ -261,14 +262,16 @@ export type DeliverableRow = {
   milestone: { id: string; name: string } | null;
   criteriaMet: number;
   criteriaTotal: number;
-  lastReview: { outcome: import('@pm/shared').ReviewOutcome; reviewedOn: string; stakeholderName: string } | null;
+  /** `stakeholderName` solo llega al PM: quien revisó suele ser un interesado. */
+  lastReview: { outcome: import('@pm/shared').ReviewOutcome; reviewedOn: string; stakeholderName?: string } | null;
 };
 export type DeliverableCriterion = { id: string; text: string; met: boolean; position: number };
 export type DeliverableReview = {
   id: string;
   outcome: import('@pm/shared').ReviewOutcome;
-  stakeholder: { id: string; name: string } | null;
-  stakeholderName: string;
+  /** Solo para el PM. */
+  stakeholder?: { id: string; name: string } | null;
+  stakeholderName?: string;
   reviewedOn: string;
   note: string;
   attachment: { id: string; originalName: string } | null;

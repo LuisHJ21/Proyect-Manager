@@ -22,7 +22,14 @@ export function RequirePm() {
   return isPm ? <Outlet /> : <Navigate to="/" replace />;
 }
 
+/** Mis tareas es de quien ejecuta tareas: el observador no tiene asignaciones y vuelve al inicio. */
+export function RequireTaskRunner() {
+  const { user } = useAuth();
+  return user?.role === 'OBSERVER' ? <Navigate to="/" replace /> : <Outlet />;
+}
+
 export function HomeRedirect() {
-  const { isPm } = useAuth();
-  return <Navigate to={isPm ? '/panel' : '/mis-tareas'} replace />;
+  const { user } = useAuth();
+  const home = user?.role === 'PM' ? '/panel' : user?.role === 'OBSERVER' ? '/proyectos' : '/mis-tareas';
+  return <Navigate to={home} replace />;
 }

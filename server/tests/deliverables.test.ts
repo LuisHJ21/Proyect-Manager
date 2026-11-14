@@ -42,11 +42,11 @@ describe('API de entregables', () => {
   });
   afterEach(() => ctx.close());
 
-  it('solo el PM', async () => {
+  it('solo el PM escribe; el colaborador lee (C1)', async () => {
     const { id } = await create();
-    expect((await ctx.as(ana).get(base())).statusCode).toBe(403);
+    expect((await ctx.as(ana).get(base())).statusCode).toBe(200);
     expect((await ctx.as(ana).post(base(), { name: 'X' })).statusCode).toBe(403);
-    expect((await ctx.as(ana).get(`${base()}/${id}`)).statusCode).toBe(403);
+    expect((await ctx.as(ana).get(`${base()}/${id}`)).statusCode).toBe(200);
     expect((await ctx.as(ana).post(`${base()}/${id}/criteria`, { text: 'X' })).statusCode).toBe(403);
     const outsider = await ctx.makeUser({ role: 'COLLABORATOR' });
     expect((await ctx.as(outsider).get(base())).statusCode).toBe(404);

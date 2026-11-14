@@ -35,7 +35,8 @@ export async function api<T = unknown>(path: string, options: ApiOptions = {}): 
   const error = payload?.error;
   if (!error) throw new ApiError(response.status, 'server_error', 'El servidor no respondió correctamente. Inténtalo de nuevo.');
   if (error.code === 'unauthenticated') window.dispatchEvent(new Event('pm:unauthenticated'));
-  if (error.code === 'forbidden') window.dispatchEvent(new Event('pm:forbidden'));
+  // El perfil pudo cambiar con la sesión abierta (por ejemplo, a Observador): se vuelve a pedir la sesión.
+  if (error.code === 'forbidden' || error.code === 'observer_read_only') window.dispatchEvent(new Event('pm:forbidden'));
   throw new ApiError(response.status, error.code, error.message, error.fields, error.details);
 }
 

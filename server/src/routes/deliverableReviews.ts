@@ -1,6 +1,6 @@
 import { canAccept, deliverableReviewSchema } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
-import { requireProjectPm } from '../auth/access';
+import { requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError, fieldError } from '../errors';
 import { findDeliverable, loadDeliverableDetail } from './deliverables';
@@ -10,7 +10,7 @@ export function deliverableReviewRoutes(app: App) {
 
   app.post('/api/projects/:id/deliverables/:did/reviews', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const user = requireUser(c);
     const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
     const input = deliverableReviewSchema.parse(await readBody(c));

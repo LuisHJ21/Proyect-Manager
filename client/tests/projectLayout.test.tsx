@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { apiError, collaborator, mockApi, pmUser, renderApp, setRichText, signedInAs } from './helpers';
+import { apiError, collaborator, mockApi, observer, pmUser, renderApp, setRichText, signedInAs } from './helpers';
 
 const project = {
   id: 'p1',
@@ -23,16 +23,21 @@ const summaryRoutes = {
 };
 
 describe('pestañas del proyecto', () => {
-  it('al colaborador no le muestra Interesados, Riesgos ni Presupuesto', async () => {
+  const tabNames = async () =>
+    within(await screen.findByRole('navigation', { name: 'Secciones del proyecto' }))
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+
+  it('el colaborador ve sus pestañas, entregables y riesgos incluidos', async () => {
     mockApi({ ...signedInAs(collaborator), ...summaryRoutes });
     renderApp('/proyectos/p1/resumen');
-    const tabs = await screen.findByRole('navigation', { name: 'Secciones del proyecto' });
-    expect(within(tabs).getByRole('link', { name: 'Acta' })).toBeInTheDocument();
-    expect(within(tabs).getByRole('link', { name: 'Tareas' })).toBeInTheDocument();
-    expect(within(tabs).getByRole('link', { name: 'Anexos' })).toBeInTheDocument();
-    for (const name of ['Interesados', 'Riesgos', 'Presupuesto']) {
-      expect(within(tabs).queryByRole('link', { name })).not.toBeInTheDocument();
-    }
+    expect(await tabNames()).toEqual(['Resumen', 'Acta', 'Tareas', 'Anexos', 'Incidentes', 'Lecciones', 'Riesgos', 'Entregables']);
+  });
+
+  it('el observador ve solo las pestañas de lectura de su perfil', async () => {
+    mockApi({ ...signedInAs(observer), ...summaryRoutes });
+    renderApp('/proyectos/p1/resumen');
+    expect(await tabNames()).toEqual(['Resumen', 'Acta', 'Tareas', 'Anexos', 'Lecciones', 'Entregables']);
   });
 
   it('al PM sí se las muestra', async () => {
@@ -44,8 +49,8 @@ describe('pestañas del proyecto', () => {
     }
   });
 
-  it('el colaborador que abre /riesgos vuelve al resumen, sin pedir datos ocultos', async () => {
-    const api = mockApi({ ...signedInAs(collaborator), ...summaryRoutes });
+  it('el observador que abre /riesgos vuelve al resumen, sin pedir datos ocultos', async () => {
+    const api = mockApi({ ...signedInAs(observer), ...summaryRoutes });
     renderApp('/proyectos/p1/riesgos');
     expect(await screen.findByTestId('indicator-progress')).toBeInTheDocument();
     expect(api.calls.some((c) => c.key.includes('/risks'))).toBe(false);

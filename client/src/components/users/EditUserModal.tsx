@@ -1,12 +1,22 @@
 import { LABELS, ROLE, type Role } from '@pm/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { api } from '../../api/client';
+import { api, ApiError } from '../../api/client';
 import type { UserOverview } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { ConfirmDialog, Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { Button, inputClass } from '../ui';
+
+const WORK_NOUNS = { tasks: ['tarea', 'tareas'], steps: ['paso', 'pasos'], risks: ['riesgo', 'riesgos'], incidents: ['incidente', 'incidentes'] } as const;
+
+/** "2 tareas · 1 riesgo": solo el trabajo abierto que hay, en singular o plural. */
+export function openWorkSummary(details: Partial<Record<keyof typeof WORK_NOUNS, number>>): string {
+  return (Object.keys(WORK_NOUNS) as (keyof typeof WORK_NOUNS)[])
+    .filter((key) => (details[key] ?? 0) > 0)
+    .map((key) => `${details[key]} ${WORK_NOUNS[key][details[key] === 1 ? 0 : 1]}`)
+    .join(' · ');
+}
 
 export function EditUserModal({ target, onClose }: { target: UserOverview; onClose: () => void }) {
   const { user: me } = useAuth();
@@ -16,6 +26,7 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [openWork, setOpenWork] = useState('');
 
   const isSelf = target.id === me?.id;
   const losesOwnAccess = isSelf && target.role === 'PM' && role !== 'PM';
@@ -29,6 +40,7 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
   const save = async () => {
     setConfirming(false);
     setErrors(NO_ERRORS);
+    setOpenWork('');
     setBusy(true);
     try {
       await api(`/api/users/${target.id}`, { method: 'PATCH', body: { name, role } });
@@ -38,6 +50,7 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
       onClose();
     } catch (error) {
       applyFieldErrors(error, setErrors);
+      if (error instanceof ApiError && error.code === 'observer_has_work' && error.details) setOpenWork(openWorkSummary(error.details));
     } finally {
       setBusy(false);
     }
@@ -47,6 +60,7 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
     <Modal title={`Editar a ${target.name}`} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <FormMessage message={errors.message} />
+        {openWork && <p className="text-sm text-ink-nav">{openWork}</p>}
         <FormField label="Nombre" error={errors.fields.name}>
           <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
         </FormField>

@@ -1,7 +1,7 @@
 import { ACTIVE_PROJECT_STATUS, CLOSED_PROJECT_STATUS, closeProjectSchema, reopenProjectSchema } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
-import { requireProjectPm } from '../auth/access';
+import { requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { buildClosureReport, closurePendings, type ClosureInput, type ClosureReport } from '../domain/closure';
 import { AppError, fieldError } from '../errors';
@@ -79,13 +79,13 @@ export function closureRoutes(app: App) {
   };
 
   app.get('/api/projects/:id/closure', async (c) => {
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'closure', 'read');
     return c.json(await closureState(c, project.id));
   });
 
   app.post('/api/projects/:id/closure', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'closure', 'write');
     const user = requireUser(c);
     const input = closeProjectSchema.parse(await readBody(c));
     if (isClosed(project.status)) throw new AppError(409, 'project_already_closed', 'El proyecto ya está cerrado');
@@ -118,7 +118,7 @@ export function closureRoutes(app: App) {
 
   app.post('/api/projects/:id/reopen', async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectPm(c, c.req.param('id'));
+    const project = await requireProjectAccess(c, c.req.param('id'), 'closure', 'write');
     const user = requireUser(c);
     const { reason } = reopenProjectSchema.parse(await readBody(c));
     const now = c.var.deps.now();

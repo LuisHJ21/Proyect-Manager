@@ -1,7 +1,9 @@
 import type { PrismaClient, Project } from '@prisma/client';
 import type { ZodType } from 'zod';
 import { readBody, type App, type Ctx } from '../http';
-import { getProjectAccess, requireProjectPm } from '../auth/access';
+import type { Section } from '@pm/shared';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
+import { requireUser } from '../auth/guards';
 import { forbidden, notFound } from '../errors';
 import { sanitizeFields } from '../richText';
 
@@ -22,10 +24,17 @@ export type ProjectCrudOptions = {
   delegate: (prisma: PrismaClient) => Delegate;
   createSchema: ZodType<object, any, any>;
   updateSchema: ZodType<object, any, any>;
-  readAccess: 'member' | 'pm';
+  /** Sección de la tabla de capacidades: GET exige leer y las escrituras exigen escribir. */
+  section: Section;
   /** Reglas sobre el registro resultante, ya combinado con lo guardado. */
   validate?: (merged: Record<string, any>, project: Project, prisma: PrismaClient) => Promise<void>;
-  toDto?: (item: any) => object;
+  /** `isPm`: quien pide es PM; permite ocultar relaciones a los demás perfiles. */
+  toDto?: (item: any, isPm: boolean) => object;
+  /**
+   * Nivel `own` de la tabla de capacidades: la persona ve los registros donde `field` es su id
+   * y solo puede cambiar `editable`. El registro ajeno responde 404.
+   */
+  own?: { field: string; editable: readonly string[]; message: string };
   /** Campos con formato: se limpian antes de validar. */
   richTextFields?: readonly string[];
   /** Relaciones que se devuelven con cada registro. */
@@ -33,7 +42,7 @@ export type ProjectCrudOptions = {
 };
 
 export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
-  const { path, delegate: delegateOf, createSchema, updateSchema, readAccess, validate, toDto = (item) => item, richTextFields = [], include } = options;
+  const { path, delegate: delegateOf, createSchema, updateSchema, section, validate, toDto = (item) => item, richTextFields = [], include, own } = options;
   const base = `/api/projects/:id/${path}`;
 
   const findItem = async (delegate: Delegate, projectId: string, itemId: string) => {
@@ -44,36 +53,47 @@ export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
 
   app.get(base, async (c) => {
     const delegate = delegateOf(c.var.deps.prisma);
-    const { project, isPm } = await getProjectAccess(c, c.req.param('id')!);
-    if (readAccess === 'pm' && !isPm) throw forbidden();
-    const items = await delegate.findMany({ where: { projectId: project.id }, orderBy: { createdAt: 'asc' }, include });
-    return c.json(items.map(toDto));
+    const { project, can, isPm } = await getProjectAccess(c, c.req.param('id')!);
+    const level = can.level(section);
+    const mine = level === 'own' && own ? { [own.field]: requireUser(c).id } : null;
+    if (level !== 'read' && level !== 'write' && !mine) throw forbidden();
+    const items = await delegate.findMany({ where: { projectId: project.id, ...mine }, orderBy: { createdAt: 'asc' }, include });
+    return c.json(items.map((item) => toDto(item, isPm)));
   });
 
   app.post(base, async (c) => {
     const { prisma } = c.var.deps;
     const delegate = delegateOf(prisma);
-    const project = await requireProjectPm(c, c.req.param('id')!);
+    const project = await requireProjectAccess(c, c.req.param('id')!, section, 'write');
     const input = createSchema.parse(sanitizeFields(await readBody(c), richTextFields));
     await validate?.(input, project, prisma);
     const item = await delegate.create({ data: { ...input, projectId: project.id }, include });
-    return c.json(toDto(item), 201);
+    return c.json(toDto(item, true), 201);
   });
 
   app.patch(`${base}/:itemId`, async (c) => {
     const { prisma } = c.var.deps;
     const delegate = delegateOf(prisma);
-    const project = await requireProjectPm(c, c.req.param('id')!);
+    const { project, can, isPm } = await getProjectAccess(c, c.req.param('id')!);
+    const level = can.level(section);
+    if (level !== 'write' && !(level === 'own' && own)) throw forbidden();
+    const body = await readBody(c);
+    if (level === 'own' && own) {
+      const mine = await delegate.findFirst({ where: { id: c.req.param('itemId')!, projectId: project.id, [own.field]: requireUser(c).id } });
+      if (!mine) throw notFound();
+      const keys = body && typeof body === 'object' ? Object.keys(body) : [];
+      if (keys.some((key) => !own.editable.includes(key))) throw forbidden(own.message);
+    }
     const current = await findItem(delegate, project.id, c.req.param('itemId')!);
-    const input = updateSchema.parse(sanitizeFields(await readBody(c), richTextFields));
+    const input = updateSchema.parse(sanitizeFields(body, richTextFields));
     await validate?.({ ...current, ...input }, project, prisma);
     const item = await delegate.update({ where: { id: current.id }, data: input, include });
-    return c.json(toDto(item));
+    return c.json(toDto(item, isPm));
   });
 
   app.delete(`${base}/:itemId`, async (c) => {
     const delegate = delegateOf(c.var.deps.prisma);
-    const project = await requireProjectPm(c, c.req.param('id')!);
+    const project = await requireProjectAccess(c, c.req.param('id')!, section, 'write');
     const current = await findItem(delegate, project.id, c.req.param('itemId')!);
     await delegate.delete({ where: { id: current.id } });
     return c.json({ ok: true });

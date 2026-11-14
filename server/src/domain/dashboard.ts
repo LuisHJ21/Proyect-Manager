@@ -100,7 +100,7 @@ export function buildDashboard(input: DashboardInput, today: string) {
   for (const task of tasks) {
     if (task.status === 'DONE') continue;
     for (const person of task.assignees) {
-      if (!person.active || person.role !== 'COLLABORATOR') continue;
+      if (!person.active) continue;
       const entry = load.get(person.id) ?? { userId: person.id, name: person.name, openTasks: 0, overdueTasks: 0 };
       entry.openTasks += 1;
       if (isOverdue(task, today)) entry.overdueTasks += 1;

@@ -74,6 +74,12 @@ describe('las tareas se asignan a miembros activos, PM incluidos', () => {
     expect(await ctx.prisma.taskAssignee.count({ where: { taskId: task.id } })).toBe(0);
   });
 
+  it('GET /api/me/tasks devuelve las tareas asignadas a un PM', async () => {
+    await ctx.makeTask(project.id, { title: 'Coordinar', assignees: [otherPm] });
+    const mine = (await ctx.as(otherPm).get('/api/me/tasks')).json();
+    expect(mine.map((t: { title: string }) => t.title)).toEqual(['Coordinar']);
+  });
+
   it('cambiar otros campos no toca las asignaciones', async () => {
     const task = await ctx.makeTask(project.id, { assignees: [collaborator] });
     await ctx.as(pm).patch(`/api/users/${collaborator.id}`, { name: 'Otro nombre' });

@@ -79,7 +79,7 @@ describe('buildDashboard', () => {
     expect(buildDashboard({ ...empty, projects: [project('a')], tasks: many }, TODAY).attention).toHaveLength(8);
   });
 
-  it('workload: solo colaboradores activos con abiertas, de mayor a menor', () => {
+  it('workload: personas activas con abiertas, PM incluidos, de mayor a menor', () => {
     const ana = { id: 'ana', name: 'Ana', role: 'COLLABORATOR', active: true };
     const beto = { id: 'beto', name: 'Beto', role: 'COLLABORATOR', active: true };
     const off = { id: 'off', name: 'Off', role: 'COLLABORATOR', active: false };
@@ -94,6 +94,7 @@ describe('buildDashboard', () => {
     expect(result.workload).toEqual([
       { userId: 'beto', name: 'Beto', openTasks: 2, overdueTasks: 1 },
       { userId: 'ana', name: 'Ana', openTasks: 1, overdueTasks: 0 },
+      { userId: 'pm', name: 'Jefa', openTasks: 1, overdueTasks: 0 },
     ]);
   });
 

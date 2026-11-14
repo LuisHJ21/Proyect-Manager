@@ -8,8 +8,22 @@ import { HIGH_RISK_SCORE } from '../domain/indicators';
 import { fieldError, forbidden, notFound } from '../errors';
 import { assertOwnerCanOwn } from '../domain/owners';
 import { createDecision } from './decisions';
+import { notify } from '../notifications';
 
 type ItemParams = { id: string; incidentId: string };
+
+/** Avisa al responsable que acaba de quedar fijado en el incidente. */
+async function notifyOwner(c: Ctx, incident: { id: string; projectId: string; number: number; title: string; ownerId: string | null }) {
+  if (!incident.ownerId) return;
+  await notify(c.var.deps.prisma, {
+    kind: 'INCIDENT_ASSIGNED',
+    projectId: incident.projectId,
+    entityId: incident.id,
+    title: `INC-${incident.number} ${incident.title}`,
+    userIds: [incident.ownerId],
+    actorId: requireUser(c).id,
+  });
+}
 
 export const incidentInclude = {
   reportedBy: { select: { id: true, name: true } },
@@ -105,6 +119,7 @@ export function incidentRoutes(app: App) {
     const input = viewer.isPm ? createIncidentSchema.parse(body) : reportIncidentSchema.parse(body);
     await assertIncidentLinks(prisma, project.id, input);
     const created = await createIncident(prisma, project.id, { ...input, reportedById: viewer.userId });
+    await notifyOwner(c, created);
     return c.json(toIncidentDto(created, viewer, today(c)), 201);
   });
 
@@ -154,6 +169,7 @@ export function incidentRoutes(app: App) {
       }
       return saved;
     });
+    if (updated.ownerId !== incident.ownerId) await notifyOwner(c, updated);
     return c.json(toIncidentDto(updated, viewer, today(c)));
   });
 
@@ -170,6 +186,7 @@ export function incidentRoutes(app: App) {
       priority: risk.probability * risk.impact >= HIGH_RISK_SCORE ? 'HIGH' : 'MEDIUM',
       reportedById: viewer.userId,
     });
+    await notifyOwner(c, created);
     return c.json(toIncidentDto(created, viewer, today(c)), 201);
   });
 

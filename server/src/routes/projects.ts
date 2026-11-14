@@ -53,9 +53,12 @@ export function projectRoutes(app: App) {
 
   app.post('/api/projects', async (c) => {
     const { prisma } = c.var.deps;
-    requirePm(c);
+    const user = requirePm(c);
     const input = createProjectSchema.parse(sanitizeFields(await readBody(c), ['description']));
-    const project = await prisma.project.create({ data: { ...input, charter: { create: {} } } });
+    // Quien crea el proyecto queda como miembro para poder asignarse tareas.
+    const project = await prisma.project.create({
+      data: { ...input, charter: { create: {} }, members: { create: { userId: user.id, projectRole: 'Project Manager' } } },
+    });
     return c.json(toProjectDto(project, true), 201);
   });
 

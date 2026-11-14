@@ -434,4 +434,4 @@ Lo ejecuta el responsable con sus cuentas; Claude Code puede guiar cada paso, pe
   - En el panel de Supabase, `select tablename from pg_tables where schemaname='public' and rowsecurity=false` no devuelve filas.
   - La función `daily` aparece como programada en el panel de Netlify; ejecutarla desde ahí y ver en su registro los cuatro contadores.
   - Después de las 19:00 de Lima, una tarea que vence hoy no aparece vencida.
-- [ ] **Step 4:** Publicar en producción.
+- [x] **Step 4:** Publicar en producción.

@@ -274,19 +274,13 @@ export function UsersPage() {
                 </td>
                 <td className="px-3 py-2.5 text-ink-nav">{projectsLabel(target)}</td>
                 <td className="px-3 py-2.5 text-[13px] whitespace-nowrap">
-                  {target.role === 'PM' ? (
-                    <span className="text-ink-soft">No aplica</span>
-                  ) : (
-                    <>
-                      <span className="block text-ink-nav">
-                        {target.openTasks} {target.openTasks === 1 ? 'abierta' : 'abiertas'}
-                      </span>
-                      {target.overdueTasks > 0 && (
-                        <span className="block font-semibold text-risk-fg">
-                          {target.overdueTasks} {target.overdueTasks === 1 ? 'vencida' : 'vencidas'}
-                        </span>
-                      )}
-                    </>
+                  <span className="block text-ink-nav">
+                    {target.openTasks} {target.openTasks === 1 ? 'abierta' : 'abiertas'}
+                  </span>
+                  {target.overdueTasks > 0 && (
+                    <span className="block font-semibold text-risk-fg">
+                      {target.overdueTasks} {target.overdueTasks === 1 ? 'vencida' : 'vencidas'}
+                    </span>
                   )}
                 </td>
                 <td className="px-5 py-2.5 text-right whitespace-nowrap">

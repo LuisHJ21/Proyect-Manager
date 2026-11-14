@@ -174,9 +174,9 @@ describe('pasos de tarea', () => {
       await ctx.as(pm).delete(`/api/projects/${project.id}/members/${ana.id}`);
       expect(await owner()).toBeNull();
     });
-    it('al pasar a Project Manager', async () => {
+    it('pasar a Project Manager no le quita el paso', async () => {
       await ctx.as(pm).patch(`/api/users/${ana.id}`, { role: 'PM' });
-      expect(await owner()).toBeNull();
+      expect(await owner()).toBe(ana.id);
     });
   });
 

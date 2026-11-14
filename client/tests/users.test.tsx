@@ -55,9 +55,10 @@ describe('lista de usuarios', () => {
     expect(main.getByText('Ve todos los proyectos')).toBeInTheDocument();
   });
 
-  it('las tareas de un PM muestran "No aplica" y las de un colaborador sus cifras', async () => {
-    const { main } = await open();
-    expect(main.getByText('No aplica')).toBeInTheDocument();
+  it('las tareas muestran sus cifras también para un PM', async () => {
+    const { main } = await open({ ...base, 'GET /api/users': [{ ...paula, openTasks: 2 }, carlos, inactiva] });
+    expect(main.getByText('2 abiertas')).toBeInTheDocument();
+    expect(main.queryByText('No aplica')).not.toBeInTheDocument();
     expect(main.getByText('4 abiertas')).toBeInTheDocument();
     expect(main.getByText('1 vencida')).toBeInTheDocument();
   });
@@ -97,16 +98,15 @@ describe('editar', () => {
     await waitFor(() => expect(api.calls.find((c) => c.key === 'PATCH /api/users/c1')?.body).toEqual({ name: 'Carlos M.', role: 'COLLABORATOR' }));
   });
 
-  it('cambiar un colaborador a PM avisa cuántas tareas abiertas perderá', async () => {
+  it('cambiar un colaborador a PM guarda sin avisos: conserva sus tareas', async () => {
     const { api, main, user } = await open({ ...base, 'PATCH /api/users/c1': { ...carlos, role: 'PM' } });
     await user.click(main.getByRole('button', { name: 'Editar a Carlos Vega' }));
     const dialog = within(screen.getByRole('dialog'));
     await user.selectOptions(dialog.getByLabelText('Rol'), 'PM');
-    expect(dialog.getByRole('status')).toHaveTextContent(/perderá sus 4 tareas abiertas/i);
+    expect(dialog.queryByRole('status')).not.toBeInTheDocument();
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
-    expect(api.calls.some((c) => c.key === 'PATCH /api/users/c1')).toBe(false);
-    await user.click(await screen.findByRole('button', { name: 'Confirmar' }));
-    await waitFor(() => expect(api.calls.some((c) => c.key === 'PATCH /api/users/c1')).toBe(true));
+    await waitFor(() => expect(api.calls.find((c) => c.key === 'PATCH /api/users/c1')?.body).toEqual({ name: 'Carlos Vega', role: 'PM' }));
+    expect(screen.queryByRole('button', { name: 'Confirmar' })).not.toBeInTheDocument();
   });
 
   it('quitarse el rol de PM avisa y, al guardar, actualiza la sesión y sale de Usuarios', async () => {

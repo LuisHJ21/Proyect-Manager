@@ -15,6 +15,7 @@ type Destination = { to: string; label: string; Icon: ComponentType<{ size?: num
 
 const PM_LINKS: Destination[] = [
   { to: '/panel', label: 'Inicio', Icon: House },
+  { to: '/mis-tareas', label: 'Mis tareas', Icon: CheckSquare },
   { to: '/calendario', label: 'Calendario', Icon: CalendarDays },
   { to: '/lecciones', label: 'Lecciones', Icon: Lightbulb },
   { to: '/proyectos', label: 'Proyectos', Icon: FolderKanban },
@@ -44,8 +45,8 @@ function Brand() {
   );
 }
 
-function useOpenTaskCount(enabled: boolean): number {
-  const tasks = useQuery({ queryKey: ['my-tasks'], queryFn: () => api<Task[]>('/api/me/tasks'), enabled });
+function useOpenTaskCount(): number {
+  const tasks = useQuery({ queryKey: ['my-tasks'], queryFn: () => api<Task[]>('/api/me/tasks') });
   return tasks.data?.filter((t) => t.status !== 'DONE').length ?? 0;
 }
 
@@ -138,7 +139,7 @@ export function AppLayout() {
   const [creating, setCreating] = useState(false);
 
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<Project[]>('/api/projects') });
-  const openTasks = useOpenTaskCount(!isPm);
+  const openTasks = useOpenTaskCount();
   const links = isPm ? PM_LINKS : COLLABORATOR_LINKS;
   const activeProjects = projects.data?.filter((p) => ACTIVE.has(p.status)) ?? [];
 

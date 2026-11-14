@@ -83,7 +83,7 @@ export function CalendarPage() {
   const projectList = useQuery({ queryKey: ['projects'], queryFn: () => api<Project[]>('/api/projects') });
   const userList = useQuery({ queryKey: ['users'], queryFn: () => api<UserOverview[]>('/api/users'), enabled: isPm });
   const projects = (projectList.data ?? []).filter((p) => (ACTIVE_PROJECT_STATUS as readonly string[]).includes(p.status));
-  const people = (userList.data ?? []).filter((u) => u.active && u.role === 'COLLABORATOR');
+  const people = (userList.data ?? []).filter((u) => u.active);
   const filtered = projectId !== 'ALL' || personId !== 'ALL' || kind !== 'ALL';
   const clearFilters = () => {
     setProjectId('ALL');

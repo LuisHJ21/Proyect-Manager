@@ -33,7 +33,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const [busy, setBusy] = useState(false);
 
   // Solo se asigna a colaboradores. Un inactivo solo aparece si ya estaba asignado, para poder conservarlo o quitarlo.
-  const selectable = members.data?.filter((m) => m.role === 'COLLABORATOR' && (m.active !== false || task?.assignees.some((a) => a.id === m.userId))) ?? [];
+  const selectable = members.data?.filter((m) => m.active !== false || task?.assignees.some((a) => a.id === m.userId)) ?? [];
 
   const toggleAssignee = (userId: string) =>
     setAssigneeIds((current) => (current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]));

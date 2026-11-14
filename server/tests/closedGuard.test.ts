@@ -81,12 +81,12 @@ describe('guardia de solo lectura', () => {
     expect(await ctx.prisma.task.count({ where: { projectId: project.id } })).toBe(1);
   });
 
-  it('ascender a PM no toca las asignaciones de un proyecto cerrado', async () => {
+  it('ascender a PM no toca las asignaciones, de proyectos cerrados ni abiertos', async () => {
     const open = await ctx.makeProject({ members: [ana] });
     const openTask = await ctx.makeTask(open.id, { title: 'Abierta', assignees: [ana] });
     expect((await ctx.as(pm).patch(`/api/users/${ana.id}`, { role: 'PM' })).statusCode).toBe(200);
     expect(await ctx.prisma.taskAssignee.count({ where: { taskId: task.id, userId: ana.id } })).toBe(1);
-    expect(await ctx.prisma.taskAssignee.count({ where: { taskId: openTask.id, userId: ana.id } })).toBe(0);
+    expect(await ctx.prisma.taskAssignee.count({ where: { taskId: openTask.id, userId: ana.id } })).toBe(1);
   });
 
   it('un proyecto abierto no se bloquea', async () => {

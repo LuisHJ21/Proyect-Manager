@@ -25,6 +25,14 @@ describe('proyectos y miembros', () => {
     expect(charter.json().status).toBe('DRAFT');
   });
 
+  it('quien crea el proyecto queda como miembro con rol Project Manager', async () => {
+    const res = await ctx.as(pm).post('/api/projects', { name: 'Portal' });
+    expect(res.statusCode).toBe(201);
+    const members = (await ctx.as(pm).get(`/api/projects/${res.json().id}/members`)).json();
+    expect(members).toHaveLength(1);
+    expect(members[0]).toMatchObject({ userId: pm.id, projectRole: 'Project Manager' });
+  });
+
   it('rechaza startDate posterior a endDate con fields.startDate', async () => {
     const body = { name: 'X', startDate: '2026-12-01', endDate: '2026-11-01' };
     const res = await ctx.as(pm).post('/api/projects', body);

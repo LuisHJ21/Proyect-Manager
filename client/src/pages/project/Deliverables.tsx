@@ -8,11 +8,14 @@ import { deliverableCode, DeliverableForm, deliverablesKey } from '../../compone
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { Badge, Button, Card, EmptyState, inputClass } from '../../components/ui';
 import { shortDate } from '../../lib/display';
+import { useAccess } from '../../auth/useAccess';
 import { useProject } from './ProjectLayout';
 
-/** Registro de entregables del proyecto, con sus criterios de aceptación. Solo para el Project Manager. */
+/** Registro de entregables del proyecto, con sus criterios de aceptación. El PM lo gestiona; el resto del equipo lo consulta. */
 export function DeliverablesPage() {
-  const { project, readOnly } = useProject();
+  const { project, readOnly: closed } = useProject();
+  const { canWrite } = useAccess();
+  const readOnly = closed || !canWrite('deliverables');
   const [status, setStatus] = useState('');
   const [adding, setAdding] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);

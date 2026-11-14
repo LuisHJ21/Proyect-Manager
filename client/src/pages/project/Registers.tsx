@@ -14,6 +14,7 @@ import { DetailList, RegisterTable, registerKey, type Option, type Values } from
 import { RichTextClamp, RichTextView } from '../../components/richText/RichTextView';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card } from '../../components/ui';
+import { useAccess } from '../../auth/useAccess';
 import { useProject } from './ProjectLayout';
 
 const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
@@ -99,8 +100,36 @@ function RiskIncidents({ projectId, risk, readOnly }: { projectId: string; risk:
   );
 }
 
+/** El responsable de un riesgo (nivel `own`) solo cambia su estado. */
+function RiskStatusSelect({ projectId, risk }: { projectId: string; risk: Risk }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const change = useMutation({
+    mutationFn: (status: string) => api(`/api/projects/${projectId}/risks/${risk.id}`, { method: 'PATCH', body: { status } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: registerKey(projectId, 'risks') }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+  return (
+    <select
+      aria-label="Estado del riesgo"
+      className="min-h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink"
+      value={risk.status}
+      disabled={change.isPending}
+      onChange={(e) => change.mutate(e.target.value)}
+    >
+      {RISK_STATUS.map((status) => (
+        <option key={status} value={status}>
+          {LABELS.riskStatus[status]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function RisksPage() {
   const { project, readOnly } = useProject();
+  const { canWrite, level } = useAccess();
+  const canChangeOwnStatus = !readOnly && level('risks') === 'own';
   const members = useQuery({ queryKey: membersKey(project.id), queryFn: () => api<Member[]>(`/api/projects/${project.id}/members`) });
   const memberName = (id: string | null) => members.data?.find((m) => m.userId === id)?.name ?? '—';
 
@@ -115,7 +144,7 @@ export function RisksPage() {
       path="risks"
       title="Registro de riesgos"
       singular="riesgo"
-      canEdit={!readOnly}
+      canEdit={!readOnly && canWrite('risks')}
       emptyText="Aún no hay riesgos registrados."
       itemLabel={(item) => toPlainText(item.description)}
       normalize={normalize}
@@ -130,8 +159,9 @@ export function RisksPage() {
               { label: 'Puntaje', value: `${item.score} (${item.probability} × ${item.impact})` },
               { label: 'Respuesta', value: LABELS.riskResponse[item.response as keyof typeof LABELS.riskResponse] },
               { label: 'Responsable', value: memberName(item.ownerId) },
-              { label: 'Estado', value: LABELS.riskStatus[item.status] },
-              { label: 'Incidentes', value: <RiskIncidents projectId={project.id} risk={item} readOnly={readOnly} /> },
+              { label: 'Estado', value: canChangeOwnStatus ? <RiskStatusSelect projectId={project.id} risk={item} /> : LABELS.riskStatus[item.status] },
+              // El vínculo con incidentes es del PM.
+              ...(canWrite('risks') ? [{ label: 'Incidentes', value: <RiskIncidents projectId={project.id} risk={item} readOnly={readOnly} /> }] : []),
             ]}
           />
         ),

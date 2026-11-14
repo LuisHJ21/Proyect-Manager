@@ -261,14 +261,16 @@ export type DeliverableRow = {
   milestone: { id: string; name: string } | null;
   criteriaMet: number;
   criteriaTotal: number;
-  lastReview: { outcome: import('@pm/shared').ReviewOutcome; reviewedOn: string; stakeholderName: string } | null;
+  /** `stakeholderName` solo llega al PM: quien revisó suele ser un interesado. */
+  lastReview: { outcome: import('@pm/shared').ReviewOutcome; reviewedOn: string; stakeholderName?: string } | null;
 };
 export type DeliverableCriterion = { id: string; text: string; met: boolean; position: number };
 export type DeliverableReview = {
   id: string;
   outcome: import('@pm/shared').ReviewOutcome;
-  stakeholder: { id: string; name: string } | null;
-  stakeholderName: string;
+  /** Solo para el PM. */
+  stakeholder?: { id: string; name: string } | null;
+  stakeholderName?: string;
   reviewedOn: string;
   note: string;
   attachment: { id: string; originalName: string } | null;

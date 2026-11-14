@@ -30,9 +30,16 @@ function ReviewHistory({ reviews }: { reviews: DeliverableReview[] }) {
           {reviews.map((r) => (
             <li key={r.id} className="rounded-lg border border-line p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={OUTCOME_TONE[r.outcome]}>{LABELS.reviewOutcome[r.outcome]}</Badge>
-                <span className="text-ink-nav">{shortDate(r.reviewedOn)}</span>
-                <span className="text-ink-nav">· {r.stakeholder?.name ?? (r.stakeholderName || '—')}</span>
+                {'stakeholderName' in r ? (
+                  <>
+                    <Badge tone={OUTCOME_TONE[r.outcome]}>{LABELS.reviewOutcome[r.outcome]}</Badge>
+                    <span className="text-ink-nav">{shortDate(r.reviewedOn)}</span>
+                    <span className="text-ink-nav">· {r.stakeholder?.name ?? (r.stakeholderName || '—')}</span>
+                  </>
+                ) : (
+                  // Sin el nombre de quien revisó (solo lo recibe el PM): resultado y fecha.
+                  <Badge tone={OUTCOME_TONE[r.outcome]}>{`${LABELS.reviewOutcome[r.outcome]} el ${shortDate(r.reviewedOn)}`}</Badge>
+                )}
               </div>
               {r.note && <p className="mt-2 whitespace-pre-line text-ink [overflow-wrap:anywhere]">{r.note}</p>}
               <p className="mt-2 text-ink-nav">

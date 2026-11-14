@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, errorMessage, isBlockingError } from '../../api/client';
 import type { Expense, Milestone, TaskDetail, TaskWarning } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
+import { useAccess } from '../../auth/useAccess';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState, Loading } from '../../components/ErrorState';
@@ -117,6 +118,7 @@ export function TaskDetailPage() {
   // Con el proyecto cerrado, nadie edita: ni el PM ni los asignados.
   const isPm = isPmUser && !readOnly;
   const { user } = useAuth();
+  const { canRead } = useAccess();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const tasksUrl = `/proyectos/${project.id}/tareas`;
@@ -200,6 +202,7 @@ export function TaskDetailPage() {
             </div>
           </Panel>
           <StepList task={task} canManage={isPm} canCheck={canUpdate} />
+          {canRead('incidents') && (
           <section aria-label="Incidentes de la tarea" className="rounded-xl border border-line bg-surface p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-ink">Incidentes</h2>
@@ -224,9 +227,12 @@ export function TaskDetailPage() {
               <p className="text-sm text-ink-soft">Sin incidentes.</p>
             )}
           </section>
-          <Panel>
-            <CommentList taskId={task.id} comments={task.comments} canComment={canUpdate} />
-          </Panel>
+          )}
+          {task.comments && (
+            <Panel>
+              <CommentList taskId={task.id} comments={task.comments} canComment={canUpdate} />
+            </Panel>
+          )}
         </div>
 
         <aside aria-label="Propiedades de la tarea" className="flex min-w-0 flex-col gap-6">

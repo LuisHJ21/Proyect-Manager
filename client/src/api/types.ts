@@ -129,7 +129,8 @@ export type Task = {
 };
 export type Comment = { id: string; body: string; createdAt: string; author: PersonRef };
 export type TaskStep = { id: string; title: string; done: boolean; assignee: PersonRef | null };
-export type TaskDetail = Task & { comments: Comment[]; steps: TaskStep[]; incidents?: IncidentRef[] };
+/** `comments` no llega al observador. */
+export type TaskDetail = Task & { comments?: Comment[]; steps: TaskStep[]; incidents?: IncidentRef[] };
 
 export type Attachment = {
   id: string;

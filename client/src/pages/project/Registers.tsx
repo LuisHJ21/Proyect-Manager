@@ -192,7 +192,9 @@ export function RisksPage() {
           label: 'Responsable',
           type: 'select',
           nullable: true,
-          options: members.data?.map((m) => ({ value: m.userId, label: m.name })) ?? [],
+          // Un observador no puede ser responsable.
+          options: (values) =>
+            members.data?.filter((m) => m.role !== 'OBSERVER' || m.userId === values.ownerId).map((m) => ({ value: m.userId, label: m.name })) ?? [],
         },
         { name: 'status', label: 'Estado', type: 'select', options: options(RISK_STATUS, LABELS.riskStatus) },
       ]}

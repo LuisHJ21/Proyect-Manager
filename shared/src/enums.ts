@@ -47,6 +47,32 @@ export type DeliverableStatus = (typeof DELIVERABLE_STATUS)[number];
 export const REVIEW_OUTCOME = ['ACCEPTED', 'REJECTED'] as const;
 export type ReviewOutcome = (typeof REVIEW_OUTCOME)[number];
 
+export const ACTIVITY_ENTITY = [
+  'project',
+  'member',
+  'task',
+  'step',
+  'comment',
+  'attachment',
+  'objective',
+  'milestone',
+  'stakeholder',
+  'risk',
+  'expense',
+  'raci',
+  'change',
+  'incident',
+  'decision',
+  'deliverable',
+  'lesson',
+] as const;
+export type ActivityEntity = (typeof ACTIVITY_ENTITY)[number];
+export const ACTIVITY_ACTION = ['created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded'] as const;
+export type ActivityAction = (typeof ACTIVITY_ACTION)[number];
+export type ActivityValue = string | number | boolean | string[] | null;
+/** Sin `from`/`to`: el campo cambió pero no está vigilado. */
+export type ActivityChange = { field: string; from?: ActivityValue; to?: ActivityValue };
+
 export const LABELS = {
   role: { PM: 'Project Manager', COLLABORATOR: 'Colaborador', OBSERVER: 'Observador' },
   projectStatus: {
@@ -107,5 +133,24 @@ export const LABELS = {
     EQUIPMENT: 'Equipos',
     SERVICES: 'Servicios',
     OTHER: 'Otros',
+  },
+  activityEntity: {
+    project: 'Proyecto',
+    member: 'Miembro',
+    task: 'Tarea',
+    step: 'Paso',
+    comment: 'Comentario',
+    attachment: 'Anexo',
+    objective: 'Objetivo',
+    milestone: 'Hito',
+    stakeholder: 'Interesado',
+    risk: 'Riesgo',
+    expense: 'Gasto',
+    raci: 'RACI',
+    change: 'Solicitud de cambio',
+    incident: 'Incidente',
+    decision: 'Decisión',
+    deliverable: 'Entregable',
+    lesson: 'Lección',
   },
 } as const;

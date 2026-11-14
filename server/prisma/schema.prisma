@@ -37,6 +37,7 @@ model User {
   closedProjects     ProjectClosure[]    @relation("projectCloser")
   reopenedProjects   ProjectClosure[]    @relation("projectReopener")
   lessons            Lesson[]            @relation("lessonAuthor")
+  activityLogs       ActivityLog[]
 }
 
 model Session {
@@ -97,6 +98,7 @@ model Project {
   deliverables   Deliverable[]
   closures       ProjectClosure[]
   lessons        Lesson[]
+  activityLogs   ActivityLog[]
 }
 
 model ProjectMember {
@@ -587,4 +589,24 @@ model Lesson {
 
   @@index([projectId])
   @@index([category])
+}
+
+/// Bitácora de actividad (F3): una fila por escritura exitosa sobre un proyecto.
+model ActivityLog {
+  id          String   @id @default(cuid())
+  projectId   String
+  userId      String
+  action      String
+  entity      String
+  entityId    String?
+  /// Nombre del elemento al momento del cambio.
+  entityLabel String   @default("")
+  /// [{ field, from?, to? }] con valores ya legibles.
+  changes     Json     @default("[]")
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([projectId, createdAt])
 }

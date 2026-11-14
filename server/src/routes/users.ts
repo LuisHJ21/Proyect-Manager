@@ -87,16 +87,8 @@ export function userRoutes(app: App) {
       throw new AppError(409, 'last_pm', 'Debe quedar al menos un Project Manager activo');
     }
 
-    const becomesPm = input.role === 'PM' && target.role !== 'PM';
-    const updated = await prisma.$transaction(async (tx) => {
-      if (becomesPm) {
-        // Los proyectos cerrados conservan su historia: solo se tocan las asignaciones de proyectos activos.
-        const active = { project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } };
-        await tx.taskAssignee.deleteMany({ where: { userId: target.id, task: active } });
-        await tx.taskStep.updateMany({ where: { assigneeId: target.id, task: active }, data: { assigneeId: null } });
-      }
-      return tx.user.update({ where: { id: target.id }, data: input });
-    });
+    // El PM también ejecuta tareas: cambiar de rol no toca sus asignaciones.
+    const updated = await prisma.user.update({ where: { id: target.id }, data: input });
     if (input.active === false) await deleteUserSessions(prisma, target.id);
     return c.json(toUserDto(updated));
   });

@@ -74,3 +74,61 @@ export async function loadComment(prisma: PrismaClient, id: string): Promise<Sna
   const comment = await prisma.taskComment.findUnique({ where: { id }, include: { task: { select: { title: true } } } });
   return comment ? { label: comment.task.title, values: {} } : null;
 }
+
+const userName = (prisma: PrismaClient, id: string | null) =>
+  id ? prisma.user.findUnique({ where: { id }, select: { name: true } }).then(nameOf) : Promise.resolve(null);
+
+export async function loadObjective(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.objective.findUnique({ where: { id } });
+  return item ? { label: plainLabel(item.description), values: scalars(item) } : null;
+}
+
+export async function loadMilestone(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.milestone.findUnique({ where: { id } });
+  return item ? { label: item.name, values: scalars(item) } : null;
+}
+
+export async function loadStakeholder(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.stakeholder.findUnique({ where: { id } });
+  return item ? { label: item.name, values: scalars(item) } : null;
+}
+
+export async function loadRisk(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.risk.findUnique({ where: { id } });
+  return item ? { label: plainLabel(item.description), values: { ...scalars(item), ownerId: await userName(prisma, item.ownerId) } } : null;
+}
+
+export async function loadExpense(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.expense.findUnique({ where: { id }, include: { task: { select: { title: true } } } });
+  return item ? { label: item.description, values: { ...scalars(item), taskId: item.task?.title ?? null } } : null;
+}
+
+export async function loadChange(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.changeRequest.findUnique({ where: { id } });
+  return item ? { label: `CR-${item.number} ${item.title}`, values: scalars(item, ['decidedById', 'decidedAt']) } : null;
+}
+
+export async function loadIncident(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.incident.findUnique({ where: { id } });
+  return item
+    ? { label: `INC-${item.number} ${item.title}`, values: { ...scalars(item, ['reportedById', 'resolvedAt', 'closedAt']), ownerId: await userName(prisma, item.ownerId) } }
+    : null;
+}
+
+/** El incidente creado desde un riesgo cita su origen en la etiqueta. */
+export async function loadIncidentFromRisk(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const snapshot = await loadIncident(prisma, id);
+  const incident = snapshot && (await prisma.incident.findUnique({ where: { id }, include: { risk: { select: { description: true } } } }));
+  if (!snapshot || !incident?.risk) return snapshot;
+  return { ...snapshot, label: `${snapshot.label} (desde el riesgo «${plainLabel(incident.risk.description)}»)` };
+}
+
+export async function loadDecision(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.decision.findUnique({ where: { id } });
+  return item ? { label: `DEC-${item.number} ${item.title}`, values: scalars(item) } : null;
+}
+
+export async function loadLesson(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.lesson.findUnique({ where: { id } });
+  return item ? { label: plainLabel(item.situation), values: scalars(item, ['authorId']) } : null;
+}

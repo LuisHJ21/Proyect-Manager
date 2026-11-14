@@ -76,7 +76,12 @@ function formatValue(log: ActivityLog, field: string, value: ActivityValue | und
   return labels?.[value] ?? value;
 }
 
-const fieldLabel = (field: string) => (field.startsWith('charter.') ? 'acta' : (LABELS.activityField[field] ?? field));
+/** Nombre en minúscula para «también cambió»; un campo sin etiqueta no muestra su nombre interno. */
+function fieldLabel(field: string): string {
+  if (field.startsWith('charter.')) return 'acta';
+  const label = LABELS.activityField[field];
+  return label ? label.charAt(0).toLowerCase() + label.slice(1) : 'otros datos';
+}
 
 /** Cambios legibles: con valores («Estado: En curso → Hecha») y campos que solo se nombran («descripción»). */
 export function describeChanges(log: ActivityLog, currency: string): { valued: string[]; others: string[] } {

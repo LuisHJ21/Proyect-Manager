@@ -35,12 +35,14 @@ export function activityRoutes(app: App) {
   app.get('/api/projects/:id/activity/filters', async (c) => {
     const { prisma } = c.var.deps;
     const project = await requireProjectAccess(c, c.req.param('id'), 'activity', 'read');
+    // groupBy agrupa en la base; `distinct` de Prisma leería toda la bitácora del proyecto.
     const [people, kinds] = await Promise.all([
-      prisma.activityLog.findMany({ where: { projectId: project.id }, distinct: ['userId'], select: { user: { select: { id: true, name: true } } } }),
-      prisma.activityLog.findMany({ where: { projectId: project.id }, distinct: ['entity'], select: { entity: true } }),
+      prisma.activityLog.groupBy({ by: ['userId'], where: { projectId: project.id } }),
+      prisma.activityLog.groupBy({ by: ['entity'], where: { projectId: project.id } }),
     ]);
+    const users = await prisma.user.findMany({ where: { id: { in: people.map((p) => p.userId) } }, select: { id: true, name: true } });
     return c.json({
-      users: people.map((p) => p.user).sort((a, b) => a.name.localeCompare(b.name, 'es')),
+      users: users.sort((a, b) => a.name.localeCompare(b.name, 'es')),
       entities: kinds.map((k) => k.entity as ActivityEntity).sort(),
     });
   });

@@ -56,6 +56,12 @@ describe('bitácora: registros, incidentes, decisiones, cambios y lecciones', ()
     expect((await last()).changes).toContainEqual({ field: 'ownerId', from: 'Ana', to: 'Luis' });
   });
 
+  it('la etiqueta de un texto con formato decodifica las entidades', async () => {
+    const body = { description: '<p>Retraso en I&amp;D &lt;crítico&gt;</p>', type: 'THREAT', probability: 2, impact: 3, response: 'MITIGATE' };
+    expect((await ctx.as(pm).post(`${p()}/risks`, body)).statusCode).toBe(201);
+    expect((await last()).entityLabel).toBe('Retraso en I&D <crítico>');
+  });
+
   it('decidir un cambio registra la decisión', async () => {
     const cr = (await ctx.as(pm).post(`${p()}/change-requests`, { title: 'Más pantallas' })).json();
     const res = await ctx.as(pm).post(`${p()}/change-requests/${cr.id}/decision`, { status: 'APPROVED', note: 'Vale' });

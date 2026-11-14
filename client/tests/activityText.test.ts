@@ -60,3 +60,13 @@ describe('frases de la bitácora', () => {
     expect(describeChanges(log({ entity: 'raci', changes: [{ field: 'role', from: null, to: 'R' }] }), 'USD').valued).toEqual(['Rol RACI: — → R']);
   });
 });
+
+describe('campos no vigilados', () => {
+  it('se nombran en español, y lo desconocido como «otros datos»', () => {
+    const { others } = describeChanges(
+      log({ changes: [{ field: 'title' }, { field: 'organization' }, { field: 'closedAt' }, { field: 'campoNuevo' }, { field: 'otroCampo' }] }),
+      'USD',
+    );
+    expect(others).toEqual(['título', 'organización', 'fecha de cierre', 'otros datos']);
+  });
+});

@@ -1,3 +1,4 @@
+import { toPlainText } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
 import { toActivityValue, type ActivityValue, type Snapshot } from '../domain/activityDiff';
 import { readBody, type Ctx } from '../http';
@@ -32,7 +33,7 @@ export function scalars(record: Record<string, unknown>, omit: readonly string[]
 
 /** Texto plano corto para etiquetas que salen de campos con formato. */
 export function plainLabel(text: string, max = 120): string {
-  const plain = text.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  const plain = toPlainText(text);
   return plain.length > max ? `${plain.slice(0, max - 1)}…` : plain;
 }
 

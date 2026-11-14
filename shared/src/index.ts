@@ -6,3 +6,4 @@ export * from './fileTypes';
 export * from './richText';
 export * from './raci';
 export * from './deliverables';
+export * from './access';

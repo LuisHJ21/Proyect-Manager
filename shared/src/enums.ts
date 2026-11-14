@@ -69,6 +69,10 @@ export const ACTIVITY_ENTITY = [
 export type ActivityEntity = (typeof ACTIVITY_ENTITY)[number];
 export const ACTIVITY_ACTION = ['created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded'] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTION)[number];
+
+/** Tipos de aviso dentro de la aplicación (F2). */
+export const NOTIFICATION_KIND = ['TASK_ASSIGNED', 'TASK_COMMENTED', 'TASK_DUE_SOON', 'TASK_OVERDUE', 'INCIDENT_ASSIGNED'] as const;
+export type NotificationKind = (typeof NOTIFICATION_KIND)[number];
 export type ActivityValue = string | number | boolean | string[] | null;
 /** Sin `from`/`to`: el campo cambió pero no está vigilado. */
 export type ActivityChange = { field: string; from?: ActivityValue; to?: ActivityValue };

@@ -38,6 +38,7 @@ model User {
   reopenedProjects   ProjectClosure[]    @relation("projectReopener")
   lessons            Lesson[]            @relation("lessonAuthor")
   activityLogs       ActivityLog[]
+  notifications      Notification[]
 }
 
 model Session {
@@ -99,6 +100,7 @@ model Project {
   closures       ProjectClosure[]
   lessons        Lesson[]
   activityLogs   ActivityLog[]
+  notifications  Notification[]
 }
 
 model ProjectMember {
@@ -609,4 +611,27 @@ model ActivityLog {
   user    User    @relation(fields: [userId], references: [id])
 
   @@index([projectId, createdAt])
+}
+
+/// Aviso dentro de la aplicación para un usuario (F2).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  projectId String
+  kind      String
+  entityId  String
+  /// Etiqueta del elemento al crear el aviso: «Diseño», «INC-3 Caída».
+  title     String
+  /// Quien comentó; vacío en los demás tipos.
+  actorName String    @default("")
+  /// Solo los vencimientos: impide repetir el aviso de la misma tarea y fecha.
+  dedupeKey String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt])
 }

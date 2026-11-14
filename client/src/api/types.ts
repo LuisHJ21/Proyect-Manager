@@ -3,6 +3,7 @@ import type {
   ActivityChange,
   ActivityEntity,
   Approach,
+  NotificationKind,
   CharterStatus,
   ExpenseCategory,
   Health,
@@ -340,3 +341,17 @@ export type ActivityLog = {
 };
 export type ActivityPage = { items: ActivityLog[]; nextCursor: string | null };
 export type ActivityFilters = { users: PersonRef[]; entities: ActivityEntity[] };
+
+export type Notification = {
+  id: string;
+  kind: NotificationKind;
+  projectId: string;
+  projectName: string;
+  entityId: string;
+  title: string;
+  actorName: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type NotificationPage = { items: Notification[]; nextCursor: string | null };

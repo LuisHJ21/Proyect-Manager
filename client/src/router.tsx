@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { HomeRedirect, RequireAuth, RequirePm } from './auth/RequireAuth';
+import { HomeRedirect, RequireAuth, RequirePm, RequireTaskRunner } from './auth/RequireAuth';
 import { AppLayout } from './components/AppLayout';
 import { ChangePasswordPage, LoginPage, SetupPage } from './pages/AuthPages';
 import { CalendarPage } from './pages/Calendar';
@@ -7,7 +7,7 @@ import { DashboardPage } from './pages/Dashboard';
 import { MyTasksPage } from './pages/MyTasks';
 import { UsersPage } from './pages/Users';
 import { CharterPage } from './pages/project/Charter';
-import { ProjectLayout, ProjectPmOnly } from './pages/project/ProjectLayout';
+import { ProjectLayout, ProjectSection } from './pages/project/ProjectLayout';
 import { ProjectListPage } from './pages/project/ProjectList';
 import { ChangeRequestsPage } from './pages/project/ChangeRequests';
 import { DeliverablesPage } from './pages/project/Deliverables';
@@ -39,20 +39,36 @@ export function AppRoutes() {
             <Route path="tareas" element={<TasksPage />} />
             <Route path="tareas/:taskId" element={<TaskDetailPage />} />
             <Route path="anexos" element={<AttachmentsPage />} />
-            <Route path="incidentes" element={<IncidentsPage />} />
             <Route path="lecciones" element={<LessonsPage />} />
-            <Route element={<ProjectPmOnly />}>
+            <Route element={<ProjectSection section="incidents" />}>
+              <Route path="incidentes" element={<IncidentsPage />} />
+            </Route>
+            <Route element={<ProjectSection section="stakeholders" />}>
               <Route path="interesados" element={<StakeholdersPage />} />
+            </Route>
+            <Route element={<ProjectSection section="risks" />}>
               <Route path="riesgos" element={<RisksPage />} />
+            </Route>
+            <Route element={<ProjectSection section="budget" />}>
               <Route path="presupuesto" element={<BudgetPage />} />
+            </Route>
+            <Route element={<ProjectSection section="performance" />}>
               <Route path="desempeno" element={<PerformancePage />} />
+            </Route>
+            <Route element={<ProjectSection section="changes" />}>
               <Route path="cambios" element={<ChangeRequestsPage />} />
+            </Route>
+            <Route element={<ProjectSection section="deliverables" />}>
               <Route path="entregables" element={<DeliverablesPage />} />
+            </Route>
+            <Route element={<ProjectSection section="closure" />}>
               <Route path="cierre" element={<ClosurePage />} />
             </Route>
           </Route>
           <Route path="/calendario" element={<CalendarPage />} />
-          <Route path="/mis-tareas" element={<MyTasksPage />} />
+          <Route element={<RequireTaskRunner />}>
+            <Route path="/mis-tareas" element={<MyTasksPage />} />
+          </Route>
           <Route element={<RequirePm />}>
             <Route path="/panel" element={<DashboardPage />} />
             <Route path="/usuarios" element={<UsersPage />} />

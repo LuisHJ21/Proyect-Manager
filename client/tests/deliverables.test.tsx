@@ -27,11 +27,11 @@ export const baseRoutes = (user: object = pmUser) => ({
 const open = () => renderApp('/proyectos/p1/entregables');
 
 describe('pestaña Entregables', () => {
-  it('el colaborador no ve la pestaña', async () => {
+  it('el colaborador ve la pestaña (C1)', async () => {
     mockApi({ ...baseRoutes(collaborator), 'GET /api/projects/p1/incidents': [] });
     renderApp('/proyectos/p1/incidentes');
     const tabs = await screen.findByRole('navigation', { name: 'Secciones del proyecto' });
-    expect(within(tabs).queryByRole('link', { name: 'Entregables' })).not.toBeInTheDocument();
+    expect(within(tabs).getByRole('link', { name: 'Entregables' })).toBeInTheDocument();
   });
 
   it('lista', async () => {

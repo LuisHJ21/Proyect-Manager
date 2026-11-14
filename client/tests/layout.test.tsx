@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { HealthBadge } from '../src/components/ui';
-import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
+import { apiError, collaborator, mockApi, observer, pmUser, renderApp, signedInAs } from './helpers';
 
 const project = (id: string, name: string, status = 'EXECUTING') => ({ id, name, status, description: '', approach: 'AGILE', startDate: null, endDate: null, progress: 0, team: [] });
 
@@ -46,6 +46,30 @@ describe('navegación por rol', () => {
     renderApp('/proyectos');
     await nav();
     expect(screen.queryByRole('button', { name: 'Nuevo proyecto' })).not.toBeInTheDocument();
+  });
+
+  it('el observador ve Proyectos, Calendario y Lecciones', async () => {
+    mockApi({ ...signedInAs(observer), 'GET /api/projects': [], 'GET /api/me/tasks': [] });
+    renderApp('/proyectos');
+    const links = await nav();
+    expect(links.getAllByRole('link').map((l) => l.textContent)).toEqual(expect.arrayContaining(['Proyectos', 'Calendario', 'Lecciones']));
+    for (const name of [/Mis tareas/, 'Inicio', 'Usuarios']) expect(links.queryByRole('link', { name })).not.toBeInTheDocument();
+  });
+
+  it.each(['/', '/mis-tareas', '/panel'])('el observador que entra a %s llega a Proyectos', async (path) => {
+    mockApi({ ...signedInAs(observer), 'GET /api/projects': [], 'GET /api/me/tasks': [] });
+    renderApp(path);
+    expect(await screen.findByRole('heading', { name: 'Proyectos' })).toBeInTheDocument();
+  });
+
+  it('si la API responde que el perfil es de solo lectura, la sesión se actualiza al menú del observador', async () => {
+    const api = mockApi({ ...signedInAs(collaborator), 'GET /api/projects': [], 'GET /api/me/tasks': [] });
+    api.routes['GET /api/me/tasks'] = () => {
+      api.routes['GET /api/auth/me'] = observer;
+      return apiError(403, 'observer_read_only', { message: 'Tu perfil es de solo lectura' });
+    };
+    renderApp('/mis-tareas');
+    expect(await screen.findByRole('heading', { name: 'Proyectos' })).toBeInTheDocument();
   });
 
   it('el PM entra a /mis-tareas', async () => {

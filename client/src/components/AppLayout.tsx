@@ -29,6 +29,13 @@ const COLLABORATOR_LINKS: Destination[] = [
   { to: '/proyectos', label: 'Proyectos', Icon: FolderKanban },
 ];
 
+/** El observador solo consulta: sin Mis tareas. */
+const OBSERVER_LINKS: Destination[] = [
+  { to: '/proyectos', label: 'Proyectos', Icon: FolderKanban },
+  { to: '/calendario', label: 'Calendario', Icon: CalendarDays },
+  { to: '/lecciones', label: 'Lecciones', Icon: Lightbulb },
+];
+
 const ACTIVE = new Set(['PLANNING', 'EXECUTING', 'PAUSED']);
 
 const sideLink = ({ isActive }: { isActive: boolean }) =>
@@ -140,7 +147,7 @@ export function AppLayout() {
 
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<Project[]>('/api/projects') });
   const openTasks = useOpenTaskCount();
-  const links = isPm ? PM_LINKS : COLLABORATOR_LINKS;
+  const links = isPm ? PM_LINKS : user?.role === 'OBSERVER' ? OBSERVER_LINKS : COLLABORATOR_LINKS;
   const activeProjects = projects.data?.filter((p) => ACTIVE.has(p.status)) ?? [];
 
   return (

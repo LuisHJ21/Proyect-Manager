@@ -1,4 +1,4 @@
-import { CLOSED_PROJECT_STATUS, LABELS, localToday } from '@pm/shared';
+import { CLOSED_PROJECT_STATUS, LABELS, localToday, type Section } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -6,6 +6,7 @@ import { Link, Navigate, NavLink, Outlet, useOutletContext, useParams } from 're
 import { api, ApiError, errorMessage, isBlockingError } from '../../api/client';
 import type { Member, Project } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
+import { useAccess } from '../../auth/useAccess';
 import { ReopenDialog } from '../../components/closure/ReopenDialog';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { membersKey } from '../../components/project/MembersPanel';
@@ -18,20 +19,21 @@ type ProjectContext = { project: Project; isPm: boolean; readOnly: boolean };
 
 export const useProject = () => useOutletContext<ProjectContext>();
 
-const TABS = [
-  { to: 'resumen', label: 'Resumen' },
-  { to: 'acta', label: 'Acta' },
-  { to: 'tareas', label: 'Tareas' },
-  { to: 'anexos', label: 'Anexos' },
-  { to: 'incidentes', label: 'Incidentes' },
-  { to: 'lecciones', label: 'Lecciones' },
-  { to: 'interesados', label: 'Interesados', pmOnly: true },
-  { to: 'riesgos', label: 'Riesgos', pmOnly: true },
-  { to: 'presupuesto', label: 'Presupuesto', pmOnly: true },
-  { to: 'desempeno', label: 'Desempeño', pmOnly: true },
-  { to: 'cambios', label: 'Control de cambios', pmOnly: true },
-  { to: 'entregables', label: 'Entregables', pmOnly: true },
-  { to: 'cierre', label: 'Cierre', pmOnly: true },
+/** Cada pestaña muestra una sección de la tabla de capacidades: aparece si el perfil puede leerla. */
+const TABS: { to: string; label: string; section: Section }[] = [
+  { to: 'resumen', label: 'Resumen', section: 'project' },
+  { to: 'acta', label: 'Acta', section: 'planning' },
+  { to: 'tareas', label: 'Tareas', section: 'tasks' },
+  { to: 'anexos', label: 'Anexos', section: 'attachments' },
+  { to: 'incidentes', label: 'Incidentes', section: 'incidents' },
+  { to: 'lecciones', label: 'Lecciones', section: 'lessons' },
+  { to: 'interesados', label: 'Interesados', section: 'stakeholders' },
+  { to: 'riesgos', label: 'Riesgos', section: 'risks' },
+  { to: 'presupuesto', label: 'Presupuesto', section: 'budget' },
+  { to: 'desempeno', label: 'Desempeño', section: 'performance' },
+  { to: 'cambios', label: 'Control de cambios', section: 'changes' },
+  { to: 'entregables', label: 'Entregables', section: 'deliverables' },
+  { to: 'cierre', label: 'Cierre', section: 'closure' },
 ];
 
 export const projectKey = (id: string) => ['project', id, 'detail'];
@@ -39,6 +41,7 @@ export const projectKey = (id: string) => ['project', id, 'detail'];
 export function ProjectLayout() {
   const { id = '' } = useParams();
   const { isPm } = useAuth();
+  const { canRead } = useAccess();
   const project = useQuery({ queryKey: projectKey(id), queryFn: () => api<Project>(`/api/projects/${id}`) });
   const members = useQuery({ queryKey: membersKey(id), queryFn: () => api<Member[]>(`/api/projects/${id}/members`) });
   const [creatingTask, setCreatingTask] = useState(false);
@@ -92,7 +95,7 @@ export function ProjectLayout() {
         </div>
       )}
       <nav aria-label="Secciones del proyecto" data-print-hide className="mb-6 flex flex-wrap gap-1 border-b border-line">
-        {TABS.filter((tab) => isPm || !tab.pmOnly).map((tab) => (
+        {TABS.filter((tab) => canRead(tab.section)).map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
@@ -111,9 +114,10 @@ export function ProjectLayout() {
   );
 }
 
-/** Secciones reservadas al PM: un colaborador vuelve al resumen sin que se pidan los datos. */
-export function ProjectPmOnly() {
+/** Sección que el perfil no puede leer: vuelve al resumen sin que se pidan los datos. */
+export function ProjectSection({ section }: { section: Section }) {
   const context = useProject();
-  if (!context.isPm) return <Navigate to={`/proyectos/${context.project.id}/resumen`} replace />;
+  const { canRead } = useAccess();
+  if (!canRead(section)) return <Navigate to={`/proyectos/${context.project.id}/resumen`} replace />;
   return <Outlet context={context} />;
 }

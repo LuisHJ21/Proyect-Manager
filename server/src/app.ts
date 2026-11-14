@@ -12,6 +12,7 @@ import { DiskFileStore } from './storage/diskFileStore';
 import type { FileStore } from './storage/fileStore';
 import { attachmentRoutes } from './routes/attachments';
 import { authRoutes } from './routes/auth';
+import { activityRoutes } from './routes/activity';
 import { calendarRoutes } from './routes/calendar';
 import { changeRequestRoutes } from './routes/changeRequests';
 import { charterRoutes } from './routes/charter';
@@ -101,6 +102,7 @@ export function buildApp(opts: BuildAppOptions): App {
   indicatorRoutes(app);
   dashboardRoutes(app);
   calendarRoutes(app);
+  activityRoutes(app);
 
   return app;
 }

@@ -26,7 +26,9 @@ describe('acceso por sección del proyecto', () => {
     expect((await ctx.as(observer).get(`/api/projects/${other.id}`)).statusCode).toBe(404);
   });
 
-  it('el colaborador todavía no lee el registro de riesgos', async () => {
-    expect((await ctx.as(collaborator).get(`/api/projects/${project.id}/risks`)).statusCode).toBe(403);
+  it('el colaborador lee el registro de riesgos filtrado a los suyos', async () => {
+    const res = await ctx.as(collaborator).get(`/api/projects/${project.id}/risks`);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
   });
 });

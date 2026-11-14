@@ -36,7 +36,7 @@ describe('registros del proyecto', () => {
     expect((await client.get(url(path))).json()).toHaveLength(0);
   });
 
-  it.each(['stakeholders', 'risks', 'expenses'])('colaborador miembro recibe 403 en %s', async (path) => {
+  it.each(['stakeholders', 'expenses'])('colaborador miembro recibe 403 en %s', async (path) => {
     const client = ctx.as(member);
     expect((await client.get(url(path))).statusCode).toBe(403);
     expect((await client.post(url(path), samples[path])).statusCode).toBe(403);

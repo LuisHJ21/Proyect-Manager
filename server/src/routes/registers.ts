@@ -48,7 +48,10 @@ export function registerRoutes(app: App) {
     section: 'risks',
     richTextFields: ['description', 'responsePlan'],
     include: { incidents: { select: { id: true, number: true, title: true, status: true }, orderBy: { number: 'asc' } } },
-    toDto: (risk) => ({ ...risk, score: risk.probability * risk.impact }),
+    // El colaborador ve solo los riesgos de los que es responsable y solo cambia su estado.
+    own: { field: 'ownerId', editable: ['status'], message: 'Solo puedes cambiar el estado de los riesgos de los que eres responsable' },
+    // El vínculo con incidentes es del PM, como en el registro de incidentes.
+    toDto: ({ incidents, ...risk }, isPm) => ({ ...risk, score: risk.probability * risk.impact, ...(isPm ? { incidents } : {}) }),
     validate: async (risk, project, prisma) => {
       if (!isResponseValidForType(risk.type, risk.response)) throw fieldError('response', INVALID_RESPONSE_MESSAGE);
       await assertOwnerCanOwn(prisma, project.id, risk.ownerId);

@@ -14,11 +14,16 @@ function productionOptions(env: NodeJS.ProcessEnv): BuildAppOptions {
   for (const name of REQUIRED) {
     if (!env[name]) throw new Error(`Falta la variable ${name}`);
   }
+  const supabaseUrl = env.SUPABASE_URL!.trim();
+  // No es secreta: mostrar el valor recibido ahorra adivinar qué llegó desde el panel de Netlify.
+  if (!/^https:\/\/[^\s/"']+\/?$/.test(supabaseUrl)) {
+    throw new Error(`SUPABASE_URL debe ser la dirección del proyecto, como https://<id>.supabase.co. Se recibió: ${JSON.stringify(env.SUPABASE_URL)}`);
+  }
   prisma ??= new PrismaClient({ datasources: { db: { url: env.DATABASE_URL } } });
   return {
     prisma,
     files: new SupabaseFileStore({
-      url: env.SUPABASE_URL!,
+      url: supabaseUrl,
       serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY!,
       bucket: env.SUPABASE_BUCKET || 'anexos',
     }),

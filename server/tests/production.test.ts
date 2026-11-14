@@ -26,6 +26,17 @@ describe('configuración de producción', () => {
     expect(() => createProductionDeps({ ...complete, [name]: '' })).toThrow(`Falta la variable ${name}`);
   });
 
+  it('SUPABASE_URL que no es una dirección https dice qué valor recibió', () => {
+    expect(() => createProductionDeps({ ...complete, SUPABASE_URL: '"https://ejemplo.supabase.co"' })).toThrow(
+      'SUPABASE_URL debe ser la dirección del proyecto, como https://<id>.supabase.co. Se recibió: "\\"https://ejemplo.supabase.co\\""',
+    );
+    expect(() => createProductionDeps({ ...complete, SUPABASE_URL: 'ejemplo.supabase.co' })).toThrow(/Se recibió: "ejemplo.supabase.co"/);
+  });
+
+  it('acepta SUPABASE_URL con espacios alrededor', () => {
+    expect(createProductionDeps({ ...complete, SUPABASE_URL: ' https://ejemplo.supabase.co\n' }).files).toBeInstanceOf(SupabaseFileStore);
+  });
+
   it('usa Supabase Storage, cookie Secure, el código y la zona de Lima por omisión', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     // 3:00 UTC del 7 son las 22:00 del 6 en Lima.

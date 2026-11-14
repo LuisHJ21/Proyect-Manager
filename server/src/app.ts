@@ -27,6 +27,7 @@ import { localUploadRoutes } from './routes/localUploads';
 import { indicatorRoutes } from './routes/indicators';
 import { lessonRoutes } from './routes/lessons';
 import { memberRoutes } from './routes/members';
+import { notificationRoutes } from './routes/notifications';
 import { performanceRoutes } from './routes/performance';
 import { projectRoutes } from './routes/projects';
 import { raciRoutes } from './routes/raci';
@@ -81,6 +82,7 @@ export function buildApp(opts: BuildAppOptions): App {
   registerActivityLog(app);
   authRoutes(app);
   userRoutes(app);
+  notificationRoutes(app);
   projectRoutes(app);
   memberRoutes(app);
   charterRoutes(app);

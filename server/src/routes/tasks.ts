@@ -17,9 +17,19 @@ import { checkProgressChange } from '../domain/dependencies';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { incidentAccess } from '../domain/incidents';
+import { notify } from '../notifications';
 import { taskInclude, toTaskDto } from './taskDto';
 
 type TaskParams = { Params: { id: string } };
+
+/** Avisa a quienes pasan a ser responsables de la tarea (no a los que ya lo eran). */
+async function notifyNewAssignees(c: Ctx, task: { id: string; projectId: string; title: string }, before: string[], after: string[]) {
+  const added = after.filter((id) => !before.includes(id));
+  await notify(c.var.deps.prisma, { kind: 'TASK_ASSIGNED', projectId: task.projectId, entityId: task.id, title: task.title, userIds: added, actorId: requireUser(c).id });
+}
+
+const assigneeIdsOf = async (prisma: PrismaClient, taskId: string) =>
+  (await prisma.taskAssignee.findMany({ where: { taskId }, select: { userId: true } })).map((a) => a.userId);
 
 export async function getTaskAccess(c: Ctx, taskId: string) {
   const user = requireUser(c);
@@ -91,6 +101,7 @@ export function taskRoutes(app: App) {
       data: { ...input, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
       include: taskInclude,
     });
+    await notifyNewAssignees(c, task, [], userIds);
     return c.json(toTaskDto(task, true), 201);
   });
 
@@ -154,6 +165,7 @@ export function taskRoutes(app: App) {
     });
     await assertMilestone(c.var.deps.prisma, task.projectId, input.milestoneId);
     const userIds = assigneeIds && (await assertAssignable(c.var.deps.prisma, task.projectId, assigneeIds, 'assigneeIds', task.id));
+    const before = userIds ? await assigneeIdsOf(prisma, task.id) : [];
     await prisma.$transaction([
       prisma.task.update({ where: { id: task.id }, data: input }),
       ...(userIds
@@ -164,6 +176,7 @@ export function taskRoutes(app: App) {
           ]
         : []),
     ]);
+    if (userIds) await notifyNewAssignees(c, { ...task, title: input.title ?? task.title }, before, userIds);
     return c.json(await loadDto(c.var.deps.prisma, task.id, true));
   });
 
@@ -181,11 +194,13 @@ export function taskRoutes(app: App) {
     const task = await requireTaskPm(c, c.req.param('id'));
     const input = assigneesSchema.parse(await readBody(c));
     const userIds = await assertAssignable(c.var.deps.prisma, task.projectId, input.userIds, 'userIds', task.id);
+    const before = await assigneeIdsOf(prisma, task.id);
     await prisma.$transaction([
       prisma.taskAssignee.deleteMany({ where: { taskId: task.id } }),
       prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),
       prisma.taskStep.updateMany({ where: { taskId: task.id, assigneeId: { notIn: userIds } }, data: { assigneeId: null } }),
     ]);
+    await notifyNewAssignees(c, task, before, userIds);
     return c.json(await loadDto(c.var.deps.prisma, task.id, true));
   });
 
@@ -231,6 +246,15 @@ export function taskRoutes(app: App) {
     const comment = await prisma.taskComment.create({
       data: { taskId: task.id, authorId: requireUser(c).id, body },
       include: { author: { select: { id: true, name: true } } },
+    });
+    await notify(prisma, {
+      kind: 'TASK_COMMENTED',
+      projectId: task.projectId,
+      entityId: task.id,
+      title: task.title,
+      userIds: () => assigneeIdsOf(prisma, task.id),
+      actorId: comment.author.id,
+      actorName: comment.author.name,
     });
     return c.json(comment, 201);
   });

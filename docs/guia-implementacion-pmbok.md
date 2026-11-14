@@ -130,6 +130,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 - Modelo: `Notification { userId, kind, projectId, entityId, title, readAt }`.
 - Eventos: tarea asignada, tarea por vencer o vencida, incidente asignado, comentario en mi tarea, entregable en revisión, cambio decidido.
 - Generación en las rutas que ya hacen esos cambios y en la tarea diaria de M6 para los vencimientos. Campana en `AppLayout.tsx`. El correo queda para después porque exige un servidor SMTP.
+- Hecho (`docs/superpowers/specs/2026-11-14-notificaciones-design.md`): tarea asignada, comentario, vence mañana, venció ayer e incidente asignado. «Cambio decidido» llega con F4, cuando un miembro pueda proponer cambios. «Entregable en revisión» se quitó: solo el PM lo pasa a revisión.
 
 **F3. Bitácora de actividad** (Medición, gobierno)
 - Modelo: `ActivityLog { projectId, userId, action, entity, entityId, summary, createdAt }`.
@@ -213,7 +214,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 |---|---|---|
 | 1 | C12, M0 a M8 (con C4 y C5) | Cambiar de plataforma primero: todo lo demás se construye sobre Postgres y la nube |
 | 2 | C2, C1 + F1 | PM que ejecuta tareas y los tres perfiles de acceso |
-| 3 | F3 ✓, F2, F4, C11 | Control y comunicación al abrir más información |
+| 3 | F3 ✓, F2 ✓, F4, C11 | Control y comunicación al abrir más información |
 | 4 | C6, C7, C8, C9, C10 | Dejar fiables los números que ya se muestran |
 | 5 | F5, F6, F7, F8 | Planificación completa; F5 es requisito de F6, F7 y F12 |
 | 6 | F11, F9, F10 | Informes y comunicaciones para interesados |

@@ -8,6 +8,7 @@ import type { Project, Task } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { projectColor } from '../lib/display';
 import { useIsMobile } from '../lib/useIsMobile';
+import { NotificationBell } from './NotificationBell';
 import { ProjectForm } from './project/ProjectForm';
 import { Avatar, Button } from './ui';
 
@@ -73,11 +74,14 @@ function AccountActions() {
   );
 }
 
-function Sidebar({ links, openTasks, projects }: { links: Destination[]; openTasks: number; projects: Project[] }) {
+function Sidebar({ links, openTasks, projects, showBell }: { links: Destination[]; openTasks: number; projects: Project[]; showBell: boolean }) {
   const { user } = useAuth();
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-6 border-r border-line bg-sidebar px-4 py-5">
-      <Brand />
+      <div className="flex items-center justify-between gap-2">
+        <Brand />
+        {showBell && <NotificationBell />}
+      </div>
       <nav aria-label="Principal" className="flex min-h-0 flex-1 flex-col gap-6">
         <div className="space-y-0.5">
           {links.map(({ to, label, Icon }) => {
@@ -149,15 +153,18 @@ export function AppLayout() {
   const openTasks = useOpenTaskCount();
   const links = isPm ? PM_LINKS : user?.role === 'OBSERVER' ? OBSERVER_LINKS : COLLABORATOR_LINKS;
   const activeProjects = projects.data?.filter((p) => ACTIVE.has(p.status)) ?? [];
+  // El observador no puede recibir avisos: no se le asigna nada ni comenta.
+  const showBell = user?.role !== 'OBSERVER';
 
   return (
     <div className="flex min-h-screen bg-page">
-      {!isMobile && <Sidebar links={links} openTasks={openTasks} projects={activeProjects} />}
+      {!isMobile && <Sidebar links={links} openTasks={openTasks} projects={activeProjects} showBell={showBell} />}
       <div className="flex min-w-0 flex-1 flex-col">
         {isMobile && (
           <header className="flex items-center justify-between gap-3 border-b border-line bg-sidebar px-4 py-3">
             <Brand />
             <div className="flex items-center gap-1">
+              {showBell && <NotificationBell />}
               {user && <Avatar name={user.name} />}
               <NavLink to="/cambiar-contrasena" aria-label="Cambiar mi contraseña" className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-nav hover:bg-raised">
                 <KeyRound size={18} aria-hidden="true" />

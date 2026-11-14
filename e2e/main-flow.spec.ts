@@ -185,6 +185,11 @@ test('flujo principal', async ({ browser }) => {
 
   // 3. Carlos entra e intenta iniciar su tarea: la app lo bloquea e indica qué falta.
   const carlos = await signInFirstTime(browser, 'carlos@x.com');
+  // F2: la campana le avisa de la tarea que le asignó el PM y lo lleva a ella.
+  await carlos.getByRole('button', { name: /^Avisos, \d+ sin leer$/ }).click();
+  await carlos.getByRole('button', { name: /Te asignaron la tarea «Construcción»/ }).click();
+  await expect(carlos).toHaveURL(/\/tareas\/[^/]+$/);
+  await carlos.goBack();
   await carlos.getByRole('link', { name: 'Construcción' }).click();
   await carlos.getByLabel('Estado').selectOption({ label: 'En curso' });
   await carlos.getByRole('button', { name: 'Guardar avance' }).click();

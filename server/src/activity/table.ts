@@ -169,4 +169,6 @@ export const NOT_LOGGED: Record<string, string> = {
   'POST /api/tasks/:id/attachments': 'Solo reserva la subida; el anexo se registra al completarse',
   'PUT /api/local-uploads/:storedName': 'Subida de bytes; el anexo se registra al completarse',
   'DELETE /api/projects/:id': 'La bitácora se borra con el proyecto',
+  'POST /api/notifications/:id/read': 'No es de un proyecto',
+  'POST /api/notifications/read-all': 'No es de un proyecto',
 };

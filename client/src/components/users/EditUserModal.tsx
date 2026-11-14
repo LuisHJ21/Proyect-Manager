@@ -19,13 +19,10 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
 
   const isSelf = target.id === me?.id;
   const losesOwnAccess = isSelf && target.role === 'PM' && role !== 'PM';
-  const losesTasks = target.role !== 'PM' && role === 'PM' && target.openTasks > 0;
-
-  const becomesPm = target.role !== 'PM' && role === 'PM';
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (losesOwnAccess || becomesPm) setConfirming(true);
+    if (losesOwnAccess) setConfirming(true);
     else void save();
   };
 
@@ -67,11 +64,6 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
             Perderás el acceso al panel y a la gestión de usuarios y proyectos.
           </p>
         )}
-        {losesTasks && (
-          <p role="status" className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-fg">
-            Perderá sus {target.openTasks} {target.openTasks === 1 ? 'tarea abierta' : 'tareas abiertas'}: un Project Manager no tiene tareas asignadas.
-          </p>
-        )}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancelar
@@ -83,7 +75,7 @@ export function EditUserModal({ target, onClose }: { target: UserOverview; onClo
       </form>
       {confirming && (
         <ConfirmDialog title={`Cambiar el rol de ${target.name}`} danger onCancel={() => setConfirming(false)} onConfirm={() => void save()}>
-          {losesOwnAccess ? 'Perderás el acceso al panel y a la gestión de usuarios y proyectos.' : 'Se quitarán todas sus asignaciones de tareas, porque un Project Manager no tiene tareas asignadas. No se puede deshacer.'}
+          Perderás el acceso al panel y a la gestión de usuarios y proyectos.
         </ConfirmDialog>
       )}
     </Modal>

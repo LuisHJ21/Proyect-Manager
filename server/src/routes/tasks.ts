@@ -111,7 +111,8 @@ export function taskRoutes(app: App) {
     const { prisma } = c.var.deps;
     const { task, isPm, can } = await getTaskAccess(c, c.req.param('id'));
     const viewer = { userId: requireUser(c).id, isPm };
-    const incidents = (
+    // Sin permiso de incidentes (observador) no se envía ninguno, aunque la persona los haya reportado antes.
+    const incidents = !can.read('incidents') ? [] : (
       await prisma.incident.findMany({
         where: { taskId: task.id },
         select: { id: true, number: true, title: true, status: true, reportedById: true, ownerId: true },

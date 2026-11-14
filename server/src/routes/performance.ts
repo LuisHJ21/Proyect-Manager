@@ -1,6 +1,6 @@
-import { addDays, baselineSchema, CLOSED_PROJECT_STATUS, diffDays, localToday } from '@pm/shared';
+import { addDays, baselineSchema, CLOSED_PROJECT_STATUS, diffDays } from '@pm/shared';
 import type { PrismaClient } from '@prisma/client';
-import type { FastifyInstance } from 'fastify';
+import { readBody, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { computeEvm, plannedValueAt, type EvmInput } from '../domain/evm';
@@ -33,6 +33,25 @@ export async function loadEvmInput(prisma: PrismaClient, projectId: string): Pro
   };
 }
 
+/**
+ * Guarda (o actualiza) la foto de valor ganado del día. Un proyecto cerrado no acumula fotos: su
+ * curva S queda congelada. Devuelve false si no hay foto que guardar (cerrado o sin línea base).
+ */
+export async function saveEvmSnapshot(prisma: PrismaClient, projectId: string, today: string): Promise<boolean> {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { status: true } });
+  if (!project || (CLOSED_PROJECT_STATUS as readonly string[]).includes(project.status)) return false;
+  const input = await loadEvmInput(prisma, projectId);
+  if (!input) return false;
+  const { metrics } = computeEvm(input, today);
+  const snapshot = { bacCents: BigInt(metrics.bacCents), pvCents: BigInt(metrics.pvCents), evCents: BigInt(metrics.evCents), acCents: BigInt(metrics.acCents) };
+  await prisma.evmSnapshot.upsert({
+    where: { projectId_date: { projectId, date: today } },
+    update: snapshot,
+    create: { projectId, date: today, ...snapshot },
+  });
+  return true;
+}
+
 type BaselineWithRelations = {
   version: number;
   reason: string;
@@ -55,13 +74,13 @@ const toBaselineDto = (b: BaselineWithRelations) => ({
   changeRequest: b.changeRequest,
 });
 
-export async function performanceRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function performanceRoutes(app: App) {
 
-  app.post<{ Params: { id: string } }>('/api/projects/:id/baselines', async (req, reply) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const user = requireUser(req);
-    const { reason, changeRequestId } = baselineSchema.parse(req.body ?? {});
+  app.post('/api/projects/:id/baselines', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const user = requireUser(c);
+    const { reason, changeRequestId } = baselineSchema.parse(await readBody(c) ?? {});
 
     const tasks = await prisma.task.findMany({ where: { projectId: project.id, plannedCostCents: { gt: 0 } }, orderBy: { createdAt: 'asc' } });
     if (tasks.length === 0) throw new AppError(400, 'baseline_empty', 'Pon un costo planeado al menos a una tarea antes de fijar la línea base');
@@ -97,26 +116,21 @@ export async function performanceRoutes(app: FastifyInstance) {
         include: baselineInclude,
       });
     });
-    return reply.status(201).send(toBaselineDto(created));
+    return c.json(toBaselineDto(created), 201);
   });
 
-  app.get<{ Params: { id: string } }>('/api/projects/:id/performance', async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
+  app.get('/api/projects/:id/performance', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
     const history = await prisma.baseline.findMany({ where: { projectId: project.id }, include: baselineInclude, orderBy: { version: 'desc' } });
     const input = await loadEvmInput(prisma, project.id);
     if (!input || history.length === 0) {
-      return { baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, series: [] };
+      return c.json({ baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, series: [] });
     }
 
-    const today = localToday(app.now());
+    const today = c.var.deps.today();
     const { metrics, tasks, outsideBaseline } = computeEvm(input, today);
-    const snapshot = { bacCents: BigInt(metrics.bacCents), pvCents: BigInt(metrics.pvCents), evCents: BigInt(metrics.evCents), acCents: BigInt(metrics.acCents) };
-    // Un proyecto cerrado no acumula fotos: su curva S queda congelada.
-    if (!(CLOSED_PROJECT_STATUS as readonly string[]).includes(project.status)) await prisma.evmSnapshot.upsert({
-      where: { projectId_date: { projectId: project.id, date: today } },
-      update: snapshot,
-      create: { projectId: project.id, date: today, ...snapshot },
-    });
+    await saveEvmSnapshot(prisma, project.id, today);
 
     const snapshots = new Map(
       (await prisma.evmSnapshot.findMany({ where: { projectId: project.id } })).map((s) => [s.date, s]),
@@ -143,13 +157,13 @@ export async function performanceRoutes(app: FastifyInstance) {
       });
     }
 
-    return {
+    return c.json({
       baseline: toBaselineDto(history[0]!),
       history: history.map(toBaselineDto),
       metrics,
       tasks,
       outsideBaseline,
       series,
-    };
+    });
   });
 }

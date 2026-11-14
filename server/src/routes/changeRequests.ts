@@ -1,6 +1,6 @@
 import { changeRequestSchema, decisionSchema, updateChangeRequestSchema } from '@pm/shared';
-import type { ChangeRequest } from '@prisma/client';
-import type { FastifyInstance } from 'fastify';
+import type { ChangeRequest, PrismaClient } from '@prisma/client';
+import { readBody, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError, notFound } from '../errors';
@@ -14,11 +14,10 @@ export function toChangeRequestDto(cr: ChangeRequest & { decidedBy: { id: string
   return { ...fields, costImpactCents: costImpactCents === null ? null : Number(costImpactCents) };
 }
 
-export async function changeRequestRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function changeRequestRoutes(app: App) {
   const base = '/api/projects/:id/change-requests';
 
-  const findPending = async (projectId: string, crId: string) => {
+  const findPending = async (prisma: PrismaClient, projectId: string, crId: string) => {
     const cr = await prisma.changeRequest.findFirst({ where: { id: crId, projectId } });
     if (!cr) throw notFound('Solicitud de cambio no encontrada');
     if (cr.status !== 'PENDING') throw new AppError(409, 'change_decided', 'Esta solicitud ya fue decidida y no se puede modificar');
@@ -27,15 +26,17 @@ export async function changeRequestRoutes(app: FastifyInstance) {
 
   const toBigInt = (value: number | null | undefined) => (value === undefined ? undefined : value === null ? null : BigInt(value));
 
-  app.get<{ Params: { id: string } }>(base, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
+  app.get(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
     const items = await prisma.changeRequest.findMany({ where: { projectId: project.id }, include: decidedByInclude, orderBy: { number: 'desc' } });
-    return items.map(toChangeRequestDto);
+    return c.json(items.map(toChangeRequestDto));
   });
 
-  app.post<{ Params: { id: string } }>(base, async (req, reply) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const { costImpactCents, ...input } = changeRequestSchema.parse(req.body);
+  app.post(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const { costImpactCents, ...input } = changeRequestSchema.parse(await readBody(c));
     const created = await prisma.$transaction(async (tx) => {
       // El contador del proyecto evita reutilizar el número de una solicitud borrada.
       const { lastChangeNumber } = await tx.project.update({
@@ -48,38 +49,41 @@ export async function changeRequestRoutes(app: FastifyInstance) {
         include: decidedByInclude,
       });
     });
-    return reply.status(201).send(toChangeRequestDto(created));
+    return c.json(toChangeRequestDto(created), 201);
   });
 
-  app.patch<{ Params: ItemParams }>(`${base}/:crId`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const cr = await findPending(project.id, req.params.crId);
-    const { costImpactCents, ...input } = updateChangeRequestSchema.parse(req.body);
+  app.patch(`${base}/:crId`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const cr = await findPending(c.var.deps.prisma, project.id, c.req.param('crId'));
+    const { costImpactCents, ...input } = updateChangeRequestSchema.parse(await readBody(c));
     const updated = await prisma.changeRequest.update({
       where: { id: cr.id },
       data: { ...input, costImpactCents: toBigInt(costImpactCents) },
       include: decidedByInclude,
     });
-    return toChangeRequestDto(updated);
+    return c.json(toChangeRequestDto(updated));
   });
 
-  app.delete<{ Params: ItemParams }>(`${base}/:crId`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const cr = await findPending(project.id, req.params.crId);
+  app.delete(`${base}/:crId`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const cr = await findPending(c.var.deps.prisma, project.id, c.req.param('crId'));
     await prisma.changeRequest.delete({ where: { id: cr.id } });
-    return { ok: true };
+    return c.json({ ok: true });
   });
 
-  app.post<{ Params: ItemParams }>(`${base}/:crId/decision`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const user = requireUser(req);
-    const cr = await findPending(project.id, req.params.crId);
-    const { status, note } = decisionSchema.parse(req.body);
+  app.post(`${base}/:crId/decision`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const user = requireUser(c);
+    const cr = await findPending(c.var.deps.prisma, project.id, c.req.param('crId'));
+    const { status, note } = decisionSchema.parse(await readBody(c));
     const updated = await prisma.changeRequest.update({
       where: { id: cr.id },
-      data: { status, decisionNote: note, decidedAt: app.now(), decidedById: user.id },
+      data: { status, decisionNote: note, decidedAt: c.var.deps.now(), decidedById: user.id },
       include: decidedByInclude,
     });
-    return toChangeRequestDto(updated);
+    return c.json(toChangeRequestDto(updated));
   });
 }

@@ -1,13 +1,12 @@
-import { localToday } from '@pm/shared';
-import type { FastifyInstance } from 'fastify';
+import { readBody, type App, type Ctx } from '../http';
 import { getProjectAccess } from '../auth/access';
 import { computeIndicators } from '../domain/indicators';
 
-export async function indicatorRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function indicatorRoutes(app: App) {
 
-  app.get<{ Params: { id: string } }>('/api/projects/:id/indicators', async (req) => {
-    const { project, isPm } = await getProjectAccess(req, req.params.id);
+  app.get('/api/projects/:id/indicators', async (c) => {
+    const { prisma } = c.var.deps;
+    const { project, isPm } = await getProjectAccess(c, c.req.param('id'));
     const where = { projectId: project.id };
     const [tasks, milestones] = await Promise.all([prisma.task.findMany({ where }), prisma.milestone.findMany({ where })]);
     const pmData = isPm
@@ -17,6 +16,6 @@ export async function indicatorRoutes(app: FastifyInstance) {
           risks: await prisma.risk.findMany({ where }),
         }
       : {};
-    return computeIndicators({ tasks, milestones, ...pmData }, localToday(app.now()));
+    return c.json(computeIndicators({ tasks, milestones, ...pmData }, c.var.deps.today()));
   });
 }

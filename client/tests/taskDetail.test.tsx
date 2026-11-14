@@ -180,6 +180,51 @@ describe('anexos', () => {
     expect(api.calls.some((c) => c.key.startsWith('POST'))).toBe(false);
   });
 
+  const target = { url: '/api/local-uploads/s1', method: 'PUT', headers: { 'content-type': 'application/pdf' } };
+  const pending = {
+    id: 'a1',
+    projectId: 'p1',
+    taskId: 't1',
+    originalName: 'acta.pdf',
+    mimeType: 'application/pdf',
+    size: 10,
+    uploadedBy: { id: 'pm', name: 'Paula' },
+    createdAt: '2026-11-01T10:00:00.000Z',
+  };
+
+  it('sube en tres pasos: solicita, envía el archivo y confirma', async () => {
+    const api = mockApi({
+      ...signedInAs(pmUser),
+      'GET /api/tasks/t1/attachments': [],
+      'POST /api/tasks/t1/attachments': { attachment: pending, upload: target },
+      'PUT /api/local-uploads/s1': { ok: true },
+      'POST /api/attachments/a1/complete': pending,
+    });
+    list();
+    const user = userEvent.setup();
+    const picked = file('acta.pdf', 10);
+    await user.upload(await screen.findByLabelText('Adjuntar archivo'), picked);
+    await waitFor(() => expect(api.calls.some((c) => c.key === 'POST /api/attachments/a1/complete')).toBe(true));
+    const keys = api.calls.map((c) => c.key).filter((k) => !k.startsWith('GET'));
+    expect(keys).toEqual(['POST /api/tasks/t1/attachments', 'PUT /api/local-uploads/s1', 'POST /api/attachments/a1/complete']);
+    expect(api.calls.find((c) => c.key === 'POST /api/tasks/t1/attachments')!.body).toEqual({ filename: 'acta.pdf', mimeType: 'application/pdf', size: 10 });
+    expect(api.calls.find((c) => c.key === 'PUT /api/local-uploads/s1')!.body).toBe(picked);
+  });
+
+  it('si falla el envío del archivo avisa y no confirma', async () => {
+    const api = mockApi({
+      ...signedInAs(pmUser),
+      'GET /api/tasks/t1/attachments': [],
+      'POST /api/tasks/t1/attachments': { attachment: pending, upload: target },
+      'PUT /api/local-uploads/s1': apiError(500, 'internal_error'),
+    });
+    list();
+    const user = userEvent.setup();
+    await user.upload(await screen.findByLabelText('Adjuntar archivo'), file('acta.pdf', 10));
+    expect(await screen.findByText('No se pudo subir el archivo. Inténtalo de nuevo.')).toBeInTheDocument();
+    expect(api.calls.some((c) => c.key.endsWith('/complete'))).toBe(false);
+  });
+
   it('muestra el error 415 del servidor', async () => {
     mockApi({
       ...signedInAs(pmUser),

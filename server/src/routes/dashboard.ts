@@ -1,14 +1,14 @@
-import { ACTIVE_PROJECT_STATUS, localToday } from '@pm/shared';
-import type { FastifyInstance } from 'fastify';
+import { ACTIVE_PROJECT_STATUS } from '@pm/shared';
+import { readBody, type App, type Ctx } from '../http';
 import { requirePm } from '../auth/guards';
 import { buildDashboard } from '../domain/dashboard';
 import { loadEvmIndexes } from './evmLoader';
 
-export async function dashboardRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function dashboardRoutes(app: App) {
 
-  app.get('/api/dashboard', async (req) => {
-    requirePm(req);
+  app.get('/api/dashboard', async (c) => {
+    const { prisma } = c.var.deps;
+    requirePm(c);
     const projects = await prisma.project.findMany({
       where: { status: { in: [...ACTIVE_PROJECT_STATUS] } },
       include: { members: { include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: 'asc' } } } },
@@ -31,10 +31,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
         select: { id: true, number: true, name: true, projectId: true, status: true, dueDate: true },
       }),
     ]);
-    const today = localToday(app.now());
+    const today = c.var.deps.today();
     const evm = await loadEvmIndexes(prisma, projects.map((p) => p.id), today);
 
-    return buildDashboard(
+    return c.json(buildDashboard(
       {
         projects: projects.map((p) => ({
           id: p.id,
@@ -53,6 +53,6 @@ export async function dashboardRoutes(app: FastifyInstance) {
         deliverables,
       },
       today,
-    );
+    ));
   });
 }

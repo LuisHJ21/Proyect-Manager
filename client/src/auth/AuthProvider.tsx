@@ -7,6 +7,8 @@ type AuthContextValue = {
   user: User | null;
   isPm: boolean;
   needsSetup: boolean;
+  /** La configuración inicial exige el código del servidor (SETUP_TOKEN). */
+  requiresToken: boolean;
   isLoading: boolean;
   error: unknown;
   retry: () => void;
@@ -21,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setup = useQuery({
     queryKey: ['setup-status'],
-    queryFn: () => api<{ needsSetup: boolean }>('/api/setup/status'),
+    queryFn: () => api<{ needsSetup: boolean; requiresToken?: boolean }>('/api/setup/status'),
   });
   const me = useQuery({
     queryKey: ['me'],
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPm: me.data?.role === 'PM',
       // Con una sesión abierta, la configuración inicial ya se hizo: su estado no puede bloquear la entrada.
       needsSetup: !me.data && (setup.data?.needsSetup ?? false),
+      requiresToken: setup.data?.requiresToken ?? false,
       isLoading: me.isPending || (!me.data && setup.isPending),
       error: me.data ? null : isBlockingError(me) ? me.error : isBlockingError(setup) ? setup.error : null,
       retry: () => {

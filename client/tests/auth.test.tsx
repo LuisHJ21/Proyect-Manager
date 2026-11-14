@@ -73,6 +73,46 @@ describe('entrar y salir', () => {
     expect(await screen.findByRole('heading', { name: /Paula/ })).toBeInTheDocument();
   });
 
+  it('si el servidor pide código, la configuración inicial lo envía', async () => {
+    const api = mockApi({
+      'GET /api/setup/status': { needsSetup: true, requiresToken: true },
+      'GET /api/auth/me': apiError(401, 'unauthenticated'),
+      'POST /api/setup': apiError(403, 'setup_token_invalid', { message: 'El código de configuración no es correcto' }),
+    });
+    renderApp('/');
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText('Código de configuración'), 'abc');
+    await user.type(screen.getByLabelText('Nombre'), 'Paula');
+    await user.type(screen.getByLabelText('Correo'), 'p@x.com');
+    await user.type(screen.getByLabelText('Contraseña'), 'contraseña-larga');
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+    expect(await screen.findByText('El código de configuración no es correcto')).toBeInTheDocument();
+    expect(api.calls.find((c) => c.key === 'POST /api/setup')!.body).toEqual({
+      name: 'Paula',
+      email: 'p@x.com',
+      password: 'contraseña-larga',
+      token: 'abc',
+    });
+  });
+
+  it('sin código requerido no muestra el campo ni lo envía', async () => {
+    const api = mockApi({
+      'GET /api/setup/status': { needsSetup: true, requiresToken: false },
+      'GET /api/auth/me': apiError(401, 'unauthenticated'),
+      'POST /api/setup': pmUser,
+      'GET /api/projects': [],
+    });
+    renderApp('/');
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText('Nombre'), 'Paula');
+    expect(screen.queryByLabelText('Código de configuración')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Correo'), 'p@x.com');
+    await user.type(screen.getByLabelText('Contraseña'), 'contraseña-larga');
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+    await waitFor(() => expect(api.calls.some((c) => c.key === 'POST /api/setup')).toBe(true));
+    expect(api.calls.find((c) => c.key === 'POST /api/setup')!.body).not.toHaveProperty('token');
+  });
+
   it('tras iniciar sesión entra a la aplicación', async () => {
     mockApi({ ...noSession, 'POST /api/auth/login': collaborator, 'GET /api/me/tasks': [] });
     renderApp('/login');

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
+import { LoginLimiter } from '../src/auth/loginLimiter';
 
 const PASSWORD = 'contraseña-larga';
 
@@ -103,9 +104,83 @@ describe('autenticación', () => {
     expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(200);
   });
 
+  it('los fallos de hace más de 15 minutos no cuentan', async () => {
+    await setup();
+    ctx.clock.set('2026-11-06T08:00:00');
+    for (let i = 0; i < 4; i++) await login('ana@x.com', 'incorrecta-123');
+    ctx.clock.set('2026-11-06T08:16:00');
+    expect((await login('ana@x.com', 'incorrecta-123')).statusCode).toBe(401);
+    expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(200);
+  });
+
+  it('purge borra las ventanas vencidas y conserva los bloqueos vigentes', async () => {
+    const limiter = new LoginLimiter(ctx.prisma);
+    const start = new Date('2026-11-06T08:00:00Z');
+    await limiter.recordFailure('viejo', start);
+    for (let i = 0; i < 5; i++) await limiter.recordFailure('bloqueado', new Date('2026-11-06T08:10:00Z'));
+    await limiter.recordFailure('reciente', new Date('2026-11-06T08:19:00Z'));
+    expect(await limiter.purge(new Date('2026-11-06T08:20:00Z'))).toBe(1);
+    const keys = (await ctx.prisma.loginAttempt.findMany()).map((a) => a.key).sort();
+    expect(keys).toEqual(['bloqueado', 'reciente']);
+  });
+
+  it('fallos simultáneos no se pierden', async () => {
+    await setup();
+    const results = await Promise.all(Array.from({ length: 5 }, () => login('ana@x.com', 'incorrecta-123')));
+    for (const res of results) expect(res.statusCode).toBe(401);
+    expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(429);
+  });
+
+  describe('con código de configuración inicial', () => {
+    let guarded: TestCtx;
+    beforeEach(async () => {
+      guarded = await createTestApp({ setupToken: 'abc' });
+    });
+    afterEach(() => guarded.close());
+    const body = { name: 'Ana', email: 'ana@x.com', password: PASSWORD };
+
+    it('el estado indica que se pide el código', async () => {
+      expect((await guarded.anon.get('/api/setup/status')).json()).toEqual({ needsSetup: true, requiresToken: true });
+      expect((await ctx.anon.get('/api/setup/status')).json()).toEqual({ needsSetup: true, requiresToken: false });
+    });
+
+    it('sin código o con otro valor responde 403 y no crea la cuenta', async () => {
+      for (const token of [undefined, 'otro', 'abcd', '']) {
+        const res = await guarded.anon.post('/api/setup', { ...body, token });
+        expect(res.statusCode).toBe(403);
+        expect(res.json().error.code).toBe('setup_token_invalid');
+      }
+      expect(await guarded.prisma.user.count()).toBe(0);
+    });
+
+    it('con el código correcto crea la cuenta', async () => {
+      expect((await guarded.anon.post('/api/setup', { ...body, token: 'abc' })).statusCode).toBe(201);
+    });
+  });
+
+  it('con secureCookies la cookie de sesión es Secure; sin la opción, no', async () => {
+    await setup();
+    expect(String((await login('ana@x.com', PASSWORD)).headers['set-cookie'])).not.toContain('Secure');
+    const secure = await createTestApp({ secureCookies: true });
+    try {
+      await secure.anon.post('/api/setup', { name: 'Ana', email: 'ana@x.com', password: PASSWORD });
+      const header = String((await secure.anon.post('/api/auth/login', { email: 'ana@x.com', password: PASSWORD })).headers['set-cookie']);
+      expect(header).toContain('Secure');
+    } finally {
+      await secure.close();
+    }
+  });
+
+  it('las respuestas de la API traen cabeceras de seguridad', async () => {
+    for (const res of [await ctx.anon.get('/api/setup/status'), await ctx.anon.get('/api/auth/me'), await ctx.anon.get('/api/no-existe')]) {
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['x-frame-options']).toBeTruthy();
+    }
+  });
+
   it('con mustChangePassword solo permite me, logout y change-password', async () => {
     const c = await ctx.makeUser({ role: 'COLLABORATOR', mustChangePassword: true });
-    ctx.app.get('/api/__protected', async () => ({ ok: true }));
+    ctx.app.get('/api/__protected', (c) => c.json({ ok: true }));
     const res = await ctx.as(c).get('/api/__protected');
     expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe('password_change_required');

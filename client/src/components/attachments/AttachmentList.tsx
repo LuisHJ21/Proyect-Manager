@@ -10,6 +10,11 @@ import { Button } from '../ui';
 
 type Scope = { projectId: string } | { taskId: string };
 
+/** Dirección a la que se envía el archivo (disco local o Supabase Storage), según la API. */
+type UploadTarget = { url: string; method: 'PUT'; headers: Record<string, string> };
+
+const UPLOAD_FAILED = 'No se pudo subir el archivo. Inténtalo de nuevo.';
+
 type Props = { scope: Scope; canUpload: boolean; isPm: boolean; currentUserId?: string; readOnly?: boolean };
 
 const formatSize = (bytes: number) =>
@@ -25,10 +30,14 @@ export function AttachmentList({ scope, canUpload, isPm, currentUserId, readOnly
   const [deleting, setDeleting] = useState<Attachment | null>(null);
 
   const upload = useMutation({
-    mutationFn: (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      return api(base, { method: 'POST', formData });
+    mutationFn: async (file: File) => {
+      const { attachment, upload: target } = await api<{ attachment: Attachment; upload: UploadTarget }>(base, {
+        method: 'POST',
+        body: { filename: file.name, mimeType: file.type, size: file.size },
+      });
+      const sent = await fetch(target.url, { method: target.method, headers: target.headers, body: file }).catch(() => null);
+      if (!sent?.ok) throw new Error(UPLOAD_FAILED);
+      return api<Attachment>(`/api/attachments/${attachment.id}/complete`, { method: 'POST' });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
     onError: (e) => setError(errorMessage(e)),

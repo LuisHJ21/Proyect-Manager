@@ -1,45 +1,113 @@
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Role } from '@pm/shared';
 import { PrismaClient, type User } from '@prisma/client';
-import type { FastifyInstance } from 'fastify';
 import { inject } from 'vitest';
-import { buildApp } from '../../src/app';
+import { buildApp, createDeps, type BuildAppOptions } from '../../src/app';
+import type { App } from '../../src/http';
 import { hashPassword } from '../../src/auth/passwords';
 import { createSession } from '../../src/auth/sessions';
-import { databaseUrl } from '../../src/config';
+import { DiskFileStore } from '../../src/storage/diskFileStore';
+import { databaseUrlFor } from './globalSetup';
 
 type Headers = Record<string, string>;
 
-function httpClient(app: FastifyInstance, cookie?: string) {
+export type TestResponse = {
+  statusCode: number;
+  headers: Record<string, string | string[]>;
+  body: string;
+  cookies: { name: string; value: string }[];
+  json(): any;
+};
+
+/** Adapta la respuesta de `app.request` a la forma que leen las pruebas. */
+async function toTestResponse(res: Response): Promise<TestResponse> {
+  const body = await res.text();
+  const headers: Record<string, string | string[]> = {};
+  res.headers.forEach((value, name) => {
+    if (name !== 'set-cookie') headers[name] = value;
+  });
+  const setCookies = res.headers.getSetCookie();
+  if (setCookies.length > 0) headers['set-cookie'] = setCookies.length === 1 ? setCookies[0]! : setCookies;
+  const cookies = setCookies.map((line) => {
+    const [pair] = line.split(';');
+    const eq = pair!.indexOf('=');
+    return { name: pair!.slice(0, eq).trim(), value: decodeURIComponent(pair!.slice(eq + 1).trim()) };
+  });
+  return { statusCode: res.status, headers, body, cookies, json: () => JSON.parse(body) };
+}
+
+function httpClient(app: App, cookie?: string) {
   const send =
     (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE') =>
-    (url: string, body?: unknown, headers: Headers = {}) =>
-      app.inject({
+    async (url: string, body?: unknown, headers: Headers = {}) => {
+      const isRaw = body instanceof Uint8Array || typeof body === 'string';
+      const init: RequestInit = {
         method,
-        url,
-        ...(body === undefined ? {} : { payload: body as object }),
-        headers: { ...(cookie ? { cookie } : {}), ...headers },
-      });
+        headers: {
+          ...(cookie ? { cookie } : {}),
+          ...(body !== undefined && !isRaw ? { 'content-type': 'application/json' } : {}),
+          ...headers,
+        },
+        ...(body === undefined ? {} : { body: isRaw ? (body as BodyInit) : JSON.stringify(body) }),
+      };
+      return toTestResponse(await app.request(url, init));
+    };
   return { get: send('GET'), post: send('POST'), put: send('PUT'), patch: send('PATCH'), delete: send('DELETE') };
 }
 
 export type HttpClient = ReturnType<typeof httpClient>;
 
-export async function createTestApp(opts: { clientDist?: string } = {}) {
+/** Sube un anexo con los tres pasos (solicitar, enviar y confirmar) y devuelve el anexo confirmado. */
+export async function uploadFile(
+  client: HttpClient,
+  base: string,
+  file: { name: string; type: string; content: Buffer },
+): Promise<{ id: string } & Record<string, any>> {
+  const requested = await client.post(base, { filename: file.name, mimeType: file.type, size: file.content.length });
+  if (requested.statusCode !== 201) throw new Error(`Solicitud de subida: ${requested.statusCode} ${requested.body}`);
+  const { attachment, upload } = requested.json();
+  const sent = await client.put(upload.url, file.content, upload.headers);
+  if (sent.statusCode !== 200) throw new Error(`Envío del archivo: ${sent.statusCode} ${sent.body}`);
+  const done = await client.post(`/api/attachments/${attachment.id}/complete`);
+  if (done.statusCode !== 200) throw new Error(`Confirmación: ${done.statusCode} ${done.body}`);
+  return done.json();
+}
+
+let adminClient: PrismaClient | undefined;
+/** Conexión de administración del proceso de pruebas: crea y borra las bases de cada prueba. */
+function admin(): PrismaClient {
+  adminClient ??= new PrismaClient({ datasources: { db: { url: inject('adminUrl') } } });
+  return adminClient;
+}
+
+export async function createTestApp(
+  opts: { build?: (options: BuildAppOptions) => App } & Pick<BuildAppOptions, 'timeZone' | 'setupToken' | 'secureCookies'> = {},
+) {
   const dataDir = mkdtempSync(join(tmpdir(), 'pm-test-'));
-  copyFileSync(inject('templateDb'), join(dataDir, 'app.db'));
-  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl(dataDir) } } });
+  const database = `pm_test_${randomBytes(6).toString('hex')}`;
+  await admin().$executeRawUnsafe(`CREATE DATABASE "${database}" TEMPLATE "${inject('templateDb')}"`);
+  const url = new URL(databaseUrlFor(inject('adminUrl'), database));
+  url.searchParams.set('connection_limit', '5');
+  const prisma = new PrismaClient({ datasources: { db: { url: url.toString() } } });
 
   let current = new Date('2026-11-06T12:00:00');
   let userCount = 0;
-  const app = await buildApp({ prisma, dataDir, now: () => current, clientDist: opts.clientDist });
+  const files = new DiskFileStore(join(dataDir, 'uploads'));
+  const { build = buildApp, ...appOptions } = opts;
+  const options: BuildAppOptions = { prisma, files, now: () => current, ...appOptions };
+  const app = build(options);
+  /** Las mismas dependencias que usa la aplicación de prueba (para la tarea diaria). */
+  const deps = createDeps(options);
 
   return {
     app,
     prisma,
     dataDir,
+    files,
+    deps,
     clock: {
       set(iso: string) {
         current = new Date(iso);
@@ -100,8 +168,8 @@ export async function createTestApp(opts: { clientDist?: string } = {}) {
       return { get: wrap('get'), post: wrap('post'), put: wrap('put'), patch: wrap('patch'), delete: wrap('delete') } as HttpClient;
     },
     async close() {
-      await app.close();
       await prisma.$disconnect();
+      await admin().$executeRawUnsafe(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
       rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     },
   };

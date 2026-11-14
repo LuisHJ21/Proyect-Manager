@@ -1,30 +1,44 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { changePasswordSchema, loginSchema, setupSchema } from '@pm/shared';
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import { deleteCookie, setCookie } from 'hono/cookie';
 import { requireUser } from '../auth/guards';
 import { LoginLimiter } from '../auth/loginLimiter';
 import { hashPassword, verifyPassword } from '../auth/passwords';
 import { createSession, deleteSession, deleteUserSessions, SESSION_COOKIE, SESSION_HOURS } from '../auth/sessions';
 import { toUserDto } from '../auth/userDto';
 import { AppError, fieldError } from '../errors';
+import { readBody, type App, type Ctx } from '../http';
 
-export async function authRoutes(app: FastifyInstance) {
-  const limiter = new LoginLimiter();
-  const { prisma } = app;
+/** Compara el código en tiempo constante. Los resúmenes igualan el largo, así no se filtra por la duración. */
+function sameToken(given: string | undefined, expected: string): boolean {
+  if (given === undefined) return false;
+  const digest = (value: string) => createHash('sha256').update(value).digest();
+  return timingSafeEqual(digest(given), digest(expected));
+}
 
-  const startSession = async (reply: FastifyReply, userId: string) => {
-    const token = await createSession(prisma, userId, app.now());
-    reply.setCookie(SESSION_COOKIE, token, {
+export function authRoutes(app: App) {
+  const startSession = async (c: Ctx, userId: string) => {
+    const token = await createSession(c.var.deps.prisma, userId, c.var.deps.now());
+    setCookie(c, SESSION_COOKIE, token, {
       path: '/',
       httpOnly: true,
-      sameSite: 'lax',
+      secure: c.var.deps.secureCookies,
+      sameSite: 'Lax',
       maxAge: SESSION_HOURS * 3600,
     });
   };
 
-  app.get('/api/setup/status', async () => ({ needsSetup: (await prisma.user.count()) === 0 }));
+  app.get('/api/setup/status', async (c) =>
+    c.json({ needsSetup: (await c.var.deps.prisma.user.count()) === 0, requiresToken: Boolean(c.var.deps.setupToken) }),
+  );
 
-  app.post('/api/setup', async (req, reply) => {
-    const input = setupSchema.parse(req.body);
+  app.post('/api/setup', async (c) => {
+    const { prisma } = c.var.deps;
+    const input = setupSchema.parse(await readBody(c));
+    const { setupToken } = c.var.deps;
+    if (setupToken && !sameToken(input.token, setupToken)) {
+      throw new AppError(403, 'setup_token_invalid', 'El código de configuración no es correcto');
+    }
     const passwordHash = await hashPassword(input.password);
     const user = await prisma.$transaction(async (tx) => {
       if ((await tx.user.count()) > 0) {
@@ -32,16 +46,18 @@ export async function authRoutes(app: FastifyInstance) {
       }
       return tx.user.create({ data: { name: input.name, email: input.email, passwordHash, role: 'PM' } });
     });
-    await startSession(reply, user.id);
-    return reply.status(201).send(toUserDto(user));
+    await startSession(c, user.id);
+    return c.json(toUserDto(user), 201);
   });
 
-  app.post('/api/auth/login', async (req, reply) => {
-    const { email, password } = loginSchema.parse(req.body);
-    const key = `${email}|${req.ip}`;
-    const now = app.now();
+  app.post('/api/auth/login', async (c) => {
+    const { prisma } = c.var.deps;
+    const limiter = new LoginLimiter(prisma);
+    const { email, password } = loginSchema.parse(await readBody(c));
+    const key = `${email}|${c.var.deps.clientIp(c)}`;
+    const now = c.var.deps.now();
 
-    const retryAfterSeconds = limiter.retryAfterSeconds(key, now);
+    const retryAfterSeconds = await limiter.retryAfterSeconds(key, now);
     if (retryAfterSeconds > 0) {
       const minutes = Math.ceil(retryAfterSeconds / 60);
       const wait = minutes === 1 ? '1 minuto' : `${minutes} minutos`;
@@ -53,26 +69,28 @@ export async function authRoutes(app: FastifyInstance) {
     const user = await prisma.user.findUnique({ where: { email } });
     const valid = user?.active && (await verifyPassword(user.passwordHash, password));
     if (!user || !valid) {
-      limiter.recordFailure(key, now);
+      await limiter.recordFailure(key, now);
       throw new AppError(401, 'invalid_credentials', 'Correo o contraseña incorrectos');
     }
 
-    limiter.reset(key);
-    await startSession(reply, user.id);
-    return toUserDto(user);
+    await limiter.reset(key);
+    await startSession(c, user.id);
+    return c.json(toUserDto(user));
   });
 
-  app.post('/api/auth/logout', async (req, reply) => {
-    if (req.sessionToken) await deleteSession(prisma, req.sessionToken);
-    reply.clearCookie(SESSION_COOKIE, { path: '/' });
-    return { ok: true };
+  app.post('/api/auth/logout', async (c) => {
+    const token = c.var.sessionToken;
+    if (token) await deleteSession(c.var.deps.prisma, token);
+    deleteCookie(c, SESSION_COOKIE, { path: '/', secure: c.var.deps.secureCookies });
+    return c.json({ ok: true });
   });
 
-  app.get('/api/auth/me', async (req) => toUserDto(requireUser(req)));
+  app.get('/api/auth/me', async (c) => c.json(toUserDto(requireUser(c))));
 
-  app.post('/api/auth/change-password', async (req) => {
-    const user = requireUser(req);
-    const input = changePasswordSchema.parse(req.body);
+  app.post('/api/auth/change-password', async (c) => {
+    const { prisma } = c.var.deps;
+    const user = requireUser(c);
+    const input = changePasswordSchema.parse(await readBody(c));
     if (!(await verifyPassword(user.passwordHash, input.currentPassword))) {
       throw fieldError('currentPassword', 'La contraseña actual no es correcta', 'invalid_current_password');
     }
@@ -80,7 +98,7 @@ export async function authRoutes(app: FastifyInstance) {
       where: { id: user.id },
       data: { passwordHash: await hashPassword(input.newPassword), mustChangePassword: false },
     });
-    await deleteUserSessions(prisma, user.id, req.sessionToken ?? undefined);
-    return toUserDto(updated);
+    await deleteUserSessions(prisma, user.id, c.var.sessionToken ?? undefined);
+    return c.json(toUserDto(updated));
   });
 }

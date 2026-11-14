@@ -5,13 +5,12 @@ import {
   deliverableSchema,
   isDeliverableOverdue,
   canTransition,
-  localToday,
   updateCriterionSchema,
   updateDeliverableSchema,
   type DeliverableStatus,
 } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
-import type { FastifyInstance } from 'fastify';
+import { readBody, readQuery, type App, type Ctx } from '../http';
 import { requireProjectPm } from '../auth/access';
 import { AppError, fieldError, notFound } from '../errors';
 import { sanitizeRichText } from '../richText';
@@ -78,33 +77,33 @@ export async function loadDeliverableDetail(prisma: PrismaClient, id: string, to
 
 const acceptedLocked = () => new AppError(409, 'deliverable_accepted', 'El entregable está aceptado: reábrelo para cambiar sus criterios');
 
-export async function deliverableRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function deliverableRoutes(app: App) {
   const base = '/api/projects/:id/deliverables';
-  const today = () => localToday(app.now());
+  const today = (c: Ctx) => c.var.deps.today();
 
-  const assertMilestone = async (projectId: string, milestoneId: string | null | undefined) => {
+  const assertMilestone = async (prisma: PrismaClient, projectId: string, milestoneId: string | null | undefined) => {
     if (milestoneId && !(await prisma.milestone.findFirst({ where: { id: milestoneId, projectId }, select: { id: true } }))) {
       throw fieldError('milestoneId', 'El hito no pertenece al proyecto');
     }
   };
 
   /** Entregable editable en sus criterios (no aceptado). */
-  const findOpen = async (projectId: string, did: string) => {
+  const findOpen = async (prisma: PrismaClient, projectId: string, did: string) => {
     const deliverable = await findDeliverable(prisma, projectId, did);
     if (deliverable.status === 'ACCEPTED') throw acceptedLocked();
     return deliverable;
   };
 
-  const findCriterion = async (deliverableId: string, cid: string) => {
+  const findCriterion = async (prisma: PrismaClient, deliverableId: string, cid: string) => {
     const criterion = await prisma.deliverableCriterion.findFirst({ where: { id: cid, deliverableId } });
     if (!criterion) throw notFound('Criterio no encontrado');
     return criterion;
   };
 
-  app.get<{ Params: { id: string }; Querystring: { status?: unknown } }>(base, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const { status } = req.query;
+  app.get(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const { status } = readQuery(c);
     if (status !== undefined && (typeof status !== 'string' || !(DELIVERABLE_STATUS as readonly string[]).includes(status))) {
       throw fieldError('status', 'Estado no válido');
     }
@@ -113,19 +112,21 @@ export async function deliverableRoutes(app: FastifyInstance) {
       include: deliverableDetailInclude,
       orderBy: { number: 'asc' },
     });
-    return items.map((d) => toDeliverableDto(d, today(), false));
+    return c.json(items.map((d) => toDeliverableDto(d, today(c), false)));
   });
 
-  app.get<{ Params: Params }>(`${base}/:did`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const deliverable = await findDeliverable(prisma, project.id, req.params.did);
-    return loadDeliverableDetail(prisma, deliverable.id, today());
+  app.get(`${base}/:did`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
   });
 
-  app.post<{ Params: { id: string } }>(base, async (req, reply) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const { criteria = [], ...input } = deliverableSchema.parse(req.body);
-    await assertMilestone(project.id, input.milestoneId);
+  app.post(base, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const { criteria = [], ...input } = deliverableSchema.parse(await readBody(c));
+    await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
     const texts = criteria.map((t) => t.trim()).filter(Boolean);
     const created = await prisma.$transaction(async (tx) => {
       const { lastDeliverableNumber } = await tx.project.update({
@@ -144,71 +145,77 @@ export async function deliverableRoutes(app: FastifyInstance) {
         include: deliverableDetailInclude,
       });
     });
-    return reply.status(201).send(toDeliverableDto(created, today(), true));
+    return c.json(toDeliverableDto(created, today(c), true), 201);
   });
 
-  app.patch<{ Params: Params }>(`${base}/:did`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const deliverable = await findDeliverable(prisma, project.id, req.params.did);
-    const input = updateDeliverableSchema.parse(req.body);
+  app.patch(`${base}/:did`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
+    const input = updateDeliverableSchema.parse(await readBody(c));
     if (input.status === 'ACCEPTED' || input.status === 'REJECTED') {
       throw fieldError('status', 'Para aceptar o rechazar registra una revisión');
     }
     if (input.status && input.status !== deliverable.status && !canTransition(deliverable.status as DeliverableStatus, input.status)) {
       throw new AppError(409, 'invalid_transition', 'Ese cambio de estado no está permitido');
     }
-    await assertMilestone(project.id, input.milestoneId);
+    await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
     await prisma.deliverable.update({
       where: { id: deliverable.id },
       data: { ...input, ...(input.description !== undefined ? { description: sanitizeRichText(input.description) } : {}) },
     });
-    return loadDeliverableDetail(prisma, deliverable.id, today());
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
   });
 
-  app.delete<{ Params: Params }>(`${base}/:did`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const deliverable = await findDeliverable(prisma, project.id, req.params.did);
+  app.delete(`${base}/:did`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
     await prisma.deliverable.delete({ where: { id: deliverable.id } });
-    return { ok: true };
+    return c.json({ ok: true });
   });
 
-  app.post<{ Params: Params }>(`${base}/:did/criteria`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const deliverable = await findOpen(project.id, req.params.did);
-    const { text } = criterionSchema.parse(req.body);
+  app.post(`${base}/:did/criteria`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const deliverable = await findOpen(c.var.deps.prisma, project.id, c.req.param('did'));
+    const { text } = criterionSchema.parse(await readBody(c));
     const last = await prisma.deliverableCriterion.aggregate({ where: { deliverableId: deliverable.id }, _max: { position: true } });
     await prisma.deliverableCriterion.create({ data: { deliverableId: deliverable.id, text, position: (last._max.position ?? -1) + 1 } });
-    return loadDeliverableDetail(prisma, deliverable.id, today());
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
   });
 
   // La ruta de orden va antes que la de un criterio para que "order" no se tome como id.
-  app.put<{ Params: Params }>(`${base}/:did/criteria/order`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const deliverable = await findOpen(project.id, req.params.did);
-    const { ids } = criteriaOrderSchema.parse(req.body);
+  app.put(`${base}/:did/criteria/order`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const deliverable = await findOpen(c.var.deps.prisma, project.id, c.req.param('did'));
+    const { ids } = criteriaOrderSchema.parse(await readBody(c));
     const current = await prisma.deliverableCriterion.findMany({ where: { deliverableId: deliverable.id }, select: { id: true } });
     const known = new Set(current.map((c) => c.id));
     if (new Set(ids).size !== ids.length || ids.length !== current.length || !ids.every((id) => known.has(id))) {
       throw fieldError('ids', 'La lista de criterios no coincide con la actual');
     }
     await prisma.$transaction(ids.map((id, position) => prisma.deliverableCriterion.update({ where: { id }, data: { position } })));
-    return loadDeliverableDetail(prisma, deliverable.id, today());
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
   });
 
-  app.patch<{ Params: CriterionParams }>(`${base}/:did/criteria/:cid`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const deliverable = await findOpen(project.id, req.params.did);
-    const criterion = await findCriterion(deliverable.id, req.params.cid);
-    const input = updateCriterionSchema.parse(req.body);
+  app.patch(`${base}/:did/criteria/:cid`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const deliverable = await findOpen(c.var.deps.prisma, project.id, c.req.param('did'));
+    const criterion = await findCriterion(c.var.deps.prisma, deliverable.id, c.req.param('cid'));
+    const input = updateCriterionSchema.parse(await readBody(c));
     await prisma.deliverableCriterion.update({ where: { id: criterion.id }, data: input });
-    return loadDeliverableDetail(prisma, deliverable.id, today());
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
   });
 
-  app.delete<{ Params: CriterionParams }>(`${base}/:did/criteria/:cid`, async (req) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const deliverable = await findOpen(project.id, req.params.did);
-    const criterion = await findCriterion(deliverable.id, req.params.cid);
+  app.delete(`${base}/:did/criteria/:cid`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const deliverable = await findOpen(c.var.deps.prisma, project.id, c.req.param('did'));
+    const criterion = await findCriterion(c.var.deps.prisma, deliverable.id, c.req.param('cid'));
     await prisma.deliverableCriterion.delete({ where: { id: criterion.id } });
-    return loadDeliverableDetail(prisma, deliverable.id, today());
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
   });
 }

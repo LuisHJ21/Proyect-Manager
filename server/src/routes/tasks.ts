@@ -1,3 +1,4 @@
+import type { PrismaClient } from '@prisma/client';
 import {
   ACTIVE_PROJECT_STATUS,
   assigneesSchema,
@@ -8,38 +9,37 @@ import {
   taskProgressSchema,
   updateTaskSchema,
 } from '@pm/shared';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { readBody, type App, type Ctx } from '../http';
+import { removeAfterDelete } from '../storage/fileStore';
 import { getProjectAccess, requireProjectPm } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { checkProgressChange } from '../domain/dependencies';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
-import { removeStoredFiles } from '../files';
 import { incidentAccess } from '../domain/incidents';
 import { taskInclude, toTaskDto } from './taskDto';
 
 type TaskParams = { Params: { id: string } };
 
-export async function getTaskAccess(req: FastifyRequest, taskId: string) {
-  const user = requireUser(req);
-  const { prisma } = req.server;
+export async function getTaskAccess(c: Ctx, taskId: string) {
+  const user = requireUser(c);
+  const { prisma } = c.var.deps;
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw notFound('Tarea no encontrada');
-  const { isPm } = await getProjectAccess(req, task.projectId).catch(() => {
+  const { isPm } = await getProjectAccess(c, task.projectId).catch(() => {
     throw notFound('Tarea no encontrada');
   });
   const assignee = await prisma.taskAssignee.findUnique({ where: { taskId_userId: { taskId, userId: user.id } } });
   return { task, isPm, isAssignee: Boolean(assignee) };
 }
 
-export async function taskRoutes(app: FastifyInstance) {
-  const { prisma } = app;
+export function taskRoutes(app: App) {
 
-  const loadDto = async (taskId: string, includeCost: boolean) =>
+  const loadDto = async (prisma: PrismaClient, taskId: string, includeCost: boolean) =>
     toTaskDto(await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude }), includeCost);
 
-  const requireTaskPm = async (req: FastifyRequest, taskId: string) => {
-    const { task, isPm } = await getTaskAccess(req, taskId);
+  const requireTaskPm = async (c: Ctx, taskId: string) => {
+    const { task, isPm } = await getTaskAccess(c, taskId);
     if (!isPm) throw forbidden();
     return task;
   };
@@ -51,14 +51,14 @@ export async function taskRoutes(app: FastifyInstance) {
     }
   };
 
-  const assertMilestone = async (projectId: string, milestoneId?: string | null) => {
+  const assertMilestone = async (prisma: PrismaClient, projectId: string, milestoneId?: string | null) => {
     if (!milestoneId) return;
     const milestone = await prisma.milestone.findFirst({ where: { id: milestoneId, projectId } });
     if (!milestone) throw fieldError('milestoneId', 'El hito debe pertenecer al proyecto');
   };
 
   /** Quien ya está asignado puede seguirlo aunque se haya desactivado; solo se valida a los nuevos. */
-  const assertAssignable = async (projectId: string, userIds: string[], field: string, taskId?: string) => {
+  const assertAssignable = async (prisma: PrismaClient, projectId: string, userIds: string[], field: string, taskId?: string) => {
     const unique = [...new Set(userIds)];
     const current = taskId ? await prisma.taskAssignee.findMany({ where: { taskId }, select: { userId: true } }) : [];
     const added = unique.filter((id) => !current.some((a) => a.userId === id));
@@ -69,42 +69,46 @@ export async function taskRoutes(app: FastifyInstance) {
     return unique;
   };
 
-  app.get<TaskParams>('/api/projects/:id/tasks', async (req) => {
-    const { project, isPm } = await getProjectAccess(req, req.params.id);
+  app.get('/api/projects/:id/tasks', async (c) => {
+    const { prisma } = c.var.deps;
+    const { project, isPm } = await getProjectAccess(c, c.req.param('id'));
     const tasks = await prisma.task.findMany({
       where: { projectId: project.id },
       include: taskInclude,
       orderBy: { createdAt: 'asc' },
     });
-    return tasks.map((task) => toTaskDto(task, isPm));
+    return c.json(tasks.map((task) => toTaskDto(task, isPm)));
   });
 
-  app.post<TaskParams>('/api/projects/:id/tasks', async (req, reply) => {
-    const project = await requireProjectPm(req, req.params.id);
-    const { assigneeIds, ...input } = createTaskSchema.parse(req.body);
+  app.post('/api/projects/:id/tasks', async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectPm(c, c.req.param('id'));
+    const { assigneeIds, ...input } = createTaskSchema.parse(await readBody(c));
     assertDatesWithinProject(project, input);
-    await assertMilestone(project.id, input.milestoneId);
-    const userIds = await assertAssignable(project.id, assigneeIds, 'assigneeIds');
+    await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
+    const userIds = await assertAssignable(c.var.deps.prisma, project.id, assigneeIds, 'assigneeIds');
     const task = await prisma.task.create({
       data: { ...input, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
       include: taskInclude,
     });
-    return reply.status(201).send(toTaskDto(task, true));
+    return c.json(toTaskDto(task, true), 201);
   });
 
-  app.get('/api/me/tasks', async (req) => {
-    const user = requireUser(req);
+  app.get('/api/me/tasks', async (c) => {
+    const { prisma } = c.var.deps;
+    const user = requireUser(c);
     const tasks = await prisma.task.findMany({
       where: { assignees: { some: { userId: user.id } }, project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } },
       include: { ...taskInclude, project: { select: { name: true } } },
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
     });
-    return tasks.map(({ project, ...task }) => ({ ...toTaskDto(task, false), projectName: project.name }));
+    return c.json(tasks.map(({ project, ...task }) => ({ ...toTaskDto(task, false), projectName: project.name })));
   });
 
-  app.get<TaskParams>('/api/tasks/:id', async (req) => {
-    const { task, isPm } = await getTaskAccess(req, req.params.id);
-    const viewer = { userId: requireUser(req).id, isPm };
+  app.get('/api/tasks/:id', async (c) => {
+    const { prisma } = c.var.deps;
+    const { task, isPm } = await getTaskAccess(c, c.req.param('id'));
+    const viewer = { userId: requireUser(c).id, isPm };
     const incidents = (
       await prisma.incident.findMany({
         where: { taskId: task.id },
@@ -124,17 +128,18 @@ export async function taskRoutes(app: FastifyInstance) {
       include: { assignee: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'asc' },
     });
-    return {
-      ...(await loadDto(task.id, isPm)),
+    return c.json({
+      ...(await loadDto(c.var.deps.prisma, task.id, isPm)),
       comments,
       steps: steps.map((s) => ({ id: s.id, title: s.title, done: s.done, assignee: s.assignee })),
       incidents,
-    };
+    });
   });
 
-  app.patch<TaskParams>('/api/tasks/:id', async (req) => {
-    const task = await requireTaskPm(req, req.params.id);
-    const { status: _status, progress: _progress, assigneeIds, ...input } = updateTaskSchema.parse(req.body);
+  app.patch('/api/tasks/:id', async (c) => {
+    const { prisma } = c.var.deps;
+    const task = await requireTaskPm(c, c.req.param('id'));
+    const { status: _status, progress: _progress, assigneeIds, ...input } = updateTaskSchema.parse(await readBody(c));
     const startDate = input.startDate === undefined ? task.startDate : input.startDate;
     const dueDate = input.dueDate === undefined ? task.dueDate : input.dueDate;
     if (!isDateOrderValid(startDate, dueDate)) throw fieldError('startDate', TASK_DATE_ORDER_MESSAGE);
@@ -143,8 +148,8 @@ export async function taskRoutes(app: FastifyInstance) {
       startDate: input.startDate === task.startDate ? undefined : input.startDate,
       dueDate: input.dueDate === task.dueDate ? undefined : input.dueDate,
     });
-    await assertMilestone(task.projectId, input.milestoneId);
-    const userIds = assigneeIds && (await assertAssignable(task.projectId, assigneeIds, 'assigneeIds', task.id));
+    await assertMilestone(c.var.deps.prisma, task.projectId, input.milestoneId);
+    const userIds = assigneeIds && (await assertAssignable(c.var.deps.prisma, task.projectId, assigneeIds, 'assigneeIds', task.id));
     await prisma.$transaction([
       prisma.task.update({ where: { id: task.id }, data: input }),
       ...(userIds
@@ -155,33 +160,36 @@ export async function taskRoutes(app: FastifyInstance) {
           ]
         : []),
     ]);
-    return loadDto(task.id, true);
+    return c.json(await loadDto(c.var.deps.prisma, task.id, true));
   });
 
-  app.delete<TaskParams>('/api/tasks/:id', async (req) => {
-    const task = await requireTaskPm(req, req.params.id);
+  app.delete('/api/tasks/:id', async (c) => {
+    const { prisma } = c.var.deps;
+    const task = await requireTaskPm(c, c.req.param('id'));
     const attachments = await prisma.attachment.findMany({ where: { taskId: task.id }, select: { storedName: true } });
     await prisma.task.delete({ where: { id: task.id } });
-    await removeStoredFiles(app.dataDir, attachments.map((a) => a.storedName));
-    return { ok: true };
+    await removeAfterDelete(c.var.deps.files, attachments.map((a) => a.storedName));
+    return c.json({ ok: true });
   });
 
-  app.put<TaskParams>('/api/tasks/:id/assignees', async (req) => {
-    const task = await requireTaskPm(req, req.params.id);
-    const input = assigneesSchema.parse(req.body);
-    const userIds = await assertAssignable(task.projectId, input.userIds, 'userIds', task.id);
+  app.put('/api/tasks/:id/assignees', async (c) => {
+    const { prisma } = c.var.deps;
+    const task = await requireTaskPm(c, c.req.param('id'));
+    const input = assigneesSchema.parse(await readBody(c));
+    const userIds = await assertAssignable(c.var.deps.prisma, task.projectId, input.userIds, 'userIds', task.id);
     await prisma.$transaction([
       prisma.taskAssignee.deleteMany({ where: { taskId: task.id } }),
       prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),
       prisma.taskStep.updateMany({ where: { taskId: task.id, assigneeId: { notIn: userIds } }, data: { assigneeId: null } }),
     ]);
-    return loadDto(task.id, true);
+    return c.json(await loadDto(c.var.deps.prisma, task.id, true));
   });
 
-  app.patch<TaskParams>('/api/tasks/:id/progress', async (req) => {
-    const { task, isPm, isAssignee } = await getTaskAccess(req, req.params.id);
+  app.patch('/api/tasks/:id/progress', async (c) => {
+    const { prisma } = c.var.deps;
+    const { task, isPm, isAssignee } = await getTaskAccess(c, c.req.param('id'));
     if (!isPm && !isAssignee) throw forbidden('Solo puedes actualizar las tareas que tienes asignadas');
-    const input = taskProgressSchema.parse(req.body);
+    const input = taskProgressSchema.parse(await readBody(c));
     const data = input.status === 'DONE' ? { ...input, progress: 100 } : input;
 
     await prisma.$transaction(async (tx) => {
@@ -208,17 +216,18 @@ export async function taskRoutes(app: FastifyInstance) {
       }
       await tx.task.update({ where: { id: task.id }, data });
     });
-    return loadDto(task.id, isPm);
+    return c.json(await loadDto(c.var.deps.prisma, task.id, isPm));
   });
 
-  app.post<TaskParams>('/api/tasks/:id/comments', async (req, reply) => {
-    const { task, isPm, isAssignee } = await getTaskAccess(req, req.params.id);
+  app.post('/api/tasks/:id/comments', async (c) => {
+    const { prisma } = c.var.deps;
+    const { task, isPm, isAssignee } = await getTaskAccess(c, c.req.param('id'));
     if (!isPm && !isAssignee) throw forbidden('Solo puedes comentar las tareas que tienes asignadas');
-    const { body } = commentSchema.parse(req.body);
+    const { body } = commentSchema.parse(await readBody(c));
     const comment = await prisma.taskComment.create({
-      data: { taskId: task.id, authorId: requireUser(req).id, body },
+      data: { taskId: task.id, authorId: requireUser(c).id, body },
       include: { author: { select: { id: true, name: true } } },
     });
-    return reply.status(201).send(comment);
+    return c.json(comment, 201);
   });
 }

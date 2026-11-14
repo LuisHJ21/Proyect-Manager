@@ -99,7 +99,7 @@ describe('tarea diaria', () => {
     error.mockRestore();
   });
 
-  it('devuelve los cuatro contadores', async () => {
-    expect(await runDailyJobs(ctx.deps)).toEqual({ sessions: 0, loginAttempts: 0, pendingUploads: 0, snapshots: 0 });
+  it('devuelve los contadores', async () => {
+    expect(await runDailyJobs(ctx.deps)).toEqual({ sessions: 0, loginAttempts: 0, pendingUploads: 0, snapshots: 0, dueSoon: 0, overdue: 0, oldNotifications: 0 });
   });
 });

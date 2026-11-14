@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { HomeRedirect, RequireAuth, RequireCollaborator, RequirePm } from './auth/RequireAuth';
+import { HomeRedirect, RequireAuth, RequirePm } from './auth/RequireAuth';
 import { AppLayout } from './components/AppLayout';
 import { ChangePasswordPage, LoginPage, SetupPage } from './pages/AuthPages';
 import { CalendarPage } from './pages/Calendar';
@@ -52,9 +52,7 @@ export function AppRoutes() {
             </Route>
           </Route>
           <Route path="/calendario" element={<CalendarPage />} />
-          <Route element={<RequireCollaborator />}>
-            <Route path="/mis-tareas" element={<MyTasksPage />} />
-          </Route>
+          <Route path="/mis-tareas" element={<MyTasksPage />} />
           <Route element={<RequirePm />}>
             <Route path="/panel" element={<DashboardPage />} />
             <Route path="/usuarios" element={<UsersPage />} />

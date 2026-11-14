@@ -22,12 +22,6 @@ export function RequirePm() {
   return isPm ? <Outlet /> : <Navigate to="/" replace />;
 }
 
-/** Las tareas asignadas son de los colaboradores: el PM vuelve a su inicio. */
-export function RequireCollaborator() {
-  const { isPm } = useAuth();
-  return isPm ? <Navigate to="/" replace /> : <Outlet />;
-}
-
 export function HomeRedirect() {
   const { isPm } = useAuth();
   return <Navigate to={isPm ? '/panel' : '/mis-tareas'} replace />;

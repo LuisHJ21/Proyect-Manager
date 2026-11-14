@@ -9,14 +9,16 @@ const project = (id: string, name: string, status = 'EXECUTING') => ({ id, name,
 const nav = async () => within(await screen.findByRole('navigation', { name: 'Principal' }));
 
 describe('navegación por rol', () => {
-  it('PM ve Inicio, Calendario, Proyectos y Usuarios, sin Mis tareas', async () => {
-    mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [] });
+  it('PM ve Inicio, Mis tareas con contador, Calendario, Proyectos y Usuarios', async () => {
+    const open = { id: 't', status: 'TODO' };
+    const done = { id: 'd', status: 'DONE' };
+    mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'GET /api/me/tasks': [open, done] });
     renderApp('/proyectos');
     const links = await nav();
     for (const name of ['Inicio', 'Calendario', 'Proyectos', 'Usuarios']) {
       expect(links.getByRole('link', { name })).toBeInTheDocument();
     }
-    expect(links.queryByRole('link', { name: /Mis tareas/ })).not.toBeInTheDocument();
+    expect(await links.findByRole('link', { name: 'Mis tareas, 1 abiertas' })).toBeInTheDocument();
   });
 
   it('colaborador ve Mis tareas con contador, Calendario y Proyectos, sin Inicio ni Usuarios', async () => {
@@ -46,12 +48,10 @@ describe('navegación por rol', () => {
     expect(screen.queryByRole('button', { name: 'Nuevo proyecto' })).not.toBeInTheDocument();
   });
 
-  it('el PM en /mis-tareas vuelve a su inicio', async () => {
-    mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'GET /api/dashboard': apiError(500, 'internal_error') });
+  it('el PM entra a /mis-tareas', async () => {
+    mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'GET /api/me/tasks': [] });
     renderApp('/mis-tareas');
-    const links = await nav();
-    await waitFor(() => expect(links.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page'));
-    expect(screen.queryByRole('heading', { name: 'Mis tareas' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Mis tareas' })).toBeInTheDocument();
   });
 
   it('el colaborador en /panel vuelve a Mis tareas', async () => {
@@ -92,6 +92,15 @@ describe('navegación por rol', () => {
 });
 
 describe('navegación móvil', () => {
+  it('en móvil el PM ve Mis tareas en la barra inferior', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} }));
+    mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'GET /api/me/tasks': [], 'GET /api/dashboard': apiError(500, 'internal_error') });
+    renderApp('/proyectos');
+    const links = await nav();
+    expect(await links.findByRole('link', { name: 'Mis tareas, 0 abiertas' })).toBeInTheDocument();
+    expect(links.getAllByRole('link')).toHaveLength(6);
+  });
+
   it('ofrece cambiar la contraseña y cerrar sesión', async () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} }));
     mockApi({ ...signedInAs(collaborator), 'GET /api/projects': [], 'GET /api/me/tasks': [] });

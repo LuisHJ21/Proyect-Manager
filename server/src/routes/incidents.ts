@@ -61,7 +61,8 @@ export function incidentRoutes(app: App) {
   const base = '/api/projects/:id/incidents';
 
   const viewerOf = async (c: Ctx, projectId: string) => {
-    const { project, isPm } = await getProjectAccess(c, projectId);
+    const { project, isPm, can } = await getProjectAccess(c, projectId);
+    if (!can.read('incidents')) throw forbidden();
     return { project, viewer: { userId: requireUser(c).id, isPm } satisfies IncidentViewer };
   };
 

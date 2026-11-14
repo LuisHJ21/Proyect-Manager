@@ -252,7 +252,7 @@ export function taskRoutes(app: App) {
       projectId: task.projectId,
       entityId: task.id,
       title: task.title,
-      userIds: await assigneeIdsOf(prisma, task.id),
+      userIds: () => assigneeIdsOf(prisma, task.id),
       actorId: comment.author.id,
       actorName: comment.author.name,
     });

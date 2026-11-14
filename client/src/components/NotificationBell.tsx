@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Notification, NotificationPage } from '../api/types';
@@ -106,12 +107,15 @@ export function NotificationBell() {
           </span>
         )}
       </button>
-      {open && (
-        <>
-          <button type="button" aria-label="Cerrar avisos" tabIndex={-1} className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
-          <NotificationList onClose={() => setOpen(false)} />
-        </>
-      )}
+      {open &&
+        // Al body: dentro de la barra lateral (sticky) el contenido de la página lo taparía.
+        createPortal(
+          <>
+            <button type="button" aria-label="Cerrar avisos" tabIndex={-1} className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
+            <NotificationList onClose={() => setOpen(false)} />
+          </>,
+          document.body,
+        )}
     </>
   );
 }

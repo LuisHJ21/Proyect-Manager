@@ -1,5 +1,5 @@
 import type { Project, User } from '@prisma/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
 describe('avisos de tareas', () => {
@@ -68,5 +68,42 @@ describe('avisos de tareas', () => {
     expect((await ctx.as(pm).post(`/api/tasks/${task.id}/comments`, { body: 'Hola' })).statusCode).toBe(201);
     expect(await of(ana)).toHaveLength(1);
     expect(await of(luis)).toHaveLength(1);
+  });
+});
+
+describe('un fallo de los avisos no cambia la respuesta', () => {
+  let ctx: TestCtx;
+  let pm: User;
+  let ana: User;
+  let project: Project;
+
+  beforeEach(async () => {
+    ctx = await createTestApp();
+    pm = await ctx.makeUser({ role: 'PM', name: 'Paula' });
+    ana = await ctx.makeUser({ role: 'COLLABORATOR', name: 'Ana' });
+    project = await ctx.makeProject({ members: [ana] });
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    return ctx.close();
+  });
+
+  it('comentar responde 201 aunque falle la búsqueda de destinatarios', async () => {
+    const task = await ctx.makeTask(project.id, { title: 'Diseño', assignees: [ana] });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const original = ctx.prisma.taskAssignee.findMany.bind(ctx.prisma.taskAssignee);
+    // Solo falla la búsqueda que se hace después de guardar el comentario.
+    vi.spyOn(ctx.prisma.taskAssignee, 'findMany').mockImplementation(((args: { select?: { userId?: boolean } }) =>
+      args?.select?.userId ? Promise.reject(new Error('Base caída')) : original(args as never)) as never);
+    const res = await ctx.as(pm).post(`/api/tasks/${task.id}/comments`, { body: 'Hola' });
+    expect(res.statusCode).toBe(201);
+    expect(await ctx.prisma.taskComment.count()).toBe(1);
+  });
+
+  it('crear tarea e incidente responden 201 aunque falle la creación de avisos', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(ctx.prisma.notification, 'createMany').mockRejectedValue(new Error('Base caída'));
+    expect((await ctx.as(pm).post(`/api/projects/${project.id}/tasks`, { title: 'Diseño', assigneeIds: [ana.id] })).statusCode).toBe(201);
+    expect((await ctx.as(pm).post(`/api/projects/${project.id}/incidents`, { title: 'Caída', ownerId: ana.id })).statusCode).toBe(201);
   });
 });

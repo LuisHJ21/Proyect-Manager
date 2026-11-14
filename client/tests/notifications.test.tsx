@@ -49,6 +49,15 @@ describe('campana de avisos', () => {
     expect(screen.queryByRole('dialog', { name: 'Avisos' })).not.toBeInTheDocument();
   });
 
+  it('el panel se abre fuera de la barra lateral, para que el contenido no lo tape', async () => {
+    mockApi({ ...base, 'GET /api/notifications/unread-count': { count: 0 }, 'GET /api/notifications': { items: [], nextCursor: null } });
+    renderApp('/proyectos');
+    await userEvent.click(await screen.findByRole('button', { name: 'Avisos' }));
+    const panel = await screen.findByRole('dialog', { name: 'Avisos' });
+    expect(panel.closest('aside')).toBeNull();
+    expect(panel.parentElement).toBe(document.body);
+  });
+
   it('marcar todo como leído', async () => {
     const api = mockApi({
       ...base,

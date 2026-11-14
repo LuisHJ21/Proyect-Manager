@@ -6,7 +6,8 @@ export type NotifyInput = {
   projectId: string;
   entityId: string;
   title: string;
-  userIds: string[];
+  /** Destinatarios, o una función que los busca: así un fallo al buscarlos tampoco llega a la ruta. */
+  userIds: string[] | (() => Promise<string[]>);
   /** Quien hizo el cambio: nunca recibe el aviso. */
   actorId?: string;
   actorName?: string;
@@ -19,7 +20,8 @@ export type NotifyInput = {
  */
 export async function notify(prisma: PrismaClient, input: NotifyInput): Promise<number> {
   try {
-    const candidates = [...new Set(input.userIds)].filter((id) => id !== input.actorId);
+    const userIds = typeof input.userIds === 'function' ? await input.userIds() : input.userIds;
+    const candidates = [...new Set(userIds)].filter((id) => id !== input.actorId);
     if (candidates.length === 0) return 0;
     const active = await prisma.user.findMany({ where: { id: { in: candidates }, active: true }, select: { id: true } });
     if (active.length === 0) return 0;

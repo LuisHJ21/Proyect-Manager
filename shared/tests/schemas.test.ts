@@ -75,3 +75,16 @@ describe('propuesta de cambio', () => {
     expect(result.error?.issues[0]?.message).toBe('Escribe el título');
   });
 });
+
+describe('versión de edición', () => {
+  it('acepta enteros positivos y rechaza lo demás con el mensaje de recarga', async () => {
+    const { versionField, VERSION_REQUIRED } = await import('../src/schemas');
+    expect(versionField.parse(3)).toBe(3);
+    for (const bad of [undefined, 0, 1.5, '2']) {
+      const result = versionField.safeParse(bad);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toBe(VERSION_REQUIRED);
+    }
+    expect(VERSION_REQUIRED).toBe('Recarga la página para editar este registro');
+  });
+});

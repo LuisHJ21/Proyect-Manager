@@ -38,6 +38,10 @@ export const optionalDateSchema = calendarDateSchema.nullable().optional();
 
 export const required = (message = 'Este campo es obligatorio') => z.string().trim().min(1, message);
 
+/** Versión de edición que el navegador abrió; si no coincide con la guardada, la API responde 409. */
+export const VERSION_REQUIRED = 'Recarga la página para editar este registro';
+export const versionField = z.number({ message: VERSION_REQUIRED }).int(VERSION_REQUIRED).positive(VERSION_REQUIRED);
+
 export const emailSchema = z.string().trim().toLowerCase().email('Correo inválido');
 export const passwordSchema = z.string().min(10, 'La contraseña debe tener al menos 10 caracteres');
 

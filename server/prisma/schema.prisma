@@ -134,6 +134,7 @@ model Charter {
   approvedById    String?
   approvedAt      DateTime?
   createdAt       DateTime  @default(now())
+  version         Int       @default(1)
   updatedAt       DateTime  @updatedAt
 
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -184,6 +185,7 @@ model Task {
   progress         Int      @default(0)
   plannedCostCents BigInt   @default(0)
   createdAt        DateTime @default(now())
+  version          Int      @default(1)
   updatedAt        DateTime @updatedAt
 
   project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -309,6 +311,7 @@ model Risk {
   ownerId      String?
   status       String   @default("OPEN")
   createdAt    DateTime @default(now())
+  version      Int      @default(1)
   updatedAt    DateTime @updatedAt
 
   project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -508,6 +511,7 @@ model Deliverable {
   dueDate     String?
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
+  version     Int      @default(1)
   updatedAt   DateTime @updatedAt
 
   project   Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)

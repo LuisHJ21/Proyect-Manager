@@ -20,6 +20,8 @@ export class AppError extends Error {
 
 export const notFound = (message = 'No encontrado') => new AppError(404, 'not_found', message);
 export const forbidden = (message = 'No tienes permiso para esta acción') => new AppError(403, 'forbidden', message);
+export const editConflict = () =>
+  new AppError(409, 'edit_conflict', 'Otra persona guardó cambios en este registro mientras editabas');
 export const fieldError = (field: string, message: string, code = 'validation_error') =>
   new AppError(400, code, message, { fields: { [field]: message } });
 

@@ -1,4 +1,5 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import { focusManager } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { apiError, collaborator, mockApi, pmUser, renderApp, setRichText, signedInAs } from './helpers';
@@ -183,6 +184,53 @@ describe('acta', () => {
       expect(screen.queryByText(CONFLICT)).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Aprobar acta' })).toBeEnabled();
       expect(api.calls.filter((c) => c.key === 'GET /api/projects/p1/charter').length).toBeGreaterThan(1);
+    });
+
+    const refocus = () =>
+      act(() => {
+        focusManager.setFocused(false);
+        focusManager.setFocused(true);
+      });
+
+    it('una recarga en segundo plano no cambia la versión del borrador', async () => {
+      let newer = false;
+      const api = mockApi({
+        ...signedInAs(pmUser),
+        ...routes,
+        'GET /api/projects/p1/charter': () => (newer ? { ...draft, justification: '<p>De Pedro</p>', version: 4 } : draft),
+        'PUT /api/projects/p1/charter': conflict,
+      });
+      renderApp('/proyectos/p1/acta');
+      const user = userEvent.setup();
+      await screen.findByRole('textbox', { name: 'Justificación' });
+      await setRichText('Justificación', '<p>Mi texto</p>');
+      newer = true;
+      const gets = () => api.calls.filter((c) => c.key === 'GET /api/projects/p1/charter').length;
+      const before = gets();
+      await refocus();
+      await waitFor(() => expect(gets()).toBeGreaterThan(before));
+      await user.click(screen.getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(api.calls.find((c) => c.key === 'PUT /api/projects/p1/charter')?.body).toMatchObject({ version: 3 }));
+      expect(await screen.findByText(CONFLICT)).toBeInTheDocument();
+    });
+
+    it('sin cambios propios, una recarga en segundo plano trae la versión nueva y aprobar no reescribe el texto', async () => {
+      let newer = false;
+      const api = mockApi({
+        ...signedInAs(pmUser),
+        ...routes,
+        'GET /api/projects/p1/charter': () => (newer ? { ...draft, justification: '<p>De Pedro</p>', version: 4 } : draft),
+        'POST /api/projects/p1/charter/approve': { ...approved, version: 5 },
+      });
+      renderApp('/proyectos/p1/acta');
+      const user = userEvent.setup();
+      await screen.findByRole('textbox', { name: 'Justificación' });
+      newer = true;
+      await refocus();
+      await waitFor(() => expect(screen.getByRole('textbox', { name: 'Justificación' })).toHaveTextContent('De Pedro'));
+      await user.click(screen.getByRole('button', { name: 'Aprobar acta' }));
+      await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/projects/p1/charter/approve')?.body).toEqual({ version: 4 }));
+      expect(api.calls.some((c) => c.key === 'PUT /api/projects/p1/charter')).toBe(false);
     });
   });
 });

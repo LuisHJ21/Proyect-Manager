@@ -69,9 +69,21 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
   const [notice, setNotice] = useState('');
   // Tras un choque el borrador se conserva para copiarlo; no se guarda hasta cargar la versión actual.
   const [conflict, setConflict] = useState(false);
+  // Versión sobre la que se escribió el borrador. Una recarga en segundo plano no la mueve: si otra
+  // persona guardó mientras tanto, el guardado debe chocar en vez de pisar su texto.
+  const [baseVersion, setBaseVersion] = useState(charter.version);
 
   useEffect(() => {
-    setSaved(toDraft(charter));
+    if (charter.version === baseVersion) {
+      setSaved(toDraft(charter));
+    } else if (FIELDS.every((f) => draft[f.name] === saved[f.name])) {
+      // Sin cambios propios: se adopta la versión nueva.
+      setSaved(toDraft(charter));
+      setDraft(toDraft(charter));
+      setBaseVersion(charter.version);
+    }
+    // Con cambios propios sobre una versión vieja se deja todo como está: guardar responderá con el choque.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [charter]);
 
   const dirty = FIELDS.some((f) => draft[f.name] !== saved[f.name]);
@@ -82,13 +94,18 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
     setBusy(true);
     try {
       let result = charter;
-      if (dirty) result = await api<Charter>(url, { method: 'PUT', body: { ...draft, version: charter.version } });
-      if (action === 'approve') result = await api<Charter>(`${url}/approve`, { method: 'POST', body: { version: result.version } });
+      let version = baseVersion;
+      if (dirty) {
+        result = await api<Charter>(url, { method: 'PUT', body: { ...draft, version } });
+        version = result.version;
+      }
+      if (action === 'approve') result = await api<Charter>(`${url}/approve`, { method: 'POST', body: { version } });
       queryClient.setQueryData(['project', projectId, 'charter'], result);
       // El servidor devuelve el HTML ya limpio, que puede diferir del del editor (por ejemplo <br /> frente a <br>).
       // El borrador toma lo guardado para que no queden cambios pendientes falsos.
       setSaved(toDraft(result));
       setDraft(toDraft(result));
+      setBaseVersion(result.version);
       setNotice(action === 'approve' ? 'Acta aprobada.' : 'Cambios guardados.');
     } catch (error) {
       if (isEditConflict(error)) setConflict(true);
@@ -105,6 +122,7 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
       const fresh = await queryClient.fetchQuery({ queryKey: ['project', projectId, 'charter'], queryFn: () => api<Charter>(url), staleTime: 0 });
       setSaved(toDraft(fresh));
       setDraft(toDraft(fresh));
+      setBaseVersion(fresh.version);
       setConflict(false);
     } catch (error) {
       setErrors({ fields: {}, message: errorMessage(error) });

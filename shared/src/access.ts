@@ -47,7 +47,7 @@ export const ACCESS: Record<Role, Record<Section, AccessLevel>> = {
     stakeholders: 'none',
     budget: 'none',
     performance: 'none',
-    changes: 'none',
+    changes: 'own', // propone; ve las suyas, sin impactos
     closure: 'none',
     activity: 'none',
   },

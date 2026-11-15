@@ -30,7 +30,8 @@ model User {
   taskSteps          TaskStep[]
   raciCells          RaciCell[]
   baselines          Baseline[]
-  decidedChanges     ChangeRequest[]
+  decidedChanges     ChangeRequest[]     @relation("ChangeDecider")
+  requestedChanges   ChangeRequest[]     @relation("ChangeRequester")
   reportedIncidents  Incident[]          @relation("incidentReporter")
   ownedIncidents     Incident[]          @relation("incidentOwner")
   deliverableReviews DeliverableReview[] @relation("deliverableReviewer")
@@ -253,18 +254,18 @@ model TaskComment {
 }
 
 model Attachment {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   projectId    String
   taskId       String?
   uploadedById String
   originalName String
-  storedName   String   @unique
+  storedName   String    @unique
   mimeType     String
   size         Int
   /// Nulo mientras el archivo no se ha subido y confirmado.
   uploadedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   task       Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
@@ -416,15 +417,18 @@ model ChangeRequest {
   decisionNote       String    @default("")
   decidedAt          DateTime?
   decidedById        String?
+  requestedById      String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  decidedBy User?      @relation(fields: [decidedById], references: [id], onDelete: SetNull)
-  baselines Baseline[]
-  decisions Decision[]
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  decidedBy       User?      @relation("ChangeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  requestedByUser User?      @relation("ChangeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  baselines       Baseline[]
+  decisions       Decision[]
 
   @@unique([projectId, number])
+  @@index([requestedById])
 }
 
 model EvmSnapshot {
@@ -624,6 +628,7 @@ model Notification {
   title     String
   /// Quien comentó; vacío en los demás tipos.
   actorName String    @default("")
+  detail    String    @default("")
   /// Solo los vencimientos: impide repetir el aviso de la misma tarea y fecha.
   dedupeKey String?
   readAt    DateTime?

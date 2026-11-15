@@ -52,4 +52,10 @@ describe('notify', () => {
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
+  it('guarda detail', async () => {
+    await notify(ctx.prisma, { ...base(), userIds: [ana.id], detail: 'APPROVED' });
+    await notify(ctx.prisma, { ...base(), entityId: 't2', userIds: [ana.id] });
+    const rows = await ctx.prisma.notification.findMany({ orderBy: { entityId: 'asc' } });
+    expect(rows.map((r) => r.detail)).toEqual(['APPROVED', '']);
+  });
 });

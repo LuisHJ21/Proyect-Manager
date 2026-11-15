@@ -31,7 +31,7 @@ describe('rutas de avisos', () => {
     expect(res.statusCode).toBe(200);
     const { items, nextCursor } = res.json();
     expect(items.map((n: { title: string }) => n.title)).toEqual(['Nueva', 'Vieja']);
-    expect(items[0]).toMatchObject({ kind: 'TASK_ASSIGNED', projectId: project.id, projectName: 'Portal web', entityId: 't1', actorName: '', readAt: null });
+    expect(items[0]).toMatchObject({ kind: 'TASK_ASSIGNED', projectId: project.id, projectName: 'Portal web', entityId: 't1', actorName: '', detail: '', readAt: null });
     expect(nextCursor).toBeNull();
   });
 

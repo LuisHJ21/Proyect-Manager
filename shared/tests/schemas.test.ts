@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHANGE_STATUS, INCIDENT_STATUS, LABELS } from '../src/enums';
-import { createIncidentSchema, decisionRecordSchema, reportIncidentSchema, updateIncidentSchema, baselineSchema, changeRequestSchema, createExpenseSchema, createMilestoneSchema, createTaskSchema, decisionSchema, updateTaskSchema } from '../src/schemas';
+import { createIncidentSchema, proposeChangeSchema, decisionRecordSchema, reportIncidentSchema, updateIncidentSchema, baselineSchema, changeRequestSchema, createExpenseSchema, createMilestoneSchema, createTaskSchema, decisionSchema, updateTaskSchema } from '../src/schemas';
 
 describe('mensajes de validación', () => {
   it('una fecha ausente da un mensaje en español', () => {
@@ -64,5 +64,14 @@ describe('incidentes y decisiones', () => {
   it('los estados de incidente están en español', () => {
     expect(LABELS.incidentStatus).toEqual({ OPEN: 'Abierto', IN_PROGRESS: 'En curso', RESOLVED: 'Resuelto', CLOSED: 'Cerrado' });
     expect(INCIDENT_STATUS).toEqual(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']);
+  });
+});
+
+describe('propuesta de cambio', () => {
+  it('pide título y deja la descripción vacía por defecto', () => {
+    expect(proposeChangeSchema.parse({ title: 'X' })).toEqual({ title: 'X', description: '' });
+    const result = proposeChangeSchema.safeParse({ title: ' ' });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe('Escribe el título');
   });
 });

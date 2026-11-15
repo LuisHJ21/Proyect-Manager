@@ -17,7 +17,7 @@ const EXPECTED = {
   stakeholders: ['write', 'none', 'none'],
   budget: ['write', 'none', 'none'],
   performance: ['write', 'none', 'none'],
-  changes: ['write', 'none', 'none'],
+  changes: ['write', 'own', 'none'],
   closure: ['write', 'none', 'none'],
   activity: ['read', 'none', 'none'],
 } as const;

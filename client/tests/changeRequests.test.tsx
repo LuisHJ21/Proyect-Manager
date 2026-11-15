@@ -166,10 +166,12 @@ describe('pestaña Cambios', () => {
     await waitFor(() => expect(gets()).toBeGreaterThan(before));
   });
 
-  it('el colaborador no ve la pestaña Cambios', async () => {
-    mockApi({ ...signedInAs(collaborator), 'GET /api/projects/p1': project, 'GET /api/projects/p1/indicators': { progress: 0, overdueTasks: 0, blockedTasks: 0, upcomingMilestones: [] }, 'GET /api/projects/p1/objectives': [], 'GET /api/projects/p1/milestones': [], 'GET /api/projects/p1/members': [] });
-    renderApp('/proyectos/p1/resumen');
-    const tabs = await screen.findByRole('navigation', { name: 'Secciones del proyecto' });
-    expect(within(tabs).queryByRole('link', { name: 'Control de cambios' })).not.toBeInTheDocument();
+  it('una propuesta del equipo muestra quién la propuso y no se elimina', async () => {
+    mockApi({ ...base, [`GET ${url}`]: [cr({ proposedBy: { id: 'c1', name: 'Carlos' } }), cr({ id: 'cr3', number: 3, title: 'Del PM', proposedBy: null })] });
+    open();
+    expect(await screen.findByText('Propuesta por Carlos')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Eliminar CR-2' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aprobar CR-2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Eliminar CR-3' })).toBeInTheDocument();
   });
 });

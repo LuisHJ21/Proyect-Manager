@@ -12,12 +12,13 @@ import { DetailList } from '../../components/RegisterTable';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, EmptyState, inputClass, type Tone } from '../../components/ui';
 import { signedDays } from '../../lib/display';
+import { MyProposals } from './MyProposals';
 import { useProject } from './ProjectLayout';
 
 export const changeRequestsKey = (projectId: string) => ['project', projectId, 'change-requests'];
 
-const STATUS_TONE: Record<ChangeStatus, Tone> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' };
-const code = (cr: ChangeRequest) => `CR-${cr.number}`;
+export const STATUS_TONE: Record<ChangeStatus, Tone> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' };
+export const code = (cr: { number: number }) => `CR-${cr.number}`;
 
 /** Monto con signo opcional: "-1.234,50" → -123450. Vacío → null (sin impacto). Inválido → undefined. */
 function parseSignedMoney(text: string): number | null | undefined {
@@ -161,6 +162,7 @@ function ChangeDetail({ item, currency, onClose }: { item: ChangeRequest; curren
     { label: 'Estado', value: <Badge tone={STATUS_TONE[item.status]}>{LABELS.changeStatus[item.status]}</Badge> },
     { label: 'Descripción', value: item.description || '—' },
     { label: 'Solicitado por', value: item.requestedBy || '—' },
+    ...(item.proposedBy ? [{ label: 'Propuesta por', value: item.proposedBy.name }] : []),
     { label: 'Impacto en alcance', value: item.scopeImpact || '—' },
     { label: 'Impacto en plazo', value: signedDays(item.scheduleImpactDays) },
     { label: 'Impacto en costo', value: signedMoney(item.costImpactCents, currency) },
@@ -191,8 +193,13 @@ type Dialog =
   | { kind: 'edit' | 'view' | 'delete'; item: ChangeRequest }
   | { kind: 'decide'; item: ChangeRequest; status: 'APPROVED' | 'REJECTED' };
 
-/** Registro de solicitudes de cambio del proyecto. Solo para el Project Manager. */
+/** Registro de solicitudes de cambio. El PM las gestiona; un colaborador solo ve y propone las suyas. */
 export function ChangeRequestsPage() {
+  const { isPm } = useProject();
+  return isPm ? <ChangeRegister /> : <MyProposals />;
+}
+
+function ChangeRegister() {
   const { project, readOnly } = useProject();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -246,7 +253,10 @@ export function ChangeRequestsPage() {
                 {list.data.map((item) => (
                   <tr key={item.id}>
                     <td className="py-2 pr-4 align-top font-medium whitespace-nowrap text-ink">{code(item)}</td>
-                    <td className="py-2 pr-4 align-top text-ink [overflow-wrap:anywhere]">{item.title}</td>
+                    <td className="py-2 pr-4 align-top text-ink [overflow-wrap:anywhere]">
+                      {item.title}
+                      {item.proposedBy && <span className="block text-xs text-ink-soft">Propuesta por {item.proposedBy.name}</span>}
+                    </td>
                     <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{signedDays(item.scheduleImpactDays)}</td>
                     <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{signedMoney(item.costImpactCents, currency)}</td>
                     <td className="py-2 pr-4 align-top">
@@ -260,7 +270,8 @@ export function ChangeRequestsPage() {
                           {action('Aprobar', item, () => setDialog({ kind: 'decide', item, status: 'APPROVED' }))}
                           {action('Rechazar', item, () => setDialog({ kind: 'decide', item, status: 'REJECTED' }))}
                           {action('Editar', item, () => setDialog({ kind: 'edit', item }))}
-                          {action('Eliminar', item, () => setDialog({ kind: 'delete', item }))}
+                          {/* Una propuesta del equipo no se borra: se rechaza con una nota. */}
+                          {!item.proposedBy && action('Eliminar', item, () => setDialog({ kind: 'delete', item }))}
                         </>
                       )}
                     </td>

@@ -12,6 +12,8 @@ export type NotifyInput = {
   actorId?: string;
   actorName?: string;
   dedupeKey?: string;
+  /** Dato extra para armar la frase, p. ej. APPROVED o REJECTED en un cambio decidido. */
+  detail?: string;
 };
 
 /**
@@ -34,6 +36,7 @@ export async function notify(prisma: PrismaClient, input: NotifyInput): Promise<
         title: input.title,
         actorName: input.actorName ?? '',
         dedupeKey: input.dedupeKey ?? null,
+        detail: input.detail ?? '',
       })),
       skipDuplicates: true,
     });

@@ -317,6 +317,11 @@ export const updateChangeRequestSchema = z.object({
   scheduleImpactDays: changeRequestFields.scheduleImpactDays,
   costImpactCents: changeRequestFields.costImpactCents,
 });
+/** Lo que puede enviar un colaborador al proponer un cambio. */
+export const proposeChangeSchema = z.object({
+  title: required('Escribe el título'),
+  description: z.string().default(''),
+});
 export const decisionSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
   note: required('Escribe la nota de la decisión'),

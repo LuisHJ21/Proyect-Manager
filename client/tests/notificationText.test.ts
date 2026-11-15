@@ -10,6 +10,7 @@ const notice = (extra: Partial<Notification>): Notification => ({
   entityId: 't1',
   title: 'Diseño',
   actorName: '',
+  detail: '',
   readAt: null,
   createdAt: '2026-11-14T10:00:00',
   ...extra,
@@ -23,6 +24,14 @@ describe('frases de avisos', () => {
     ['TASK_OVERDUE', 'La tarea «Diseño» venció ayer'],
   ] as const)('%s', (kind, text) => {
     expect(describeNotification(notice({ kind, actorName: 'Ana' }))).toBe(text);
+  });
+
+  it('CHANGE_PROPOSED y CHANGE_DECIDED', () => {
+    expect(describeNotification(notice({ kind: 'CHANGE_PROPOSED', title: 'CR-4 Agregar blog', actorName: 'Ana' }))).toBe('Ana propuso el cambio «CR-4 Agregar blog»');
+    expect(describeNotification(notice({ kind: 'CHANGE_DECIDED', title: 'CR-4 Agregar blog', detail: 'APPROVED' }))).toBe('Aprobaron tu cambio «CR-4 Agregar blog»');
+    expect(describeNotification(notice({ kind: 'CHANGE_DECIDED', title: 'CR-4 Agregar blog', detail: 'REJECTED' }))).toBe('Rechazaron tu cambio «CR-4 Agregar blog»');
+    expect(notificationLink(notice({ kind: 'CHANGE_PROPOSED', entityId: 'cr4' }))).toBe('/proyectos/p1/cambios');
+    expect(notificationLink(notice({ kind: 'CHANGE_DECIDED', entityId: 'cr4' }))).toBe('/proyectos/p1/cambios');
   });
 
   it('INCIDENT_ASSIGNED', () => {

@@ -18,12 +18,11 @@ describe('registro de cambios', () => {
   });
   afterEach(() => ctx.close());
 
-  it('colaborador 403 y no miembro 404', async () => {
+  it('el colaborador no decide y no miembro 404', async () => {
     const outsider = await ctx.makeUser({ role: 'COLLABORATOR' });
     const cr = await create();
     const decide = (user: User) => ctx.as(user).post(`${base()}/${cr.id}/decision`, { status: 'APPROVED', note: 'Ok' });
-    expect((await ctx.as(ana).get(base())).statusCode).toBe(403);
-    expect((await ctx.as(ana).post(base(), { title: 'X' })).statusCode).toBe(403);
+    // Leer y proponer los cubre changeProposals.test.ts.
     expect((await decide(ana)).statusCode).toBe(403);
     expect((await ctx.as(outsider).get(base())).statusCode).toBe(404);
     expect((await ctx.as(outsider).post(base(), { title: 'X' })).statusCode).toBe(404);

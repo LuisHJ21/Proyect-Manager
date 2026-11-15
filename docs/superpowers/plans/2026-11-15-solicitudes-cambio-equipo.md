@@ -47,14 +47,14 @@
 - Produces: `proposeChangeSchema = z.object({ title: required('Escribe el título'), description: z.string().default('') })`.
 - Produces: `notify(prisma, { …, detail?: string })`: `detail` se guarda tal cual, y vacío si falta.
 
-- [ ] **Step 1: Escribe las pruebas.**
+- [x] **Step 1: Escribe las pruebas.**
   - En shared: `proposeChangeSchema` acepta `{ title: 'X' }` → `{ title: 'X', description: '' }` y rechaza `{ title: ' ' }` con «Escribe el título».
   - En shared: `accessLevel('COLLABORATOR', 'changes') === 'own'` y `accessLevel('OBSERVER', 'changes') === 'none'`.
   - En `notify.test.ts`: `guarda detail` → la fila tiene `detail: 'APPROVED'`, y sin `detail` queda `''`.
-- [ ] **Step 2: Ejecuta** shared y `notify.test.ts`. Esperado: FALLAN.
-- [ ] **Step 3: Implementa** los esquemas, el enum, `access.ts`, el modelo y la migración (dos `ALTER TABLE`, la clave foránea `ON DELETE SET NULL` y el índice). Genera la migración con `npx prisma migrate dev --create-only --name change_proposals` contra la base local, o escríbela a mano y compárala con `prisma migrate diff`. Después, `notify` con `detail`.
-- [ ] **Step 4: Ejecuta** las pruebas de shared y `notify.test.ts`, `rls.test.ts`. Esperado: PASAN. Ejecuta `accessMatrix.test.ts`. Esperado: FALLA solo `COLLABORATOR POST /api/projects/:id/change-requests` (403, y la tabla lo niega). Se arregla en Task 2.
-- [ ] **Step 5: Commit** `feat: datos y permisos de las propuestas de cambio`.
+- [x] **Step 2: Ejecuta** shared y `notify.test.ts`. Esperado: FALLAN.
+- [x] **Step 3: Implementa** los esquemas, el enum, `access.ts`, el modelo y la migración (dos `ALTER TABLE`, la clave foránea `ON DELETE SET NULL` y el índice). Genera la migración con `npx prisma migrate dev --create-only --name change_proposals` contra la base local, o escríbela a mano y compárala con `prisma migrate diff`. Después, `notify` con `detail`.
+- [x] **Step 4: Ejecuta** las pruebas de shared y `notify.test.ts`, `rls.test.ts`. Esperado: PASAN. Ejecuta `accessMatrix.test.ts`. Esperado: FALLA solo `COLLABORATOR POST /api/projects/:id/change-requests` (403, y la tabla lo niega). Se arregla en Task 2.
+- [x] **Step 5: Commit** `feat: datos y permisos de las propuestas de cambio`.
 
 ### Task 2: Rutas de cambios para el colaborador
 
@@ -69,7 +69,7 @@
 - Produces: el DTO del PM añade `proposedBy: { id: string; name: string } | null`. El DTO del colaborador es `{ id, number, title, description, status, decisionNote, decidedAt, decidedBy, createdAt }`.
 - Produces: el helper interno `createChangeRequest(prisma, projectId, data)`, que hace la transacción del contador y lo reutilizan el PM y el colaborador.
 
-- [ ] **Step 1: Escribe las pruebas** en `changeProposals.test.ts`, con `pm`, `ana` y `luis` colaboradores miembros:
+- [x] **Step 1: Escribe las pruebas** en `changeProposals.test.ts`, con `pm`, `ana` y `luis` colaboradores miembros:
   - `el colaborador propone y queda como solicitante`: POST de Ana `{ title: 'Agregar blog', description: 'Hace falta' }` → 201. El cuerpo tiene exactamente las claves del DTO reducido, con `status: 'PENDING'`. En la base: `requestedById: ana.id` y `requestedBy: 'Ana'`.
   - `el colaborador solo ve sus propuestas`: el PM crea una, Ana propone una y Luis otra. `GET` de Ana → solo la suya. `GET` del PM → las 3, la de Ana con `proposedBy: { id: ana.id, name: 'Ana' }` y la del PM con `proposedBy: null`.
   - `la lista del colaborador no trae impactos`: el PM completa los impactos de la propuesta de Ana con PATCH (`scopeImpact`, `scheduleImpactDays: 3`, `costImpactCents: 5000`). El `GET` de Ana no tiene ninguna de las claves `scopeImpact`, `scheduleImpactDays`, `costImpactCents`, `requestedBy` ni `requestedById`.
@@ -79,16 +79,16 @@
   - `el PM no borra una propuesta del equipo`: DELETE del PM → 409 `change_proposed`, y la fila sigue. DELETE del PM sobre la suya → 200.
   - `proyecto cerrado`: con el proyecto `CLOSED`, el POST de Ana responde con el mismo código que da `closedGuard` en `closedGuard.test.ts`.
   - `el observador sigue sin acceso`: GET y POST → 403.
-- [ ] **Step 2: Ejecuta** `changeProposals.test.ts`. Esperado: FALLAN, con 403 en el GET y el POST de Ana.
-- [ ] **Step 3: Implementa.**
+- [x] **Step 2: Ejecuta** `changeProposals.test.ts`. Esperado: FALLAN, con 403 en el GET y el POST de Ana.
+- [x] **Step 3: Implementa.**
   - Usa `getProjectAccess` con `can.level('changes')`: `write` para el PM y `own` para el colaborador. `none` → 403.
   - `GET` con `own` filtra por `requestedById` y mapea a `toProposalDto`.
   - El `POST` con `own` hace la misma comprobación de claves que `incidents.ts`, luego `proposeChangeSchema` y `requestedBy: user.name`.
   - `include` añade `requestedByUser: { select: { id, name } }`, que `toChangeRequestDto` renombra a `proposedBy`.
   - `DELETE` comprueba `requestedById` después de `findPending`.
   - Actualiza `FINE_GRAINED` y el caso viejo de `changeRequests.test.ts`.
-- [ ] **Step 4: Ejecuta** `changeProposals.test.ts`, `changeRequests.test.ts`, `accessMatrix.test.ts`, `closedGuard.test.ts` y `activityCoverage.test.ts`. Esperado: PASAN.
-- [ ] **Step 5: Commit** `feat: el colaborador propone cambios y ve los suyos`.
+- [x] **Step 4: Ejecuta** `changeProposals.test.ts`, `changeRequests.test.ts`, `accessMatrix.test.ts`, `closedGuard.test.ts` y `activityCoverage.test.ts`. Esperado: PASAN.
+- [x] **Step 5: Commit** `feat: el colaborador propone cambios y ve los suyos`.
 
 ### Task 3: Avisos de propuesta y de decisión
 
@@ -101,7 +101,7 @@
 - Consumes: `notify` con `detail` (Task 1); el `POST` y `decision` (Task 2).
 - Produces: el aviso de la API añade `detail: string`.
 
-- [ ] **Step 1: Escribe las pruebas** en `notifyChanges.test.ts`, con dos PM (`paula`, `pedro`), un PM inactivo y `ana` colaboradora:
+- [x] **Step 1: Escribe las pruebas** en `notifyChanges.test.ts`, con dos PM (`paula`, `pedro`), un PM inactivo y `ana` colaboradora:
   - `proponer avisa a los PM activos`: Ana propone «Agregar blog». Paula y Pedro reciben un aviso `CHANGE_PROPOSED` con `title: 'CR-1 Agregar blog'`, `actorName: 'Ana'` y `entityId` igual al id de la propuesta. El inactivo y Ana no reciben nada.
   - `crear como PM no avisa`: el PM crea una solicitud y no se genera ningún aviso.
   - `decidir avisa a quien propuso`: Paula aprueba la propuesta de Ana. Ana recibe `CHANGE_DECIDED` con `detail: 'APPROVED'` y `title: 'CR-1 Agregar blog'`. Pedro no recibe nada.
@@ -110,13 +110,13 @@
   - `quien propuso ya no está`: Ana queda inactiva y Paula decide. La respuesta es 200 y no se crea ningún aviso.
   - `un fallo del aviso no cambia la respuesta`: con `vi.spyOn(ctx.prisma.notification, 'createMany').mockRejectedValue(...)`, la propuesta responde 201 y la decisión 200.
   - En `notificationRoutes.test.ts`, el aviso listado trae `detail`.
-- [ ] **Step 2: Ejecuta.** Esperado: FALLAN, porque no se crea ningún aviso.
-- [ ] **Step 3: Implementa** las llamadas a `notify`:
+- [x] **Step 2: Ejecuta.** Esperado: FALLAN, porque no se crea ningún aviso.
+- [x] **Step 3: Implementa** las llamadas a `notify`:
   - **Proponer:** `userIds: () => prisma.user.findMany({ where: { role: 'PM', active: true } })` mapeado a ids, con `actorId` y `actorName` de quien propone.
   - **Decidir:** `userIds: cr.requestedById ? [cr.requestedById] : []`, `actorId` del PM y `detail: status`.
   - Añade `detail` al mapeo de `notifications.ts`.
-- [ ] **Step 4: Ejecuta** las dos pruebas de la tarea y `npm test -w server`. Esperado: PASAN.
-- [ ] **Step 5: Commit** `feat: avisos de propuesta y decisión de cambios`.
+- [x] **Step 4: Ejecuta** las dos pruebas de la tarea y `npm test -w server`. Esperado: PASAN.
+- [x] **Step 5: Commit** `feat: avisos de propuesta y decisión de cambios`.
 
 ### Task 4: Interfaz
 
@@ -130,7 +130,7 @@
 **Interfaces:**
 - Consumes: los DTO y rutas de las Tasks 2 y 3.
 
-- [ ] **Step 1: Escribe las pruebas.**
+- [x] **Step 1: Escribe las pruebas.**
   - **`changeProposals.test.tsx`, como `collaborator`:**
     - La pestaña «Control de cambios» aparece.
     - Se ve la lista de sus propuestas con `CR-N`, título y estado (las etiquetas de `LABELS`). Una propuesta decidida muestra la nota y «Decidió Paula».
@@ -144,10 +144,10 @@
   - **`notificationText.test.ts`:**
     - Los tres textos de las Global Constraints.
     - `notificationLink` de los dos tipos → `/proyectos/p1/cambios`.
-- [ ] **Step 2: Ejecuta** `cd client && npx vitest run tests/changeProposals.test.tsx tests/changeRequests.test.tsx tests/notificationText.test.ts`. Esperado: FALLAN.
-- [ ] **Step 3: Implementa.** `MyProposals` usa la misma `queryKey` (`changeRequestsKey`), `Card`, `Modal`, `FormField` y `applyFieldErrors` que el resto de la página. La rama `!isPm` se decide antes de renderizar `DecisionsCard`. Para `describeNotification`, `switch` sobre los dos tipos nuevos, con `n.detail === 'APPROVED'` → «Aprobaron».
-- [ ] **Step 4: Ejecuta** esas pruebas, `npm test -w client` y `npx tsc -b` en `client/`. Esperado: PASAN, sin errores de tipos.
-- [ ] **Step 5: Commit** `feat: pantalla de propuestas de cambio del colaborador`.
+- [x] **Step 2: Ejecuta** `cd client && npx vitest run tests/changeProposals.test.tsx tests/changeRequests.test.tsx tests/notificationText.test.ts`. Esperado: FALLAN.
+- [x] **Step 3: Implementa.** `MyProposals` usa la misma `queryKey` (`changeRequestsKey`), `Card`, `Modal`, `FormField` y `applyFieldErrors` que el resto de la página. La rama `!isPm` se decide antes de renderizar `DecisionsCard`. Para `describeNotification`, `switch` sobre los dos tipos nuevos, con `n.detail === 'APPROVED'` → «Aprobaron».
+- [x] **Step 4: Ejecuta** esas pruebas, `npm test -w client` y `npx tsc -b` en `client/`. Esperado: PASAN, sin errores de tipos.
+- [x] **Step 5: Commit** `feat: pantalla de propuestas de cambio del colaborador`.
 
 ### Task 5: Flujo completo y documentación
 
@@ -156,10 +156,10 @@
 - Modify: `docs/guia-implementacion-pmbok.md` (la fila de la etapa 3 pasa a «F3 ✓, F2 ✓, F4 ✓, C11»; la nota «Hecho» de F4; en F2, «Cambio decidido» queda hecho)
 - Modify: este plan (marcar las casillas)
 
-- [ ] **Step 1: Añade al flujo**, donde Carlos ya ha iniciado sesión:
+- [x] **Step 1: Añade al flujo**, donde Carlos ya ha iniciado sesión:
   1. Carlos abre «Control de cambios», pulsa «Proponer cambio» y envía «Agregar buscador». Ve la propuesta como pendiente.
   2. Después, cuando el PM vuelve a entrar en el flujo, abre la campana y pulsa «Carlos propuso el cambio «CR-N Agregar buscador»». Llega a `/cambios`, ve «Propuesta por Carlos» y la aprueba con una nota.
   3. Si el flujo no vuelve al PM después de Carlos, coloca los pasos donde haya un cambio de sesión. No añadas inicios de sesión nuevos.
-- [ ] **Step 2: Ejecuta** `npm run build` y `TEST_DATABASE_URL=postgresql://pm:pm@localhost:5433/postgres npm run test:e2e`. Esperado: PASA.
-- [ ] **Step 3: Actualiza** la guía y el plan, y ejecuta `npm test`. Esperado: shared, server y client PASAN.
-- [ ] **Step 4: Commits** `test: propuesta de cambio en el flujo principal` y `docs: marca F4 en la guía y las tareas del plan`.
+- [x] **Step 2: Ejecuta** `npm run build` y `TEST_DATABASE_URL=postgresql://pm:pm@localhost:5433/postgres npm run test:e2e`. Esperado: PASA.
+- [x] **Step 3: Actualiza** la guía y el plan, y ejecuta `npm test`. Esperado: shared, server y client PASAN.
+- [x] **Step 4: Commits** `test: propuesta de cambio en el flujo principal` y `docs: marca F4 en la guía y las tareas del plan`.

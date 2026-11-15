@@ -65,7 +65,7 @@ Se añaden límites con `.max()` en `shared/src/schemas.ts`, en los esquemas de 
 
 - Crear o editar un hito con una fecha fuera de las fechas del proyecto responde 400 en `dueDate` con `outsideProjectMessage(project)`. Es la misma regla que usan las tareas con `isWithinProject`. Se hace con la opción `validate` del registro de hitos en `registers.ts`.
 - Si el proyecto no tiene fechas, el hito no se limita.
-- Cambiar las fechas del proyecto no rechaza hitos que queden fuera, igual que hoy pasa con las tareas.
+- Cambiar las fechas del proyecto rechaza el cambio si algún hito que hoy está dentro quedaría fuera, igual que ya pasa con las tareas («1 hito quedaría fuera del proyecto. Ajusta su fecha primero.»). Así la fecha de un hito siempre cae dentro del proyecto.
 - **Sugerencia de «Alcanzado»:** un hito pendiente lleva `readyToReach: true` cuando cumple estas tres condiciones:
   - tiene al menos una tarea o un entregable;
   - todas sus tareas están en «Hecha»;
@@ -83,10 +83,11 @@ Se añaden límites con `.max()` en `shared/src/schemas.ts`, en los esquemas de 
 
 El resultado se redondea a entero.
 
-Se usa en los tres lugares que hoy llaman a `averageProgress`:
+Se usa en todos los lugares que hoy calculan el avance del proyecto:
 
 - los indicadores del resumen (`computeIndicators`);
-- `summarizeProject`, que alimenta el panel, la salud y las estadísticas de la lista de proyectos.
+- `summarizeProject`, que alimenta el panel, la salud y las estadísticas de la lista de proyectos;
+- la lista de proyectos (`GET /api/projects`), que hoy promedia con `groupBy` en la base y también llega a colaboradores y observadores.
 
 Las consultas de esos lugares añaden los campos que faltan: costo y fechas de cada tarea.
 
@@ -111,7 +112,7 @@ El número que se envía es el mismo para todos los perfiles. Los costos nunca s
 
 ### C8. Aplicar cambios aprobados
 
-- **Estado nuevo:** `'APPLIED'` en `CHANGE_STATUS`, con su etiqueta «Aplicado» en `LABELS`.
+- **Estado nuevo:** `'APPLIED'` en `CHANGE_STATUS`, con su etiqueta «Aplicada» en `LABELS`, en femenino como «Aprobada» y «Rechazada».
 - **Campos nuevos:** una migración añade `appliedAt DateTime?` y `appliedById String?` a `ChangeRequest`. El usuario es una relación con `onDelete: SetNull`.
 - **Ruta nueva:** `POST /api/projects/:id/change-requests/:crId/apply`. Es solo para PM y queda cubierta por `closedGuard`. El cuerpo se valida con `applyChangeSchema`:
   - `endDate?: 'YYYY-MM-DD' | null`
@@ -122,9 +123,10 @@ El número que se envía es el mismo para todos los perfiles. Los costos nunca s
   - Si la solicitud no está aprobada, responde 409 `change_not_approved` con «Solo se aplica un cambio aprobado». Esto incluye una ya aplicada.
   - Los campos que vienen actualizan el proyecto con las mismas validaciones que la edición del proyecto (por ejemplo, la fecha de fin no puede quedar antes del inicio).
   - Con `baseline: true` se fija una nueva línea base que cita la solicitud. El motivo por defecto es «CR-<número> <título>». Se reutiliza la lógica de `POST /baselines`, extraída a una función que reciben ambas rutas. Si la línea base no se puede fijar, por ejemplo porque no hay tareas con costo, responde el mismo error que esa ruta y no se aplica nada.
+  - `POST /baselines` acepta citar una solicitud aprobada o aplicada, para que el PM pueda fijar la línea base después de aplicar sin ella. El panel de línea base ofrece ambas.
   - Todo ocurre en una sola transacción: proyecto, línea base, y la solicitud pasa a `APPLIED` con `appliedAt` y `appliedById`.
   - La bitácora de actividad lo registra por su middleware, como cualquier escritura.
-- **Lo que ve el colaborador:** sus propuestas pueden mostrar el estado «Aplicado». La lista del colaborador sigue sin impactos ni las claves ocultas que ya prueba `changeProposals.test.ts`, y `appliedAt` y `appliedById` se suman a esas claves ocultas.
+- **Lo que ve el colaborador:** sus propuestas pueden mostrar el estado «Aplicada». La lista del colaborador sigue sin impactos ni las claves ocultas que ya prueba `changeProposals.test.ts`, y `appliedAt` y `appliedById` se suman a esas claves ocultas.
 - **Interfaz** (`client/src/pages/project/ChangeRequests.tsx`): una solicitud aprobada muestra el botón «Aplicar». La ventana contiene:
   - Nueva fecha de fin: la actual más `scheduleImpactDays`. Si el proyecto no tiene fecha de fin, o el impacto está vacío, se deja la actual.
   - Nuevo presupuesto: el actual más `costImpactCents`, o el actual si está vacío.
@@ -166,7 +168,7 @@ El número que se envía es el mismo para todos los perfiles. Los costos nunca s
 - **El avance ponderado se envía también al colaborador.** No revela costos, pero en un proyecto de dos tareas permitiría deducir cuál de las dos cuesta más. Lo considero aceptable; la alternativa sería ponderar siempre por duración y perder la regla de costo que pide la guía.
 - **El gasto fuera de la línea base sigue contando en el costo real** y solo se muestra aparte. El dinero ya se gastó; sacarlo del CPI escondería un sobrecosto.
 - **Si no hay gasto, el EAC se queda en el presupuesto (BAC).** No se usa AC + (BAC − EV) en ese caso, porque daría un pronóstico menor que el presupuesto sin haber gastado nada.
-- **Aplicar un cambio sin modificar ningún campo es válido.** El PM puede aplicar un cambio que no mueve plazo ni presupuesto, y la solicitud queda «Aplicado».
+- **Aplicar un cambio sin modificar ningún campo es válido.** El PM puede aplicar un cambio que no mueve plazo ni presupuesto, y la solicitud queda «Aplicada».
 - **Una solicitud aplicada no se puede deshacer.** Corregir un error es una nueva solicitud de cambio, como pide el control de cambios.
 
 ## Lo que queda al constructor

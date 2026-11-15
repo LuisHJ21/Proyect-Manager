@@ -392,6 +392,7 @@ export const updateDeliverableSchema = z.object({
   milestoneId: optionalId,
   dueDate: optionalDateSchema,
   status: z.enum(DELIVERABLE_STATUS).optional(),
+  version: versionField,
 });
 const criterionText = required('Escribe el criterio').max(300, 'Máximo 300 caracteres');
 export const criterionSchema = z.object({ text: criterionText });

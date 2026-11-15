@@ -45,7 +45,7 @@ export function deliverableReviewRoutes(app: App) {
           createdAt: c.var.deps.now(),
         },
       }),
-      prisma.deliverable.update({ where: { id: deliverable.id }, data: { status: input.outcome } }),
+      prisma.deliverable.update({ where: { id: deliverable.id }, data: { status: input.outcome, version: { increment: 1 } } }),
     ]);
     return c.json(await loadDeliverableDetail(prisma, deliverable.id, c.var.deps.today()));
   });

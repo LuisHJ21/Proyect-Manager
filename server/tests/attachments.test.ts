@@ -234,7 +234,7 @@ describe('anexos', () => {
     const { attachment } = (await request(pm, projectUrl())).json();
     const base = `/api/projects/${project.id}/deliverables`;
     const id = (await pm.post(base, { name: 'Portal', criteria: ['Funciona'] })).json().id;
-    await pm.patch(`${base}/${id}`, { status: 'IN_REVIEW' });
+    await pm.patch(`${base}/${id}`, { status: 'IN_REVIEW', version: 1 });
     const res = await pm.post(`${base}/${id}/reviews`, { reviewedOn: '2026-11-06', outcome: 'REJECTED', note: 'Falta', attachmentId: attachment.id });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.fields.attachmentId).toBeTruthy();

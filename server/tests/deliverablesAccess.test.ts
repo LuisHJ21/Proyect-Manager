@@ -2,6 +2,8 @@ import type { Project, User } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
+const deliverableVersion = async (ctx: TestCtx, id: string) => (await ctx.prisma.deliverable.findUniqueOrThrow({ where: { id } })).version;
+
 describe('entregables para colaborador y observador', () => {
   let ctx: TestCtx;
   let pm: User;
@@ -19,7 +21,7 @@ describe('entregables para colaborador y observador', () => {
     project = await ctx.makeProject({ members: [ana, olga] });
     const stakeholder = await ctx.prisma.stakeholder.create({ data: { projectId: project.id, name: 'María Pérez' } });
     id = (await ctx.as(pm).post(base(), { name: 'Portal', criteria: ['Funciona en móvil'] })).json().id;
-    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW' });
+    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW', version: await deliverableVersion(ctx, id) });
     const review = await ctx.as(pm).post(`${base()}/${id}/reviews`, {
       outcome: 'REJECTED',
       note: 'Falta el manual',

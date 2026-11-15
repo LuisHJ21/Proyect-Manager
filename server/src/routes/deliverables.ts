@@ -12,7 +12,7 @@ import {
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, readQuery, type App, type Ctx } from '../http';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
-import { AppError, fieldError, forbidden, notFound } from '../errors';
+import { AppError, editConflict, fieldError, forbidden, notFound } from '../errors';
 import { sanitizeRichText } from '../richText';
 
 type Params = { id: string; did: string };
@@ -39,6 +39,7 @@ export function toDeliverableDto(d: DeliverableWithAll, today: string, detail: b
     id: d.id,
     number: d.number,
     name: d.name,
+    version: d.version,
     status: d.status,
     dueDate: d.dueDate,
     overdue: isDeliverableOverdue(d, today),
@@ -158,7 +159,7 @@ export function deliverableRoutes(app: App) {
     const { prisma } = c.var.deps;
     const project = await requireProjectAccess(c, c.req.param('id'), 'deliverables', 'write');
     const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
-    const input = updateDeliverableSchema.parse(await readBody(c));
+    const { version, ...input } = updateDeliverableSchema.parse(await readBody(c));
     if (input.status === 'ACCEPTED' || input.status === 'REJECTED') {
       throw fieldError('status', 'Para aceptar o rechazar registra una revisión');
     }
@@ -166,10 +167,11 @@ export function deliverableRoutes(app: App) {
       throw new AppError(409, 'invalid_transition', 'Ese cambio de estado no está permitido');
     }
     await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
-    await prisma.deliverable.update({
-      where: { id: deliverable.id },
-      data: { ...input, ...(input.description !== undefined ? { description: sanitizeRichText(input.description) } : {}) },
+    const { count } = await prisma.deliverable.updateMany({
+      where: { id: deliverable.id, version },
+      data: { ...input, ...(input.description !== undefined ? { description: sanitizeRichText(input.description) } : {}), version: { increment: 1 } },
     });
+    if (count === 0) throw editConflict();
     return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c)));
   });
 

@@ -2,6 +2,8 @@ import type { Project, User } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
+const deliverableVersion = async (ctx: TestCtx, id: string) => (await ctx.prisma.deliverable.findUniqueOrThrow({ where: { id } })).version;
+
 describe('contador de entregables', () => {
   let ctx: TestCtx;
   let pm: User;
@@ -84,26 +86,26 @@ describe('API de entregables', () => {
     expect(res.statusCode).toBe(400);
     expect(res.json().error.fields.milestoneId).toBeTruthy();
     const { id } = await create();
-    expect((await ctx.as(pm).patch(`${base()}/${id}`, { milestoneId: foreign.id })).json().error.fields.milestoneId).toBeTruthy();
+    expect((await ctx.as(pm).patch(`${base()}/${id}`, { milestoneId: foreign.id, version: await deliverableVersion(ctx, id) })).json().error.fields.milestoneId).toBeTruthy();
   });
 
   it('transiciones', async () => {
     const { id } = await create();
-    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW' })).json().status).toBe('IN_REVIEW');
-    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'PENDING' })).json().status).toBe('PENDING');
-    const direct = await ctx.as(pm).patch(`${base()}/${id}`, { status: 'ACCEPTED' });
+    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW', version: await deliverableVersion(ctx, id) })).json().status).toBe('IN_REVIEW');
+    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'PENDING', version: await deliverableVersion(ctx, id) })).json().status).toBe('PENDING');
+    const direct = await ctx.as(pm).patch(`${base()}/${id}`, { status: 'ACCEPTED', version: await deliverableVersion(ctx, id) });
     expect(direct.statusCode).toBe(400);
     expect(direct.json().error.fields.status).toBeTruthy();
     await force(id, 'ACCEPTED');
-    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW' })).statusCode).toBe(409);
-    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'PENDING' })).statusCode).toBe(200);
+    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW', version: await deliverableVersion(ctx, id) })).statusCode).toBe(409);
+    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'PENDING', version: await deliverableVersion(ctx, id) })).statusCode).toBe(200);
   });
 
   it('vencido y filtro', async () => {
     const late = await create({ name: 'Tarde', dueDate: '2026-11-10' });
     expect(late.overdue).toBe(true);
     const other = await create({ name: 'Otro' });
-    await ctx.as(pm).patch(`${base()}/${other.id}`, { status: 'IN_REVIEW' });
+    await ctx.as(pm).patch(`${base()}/${other.id}`, { status: 'IN_REVIEW', version: await deliverableVersion(ctx, other.id) });
     const names = async (q: string) => (await ctx.as(pm).get(`${base()}${q}`)).json().map((d: { name: string }) => d.name);
     expect(await names('')).toEqual(['Tarde', 'Otro']);
     expect(await names('?status=IN_REVIEW')).toEqual(['Otro']);
@@ -147,7 +149,7 @@ describe('API de entregables', () => {
     expect((await ctx.as(pm).patch(`${base()}/${id}/criteria/${cid}`, { met: true })).statusCode).toBe(409);
     expect((await ctx.as(pm).delete(`${base()}/${id}/criteria/${cid}`)).statusCode).toBe(409);
     expect((await ctx.as(pm).put(`${base()}/${id}/criteria/order`, { ids: [cid] })).statusCode).toBe(409);
-    expect((await ctx.as(pm).patch(`${base()}/${id}`, { name: 'Nuevo' })).statusCode).toBe(200);
+    expect((await ctx.as(pm).patch(`${base()}/${id}`, { name: 'Nuevo', version: await deliverableVersion(ctx, id) })).statusCode).toBe(200);
   });
 
   it('borrar el hito deja el enlace vacío', async () => {
@@ -156,5 +158,72 @@ describe('API de entregables', () => {
     expect(created.milestone).toEqual({ id: milestone.id, name: 'Lanzamiento' });
     expect((await ctx.as(pm).delete(`/api/projects/${project.id}/milestones/${milestone.id}`)).statusCode).toBe(200);
     expect((await detail(created.id)).milestone).toBeNull();
+  });
+});
+
+describe('versión del entregable', () => {
+  let ctx: TestCtx;
+  let pm: User;
+  let project: Project;
+  const conflict = 'Otra persona guardó cambios en este registro mientras editabas';
+  const base = () => `/api/projects/${project.id}/deliverables`;
+  const create = async () => (await ctx.as(pm).post(base(), { name: 'Portal web' })).json();
+  const versionOf = async (id: string) => (await ctx.prisma.deliverable.findUniqueOrThrow({ where: { id } })).version;
+
+  beforeEach(async () => {
+    ctx = await createTestApp();
+    ctx.clock.set('2026-11-11T10:00:00');
+    pm = await ctx.makeUser({ role: 'PM', name: 'Paula' });
+    project = await ctx.makeProject();
+  });
+  afterEach(() => ctx.close());
+
+  it('editar con la versión actual la sube; una vieja responde 409 sin cambios', async () => {
+    const { id, version } = await create();
+    expect(version).toBe(1);
+    const ok = await ctx.as(pm).patch(`${base()}/${id}`, { name: 'Portal', version: 1 });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toMatchObject({ name: 'Portal', version: 2 });
+    const stale = await ctx.as(pm).patch(`${base()}/${id}`, { name: 'Otro', version: 1 });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error).toMatchObject({ code: 'edit_conflict', message: conflict });
+    expect((await ctx.prisma.deliverable.findUniqueOrThrow({ where: { id } })).name).toBe('Portal');
+  });
+
+  it('la lista trae la versión', async () => {
+    await create();
+    expect((await ctx.as(pm).get(base())).json()[0].version).toBe(1);
+  });
+
+  it('sin versión responde 400 en el campo version', async () => {
+    const { id } = await create();
+    const res = await ctx.as(pm).patch(`${base()}/${id}`, { name: 'X' });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.fields.version).toBe('Recarga la página para editar este registro');
+  });
+
+  it('cambiar el estado con versión vieja responde 409', async () => {
+    const { id } = await create();
+    await ctx.as(pm).patch(`${base()}/${id}`, { description: 'Algo', version: 1 });
+    const res = await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW', version: 1 });
+    expect(res.statusCode).toBe(409);
+    expect((await ctx.prisma.deliverable.findUniqueOrThrow({ where: { id } })).status).toBe('PENDING');
+  });
+
+  it('un estado no permitido con versión vieja sigue respondiendo el error de estado', async () => {
+    const { id } = await create();
+    await ctx.as(pm).patch(`${base()}/${id}`, { name: 'Portal', version: 1 });
+    const res = await ctx.as(pm).patch(`${base()}/${id}`, { status: 'ACCEPTED', version: 1 });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.fields.status).toBe('Para aceptar o rechazar registra una revisión');
+  });
+
+  it('registrar una revisión sube la versión', async () => {
+    const { id } = await create();
+    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW', version: 1 });
+    const res = await ctx.as(pm).post(`${base()}/${id}/reviews`, { reviewedOn: '2026-11-11', outcome: 'REJECTED', note: 'Faltan pruebas' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().version).toBe(3);
+    expect(await versionOf(id)).toBe(3);
   });
 });

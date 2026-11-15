@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
+const deliverableVersion = async (ctx: TestCtx, id: string) => (await ctx.prisma.deliverable.findUniqueOrThrow({ where: { id } })).version;
+
 describe('revisiones de entregables', () => {
   let ctx: TestCtx;
   let pm: User;
@@ -34,12 +36,12 @@ describe('revisiones de entregables', () => {
     stakeholder = await ctx.prisma.stakeholder.create({ data: { projectId: project.id, name: 'Cliente SA' } });
     attachment = await makeAttachment(project.id, 'acta.pdf');
     id = (await ctx.as(pm).post(base(), { name: 'Portal', criteria: ['Funciona en móvil', 'Manual'] })).json().id;
-    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW' });
+    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW', version: await deliverableVersion(ctx, id) });
   });
   afterEach(() => ctx.close());
 
   it('solo en revisión', async () => {
-    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'PENDING' });
+    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'PENDING', version: await deliverableVersion(ctx, id) });
     expect((await review({ outcome: 'REJECTED', note: 'X' })).statusCode).toBe(409);
   });
 
@@ -109,7 +111,7 @@ describe('revisiones de entregables', () => {
   it('reabrir conserva el historial', async () => {
     await markAll();
     await review({ outcome: 'ACCEPTED' });
-    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'PENDING' })).statusCode).toBe(200);
+    expect((await ctx.as(pm).patch(`${base()}/${id}`, { status: 'PENDING', version: await deliverableVersion(ctx, id) })).statusCode).toBe(200);
     expect((await detail()).reviews).toHaveLength(1);
     expect((await ctx.as(pm).post(`${base()}/${id}/criteria`, { text: 'Nuevo' })).statusCode).toBe(200);
   });
@@ -117,7 +119,7 @@ describe('revisiones de entregables', () => {
   it('orden del historial', async () => {
     await review({ outcome: 'REJECTED', note: 'Falta' });
     ctx.clock.set('2026-11-11T11:00:00');
-    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW' });
+    await ctx.as(pm).patch(`${base()}/${id}`, { status: 'IN_REVIEW', version: await deliverableVersion(ctx, id) });
     await markAll();
     await review({ outcome: 'ACCEPTED' });
     expect((await detail()).reviews.map((r: { outcome: string }) => r.outcome)).toEqual(['ACCEPTED', 'REJECTED']);

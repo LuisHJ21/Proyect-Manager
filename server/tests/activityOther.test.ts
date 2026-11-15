@@ -2,6 +2,8 @@ import type { Project, User } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, uploadFile, type TestCtx } from './helpers/testApp';
 
+const deliverableVersion = async (ctx: TestCtx, id: string) => (await ctx.prisma.deliverable.findUniqueOrThrow({ where: { id } })).version;
+
 describe('bitácora: entregables, RACI, miembros, dependencias, anexos y acta', () => {
   let ctx: TestCtx;
   let pm: User;
@@ -35,7 +37,7 @@ describe('bitácora: entregables, RACI, miembros, dependencias, anexos y acta', 
     expect(await last()).toMatchObject({ action: 'updated', entityLabel: 'Portal', changes: [{ field: 'criteriaOrder' }] });
     // Aceptar exige todos los criterios cumplidos.
     await ctx.as(pm).patch(`${p()}/deliverables/${created.id}/criteria/${ids[0]}`, { met: true });
-    await ctx.as(pm).patch(`${p()}/deliverables/${created.id}`, { status: 'IN_REVIEW' });
+    await ctx.as(pm).patch(`${p()}/deliverables/${created.id}`, { status: 'IN_REVIEW', version: await deliverableVersion(ctx, created.id) });
     expect((await last()).changes).toContainEqual({ field: 'status', from: 'PENDING', to: 'IN_REVIEW' });
     const review = await ctx.as(pm).post(`${p()}/deliverables/${created.id}/reviews`, { outcome: 'ACCEPTED', reviewedOn: '2026-11-10' });
     expect(review.statusCode).toBe(200);

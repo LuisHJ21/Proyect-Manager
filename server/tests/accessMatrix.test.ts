@@ -121,6 +121,7 @@ const FINE_GRAINED = new Set([
   'PATCH /api/tasks/:id/steps/:stepId',
   'POST /api/tasks/:id/attachments',
   'POST /api/projects/:id/incidents',
+  'POST /api/projects/:id/change-requests',
   'PATCH /api/projects/:id/incidents/:incidentId',
   'PATCH /api/projects/:id/risks/:itemId',
 ]);

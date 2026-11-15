@@ -1,17 +1,45 @@
-import { changeRequestSchema, decisionSchema, updateChangeRequestSchema } from '@pm/shared';
-import type { ChangeRequest, PrismaClient } from '@prisma/client';
+import { changeRequestSchema, decisionSchema, proposeChangeSchema, updateChangeRequestSchema } from '@pm/shared';
+import type { ChangeRequest, Prisma, PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
-import { requireProjectAccess } from '../auth/access';
+import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
-import { AppError, notFound } from '../errors';
+import { AppError, forbidden, notFound } from '../errors';
 
 type ItemParams = { id: string; crId: string };
 
-const decidedByInclude = { decidedBy: { select: { id: true, name: true } } } as const;
+type Person = { id: string; name: string };
+type ChangeRequestRow = ChangeRequest & { decidedBy: Person | null; requestedByUser: Person | null };
 
-export function toChangeRequestDto(cr: ChangeRequest & { decidedBy: { id: string; name: string } | null }) {
-  const { projectId: _projectId, decidedById: _decidedById, costImpactCents, ...fields } = cr;
-  return { ...fields, costImpactCents: costImpactCents === null ? null : Number(costImpactCents) };
+const decidedByInclude = {
+  decidedBy: { select: { id: true, name: true } },
+  requestedByUser: { select: { id: true, name: true } },
+} as const;
+
+/** Vista del PM: todo, más quién la propuso desde el equipo. */
+export function toChangeRequestDto(cr: ChangeRequestRow) {
+  const { projectId: _projectId, decidedById: _decidedById, requestedById: _requestedById, requestedByUser, costImpactCents, ...fields } = cr;
+  return { ...fields, proposedBy: requestedByUser, costImpactCents: costImpactCents === null ? null : Number(costImpactCents) };
+}
+
+/** Vista de quien propuso: el estado y la decisión, sin impactos ni solicitante. */
+function toProposalDto(cr: ChangeRequestRow) {
+  const { id, number, title, description, status, decisionNote, decidedAt, decidedBy, createdAt } = cr;
+  return { id, number, title, description, status, decisionNote, decidedAt, decidedBy, createdAt };
+}
+
+const PROPOSAL_FIELDS = ['title', 'description'];
+
+/** Crea la solicitud con el siguiente número del proyecto. */
+function createChangeRequest(prisma: PrismaClient, projectId: string, data: Omit<Prisma.ChangeRequestUncheckedCreateInput, 'projectId' | 'number'>) {
+  return prisma.$transaction(async (tx) => {
+    // El contador del proyecto evita reutilizar el número de una solicitud borrada.
+    const { lastChangeNumber } = await tx.project.update({
+      where: { id: projectId },
+      data: { lastChangeNumber: { increment: 1 } },
+      select: { lastChangeNumber: true },
+    });
+    return tx.changeRequest.create({ data: { ...data, number: lastChangeNumber, projectId }, include: decidedByInclude });
+  });
 }
 
 export function changeRequestRoutes(app: App) {
@@ -26,29 +54,37 @@ export function changeRequestRoutes(app: App) {
 
   const toBigInt = (value: number | null | undefined) => (value === undefined ? undefined : value === null ? null : BigInt(value));
 
+  /** `write` para el PM; `own` para quien solo propone y ve las suyas. */
+  const accessOf = async (c: Ctx) => {
+    const { project, can } = await getProjectAccess(c, c.req.param('id')!);
+    const level = can.level('changes');
+    if (level !== 'write' && level !== 'own') throw forbidden();
+    return { project, own: level === 'own' };
+  };
+
   app.get(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'read');
-    const items = await prisma.changeRequest.findMany({ where: { projectId: project.id }, include: decidedByInclude, orderBy: { number: 'desc' } });
-    return c.json(items.map(toChangeRequestDto));
+    const { project, own } = await accessOf(c);
+    const where = { projectId: project.id, ...(own ? { requestedById: requireUser(c).id } : {}) };
+    const items = await prisma.changeRequest.findMany({ where, include: decidedByInclude, orderBy: { number: 'desc' } });
+    return c.json(items.map(own ? toProposalDto : toChangeRequestDto));
   });
 
   app.post(base, async (c) => {
     const { prisma } = c.var.deps;
-    const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'write');
-    const { costImpactCents, ...input } = changeRequestSchema.parse(await readBody(c));
-    const created = await prisma.$transaction(async (tx) => {
-      // El contador del proyecto evita reutilizar el número de una solicitud borrada.
-      const { lastChangeNumber } = await tx.project.update({
-        where: { id: project.id },
-        data: { lastChangeNumber: { increment: 1 } },
-        select: { lastChangeNumber: true },
-      });
-      return tx.changeRequest.create({
-        data: { ...input, costImpactCents: toBigInt(costImpactCents), number: lastChangeNumber, projectId: project.id },
-        include: decidedByInclude,
-      });
-    });
+    const { project, own } = await accessOf(c);
+    const body = await readBody(c);
+    if (own) {
+      if (body && typeof body === 'object' && Object.keys(body).some((k) => !PROPOSAL_FIELDS.includes(k))) {
+        throw forbidden('Solo el Project Manager puede fijar impactos o solicitante');
+      }
+      const user = requireUser(c);
+      const input = proposeChangeSchema.parse(body);
+      const created = await createChangeRequest(prisma, project.id, { ...input, requestedById: user.id, requestedBy: user.name });
+      return c.json(toProposalDto(created), 201);
+    }
+    const { costImpactCents, ...input } = changeRequestSchema.parse(body);
+    const created = await createChangeRequest(prisma, project.id, { ...input, costImpactCents: toBigInt(costImpactCents) });
     return c.json(toChangeRequestDto(created), 201);
   });
 
@@ -69,6 +105,7 @@ export function changeRequestRoutes(app: App) {
     const { prisma } = c.var.deps;
     const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'write');
     const cr = await findPending(c.var.deps.prisma, project.id, c.req.param('crId'));
+    if (cr.requestedById) throw new AppError(409, 'change_proposed', 'Una propuesta del equipo no se borra: recházala con una nota');
     await prisma.changeRequest.delete({ where: { id: cr.id } });
     return c.json({ ok: true });
   });

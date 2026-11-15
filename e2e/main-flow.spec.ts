@@ -208,6 +208,26 @@ test('flujo principal', async ({ browser }) => {
   await expect(carlos).toHaveURL(/\/resumen$/);
   await expect(carlos.getByText('Presupuesto planificado')).toHaveCount(0);
 
+  // F4: Carlos propone un cambio; el PM recibe el aviso, lo abre y lo aprueba.
+  await carlos.goto(`${projectUrl}/cambios`);
+  await carlos.getByRole('button', { name: 'Proponer cambio' }).click();
+  const proposeDialog = carlos.getByRole('dialog');
+  await proposeDialog.getByLabel('Título').fill('Agregar buscador');
+  await proposeDialog.getByLabel('Descripción').fill('Para encontrar páginas');
+  await proposeDialog.getByRole('button', { name: 'Enviar' }).click();
+  await expect(carlos.getByRole('listitem').filter({ hasText: 'Agregar buscador' })).toContainText('Pendiente');
+  await pm.goto(`${projectUrl}/resumen`);
+  await pm.getByRole('button', { name: /^Avisos, \d+ sin leer$/ }).click();
+  await pm.getByRole('button', { name: /Carlos propuso el cambio «CR-\d+ Agregar buscador»/ }).click();
+  await expect(pm).toHaveURL(/\/cambios$/);
+  await expect(pm.getByText('Propuesta por Carlos')).toBeVisible();
+  await pm.getByRole('button', { name: /^Aprobar CR-\d+$/ }).click();
+  await pm.getByRole('dialog').getByLabel('Nota de la decisión').fill('De acuerdo');
+  await pm.getByRole('dialog').getByRole('button', { name: 'Aprobar' }).click();
+  await expect(pm.getByRole('dialog')).toHaveCount(0);
+  await carlos.reload();
+  await expect(carlos.getByRole('listitem').filter({ hasText: 'Agregar buscador' })).toContainText('Aprobada');
+
   // 5. Beatriz termina su tarea y adjunta un PDF.
   const beatriz = await signInFirstTime(browser, 'beatriz@x.com');
   await beatriz.getByRole('link', { name: 'Diseño' }).click();

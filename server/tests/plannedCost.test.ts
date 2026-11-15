@@ -33,7 +33,7 @@ describe('costo planeado y gastos por tarea', () => {
     const created = await ctx.as(pm).post(`/api/projects/${project.id}/tasks`, { title: 'Nueva', plannedCostCents: 500000 });
     expect(created.statusCode).toBe(201);
     expect(created.json().plannedCostCents).toBe(500000);
-    const patched = await ctx.as(pm).patch(`/api/tasks/${created.json().id}`, { plannedCostCents: 750000 });
+    const patched = await ctx.as(pm).patch(`/api/tasks/${created.json().id}`, { plannedCostCents: 750000, version: 1 });
     expect(patched.json().plannedCostCents).toBe(750000);
   });
 

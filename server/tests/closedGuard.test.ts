@@ -66,9 +66,9 @@ describe('guardia de solo lectura', () => {
 
   it('sin acceso, la respuesta de siempre', async () => {
     const outsider = await ctx.makeUser({ role: 'COLLABORATOR' });
-    expect((await ctx.as(outsider).patch(`/api/tasks/${task.id}`, { title: 'X' })).statusCode).toBe(404);
+    expect((await ctx.as(outsider).patch(`/api/tasks/${task.id}`, { title: 'X', version: 1 })).statusCode).toBe(404);
     expect((await ctx.as(outsider).post(`/api/projects/${project.id}/tasks`, { title: 'X' })).statusCode).toBe(404);
-    expect((await ctx.anon.patch(`/api/tasks/${task.id}`, { title: 'X' })).statusCode).toBe(401);
+    expect((await ctx.anon.patch(`/api/tasks/${task.id}`, { title: 'X', version: 1 })).statusCode).toBe(401);
     expect((await ctx.as(pm).patch('/api/tasks/no-existe', { title: 'X' })).statusCode).toBe(404);
   });
 
@@ -91,6 +91,6 @@ describe('guardia de solo lectura', () => {
 
   it('un proyecto abierto no se bloquea', async () => {
     await setStatus('EXECUTING');
-    expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Nuevo' })).statusCode).toBe(200);
+    expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Nuevo', version: 1 })).statusCode).toBe(200);
   });
 });

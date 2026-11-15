@@ -47,7 +47,7 @@ describe('bitácora: registro automático de escrituras', () => {
   });
 
   it('un campo no vigilado aparece sin valores', async () => {
-    await ctx.as(pm).patch(`/api/tasks/${task.id}`, { description: '<p>Nueva</p>' });
+    await ctx.as(pm).patch(`/api/tasks/${task.id}`, { description: '<p>Nueva</p>', version: 1 });
     expect(await last()).toMatchObject({ action: 'updated', changes: [{ field: 'description' }] });
   });
 
@@ -90,13 +90,13 @@ describe('bitácora: registro automático de escrituras', () => {
     expect((await ctx.as(pm).post(`/api/projects/${project.id}/tasks`, { title: '' })).statusCode).toBe(400);
     expect((await ctx.as(olga).patch(`/api/tasks/${task.id}/progress`, { status: 'DONE' })).statusCode).toBe(403);
     await ctx.prisma.project.update({ where: { id: project.id }, data: { status: 'CLOSED' } });
-    expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'X' })).statusCode).toBe(409);
+    expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'X', version: 1 })).statusCode).toBe(409);
     expect(await logs()).toHaveLength(before);
   });
 
   it('si no se puede registrar, la escritura responde igual', async () => {
     await ctx.prisma.$executeRawUnsafe('DROP TABLE "ActivityLog"');
-    const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Obra' });
+    const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Obra', version: 1 });
     expect(res.statusCode).toBe(200);
     expect(res.json().title).toBe('Obra');
   });

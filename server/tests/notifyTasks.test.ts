@@ -31,7 +31,7 @@ describe('avisos de tareas', () => {
 
   it('editar responsables solo avisa a los nuevos', async () => {
     const task = await ctx.makeTask(project.id, { title: 'Diseño', assignees: [ana] });
-    expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [ana.id, luis.id] })).statusCode).toBe(200);
+    expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [ana.id, luis.id], version: 1 })).statusCode).toBe(200);
     expect(await of(luis)).toHaveLength(1);
     expect(await of(ana)).toHaveLength(0);
   });

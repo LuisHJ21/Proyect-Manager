@@ -5,7 +5,7 @@ export type { ActivityValue };
 /** Lo que la bitácora sabe de un elemento en un momento: su nombre y sus valores ya legibles. */
 export type Snapshot = { label: string; values: Record<string, ActivityValue> };
 
-const IGNORED = new Set(['id', 'projectId', 'createdAt', 'updatedAt']);
+const IGNORED = new Set(['id', 'projectId', 'createdAt', 'updatedAt', 'version']);
 
 /** Normaliza un valor de Prisma para guardarlo en JSON y compararlo. */
 export function toActivityValue(value: unknown): ActivityValue {

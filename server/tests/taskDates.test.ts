@@ -40,14 +40,14 @@ describe('fechas de tarea dentro del proyecto', () => {
 
   it('una tarea ya fuera se puede renombrar', async () => {
     const task = await ctx.makeTask(project.id, { dueDate: '2027-05-01' });
-    const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Nuevo', dueDate: '2027-05-01' });
+    const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Nuevo', dueDate: '2027-05-01', version: 1 });
     expect(res.statusCode).toBe(200);
     expect(res.json().title).toBe('Nuevo');
   });
 
   it('PATCH rechaza mover una fecha fuera y no guarda nada', async () => {
     const task = await ctx.makeTask(project.id, { title: 'Original', dueDate: '2026-11-10' });
-    const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Cambiado', dueDate: '2026-12-10' });
+    const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Cambiado', dueDate: '2026-12-10', version: 1 });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.fields.dueDate).toBeTruthy();
     expect((await ctx.prisma.task.findUniqueOrThrow({ where: { id: task.id } })).title).toBe('Original');

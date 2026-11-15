@@ -71,7 +71,7 @@ describe('correcciones de la revisión', () => {
       const inactive = await ctx.makeUser({ role: 'COLLABORATOR', active: false });
       const project = await ctx.makeProject({ members: [inactive] });
       const task = await ctx.makeTask(project.id, { assignees: [inactive] });
-      const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Nuevo', assigneeIds: [inactive.id] });
+      const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Nuevo', assigneeIds: [inactive.id], version: 1 });
       expect(res.statusCode).toBe(200);
       expect(res.json().title).toBe('Nuevo');
       expect(res.json().assignees.map((a: { id: string }) => a.id)).toEqual([inactive.id]);
@@ -91,7 +91,7 @@ describe('correcciones de la revisión', () => {
       const outsider = await ctx.makeUser({ role: 'COLLABORATOR' });
       const project = await ctx.makeProject();
       const task = await ctx.makeTask(project.id, { title: 'Original' });
-      const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Cambiado', assigneeIds: [outsider.id] });
+      const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { title: 'Cambiado', assigneeIds: [outsider.id], version: 1 });
       expect(res.statusCode).toBe(400);
       expect(res.json().error.fields.assigneeIds).toBeTruthy();
       expect((await ctx.prisma.task.findUniqueOrThrow({ where: { id: task.id } })).title).toBe('Original');

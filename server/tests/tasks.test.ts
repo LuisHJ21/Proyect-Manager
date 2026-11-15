@@ -156,4 +156,58 @@ describe('tareas', () => {
     expect((await ctx.as(pm).delete(`/api/tasks/${task.id}`)).statusCode).toBe(200);
     expect(existsSync(file)).toBe(false);
   });
+
+  describe('versión de la tarea', () => {
+    const conflict = 'Otra persona guardó cambios en este registro mientras editabas';
+    const edit = (id: string, body: object) => ctx.as(pm).patch(`/api/tasks/${id}`, body);
+    const versionOf = async (id: string) => (await ctx.prisma.task.findUniqueOrThrow({ where: { id } })).version;
+
+    it('editar con la versión actual la sube en 1', async () => {
+      const task = await ctx.makeTask(project.id);
+      const res = await edit(task.id, { title: 'Nuevo', version: 1 });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({ title: 'Nuevo', version: 2 });
+    });
+
+    it('versión vieja responde 409 edit_conflict sin cambios', async () => {
+      const task = await ctx.makeTask(project.id, { title: 'Original' });
+      await edit(task.id, { title: 'Primero', version: 1 });
+      const res = await edit(task.id, { title: 'Segundo', assigneeIds: [ana.id], version: 1 });
+      expect(res.statusCode).toBe(409);
+      expect(res.json().error).toMatchObject({ code: 'edit_conflict', message: conflict });
+      const row = await ctx.prisma.task.findUniqueOrThrow({ where: { id: task.id }, include: { assignees: true } });
+      expect(row).toMatchObject({ title: 'Primero', version: 2 });
+      expect(row.assignees).toEqual([]);
+    });
+
+    it('sin versión responde 400 en el campo version', async () => {
+      const task = await ctx.makeTask(project.id);
+      const res = await edit(task.id, { title: 'X' });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.fields.version).toBe('Recarga la página para editar este registro');
+    });
+
+    it('el avance y los pasos no cambian la versión', async () => {
+      const task = await ctx.makeTask(project.id, { assignees: [ana] });
+      expect((await ctx.as(ana).patch(progressUrl(task.id), { status: 'IN_PROGRESS', progress: 40 })).statusCode).toBe(200);
+      const step = await ctx.as(pm).post(`/api/tasks/${task.id}/steps`, { title: 'Paso' });
+      expect(step.statusCode).toBe(201);
+      expect((await ctx.as(ana).patch(`/api/tasks/${task.id}/steps/${step.json().id}`, { done: true })).statusCode).toBe(200);
+      expect(await versionOf(task.id)).toBe(1);
+      expect((await edit(task.id, { title: 'Editada', version: 1 })).statusCode).toBe(200);
+    });
+
+    it('cambiar responsables sube la versión', async () => {
+      const task = await ctx.makeTask(project.id);
+      expect((await ctx.as(pm).put(`/api/tasks/${task.id}/assignees`, { userIds: [ana.id] })).json().version).toBe(2);
+      expect((await edit(task.id, { title: 'X', version: 1 })).statusCode).toBe(409);
+    });
+
+    it('dos guardados en paralelo con la misma versión: uno 200 y otro 409', async () => {
+      const task = await ctx.makeTask(project.id);
+      const codes = (await Promise.all([edit(task.id, { title: 'A', version: 1 }), edit(task.id, { title: 'B', version: 1 })])).map((r) => r.statusCode);
+      expect(codes.sort()).toEqual([200, 409]);
+      expect(await versionOf(task.id)).toBe(2);
+    });
+  });
 });

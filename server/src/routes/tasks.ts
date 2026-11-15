@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import {
   ACTIVE_PROJECT_STATUS,
   assigneesSchema,
@@ -15,7 +15,7 @@ import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { checkProgressChange } from '../domain/dependencies';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
-import { AppError, fieldError, forbidden, notFound } from '../errors';
+import { AppError, editConflict, fieldError, forbidden, notFound } from '../errors';
 import { incidentAccess } from '../domain/incidents';
 import { notify } from '../notifications';
 import { taskInclude, toTaskDto } from './taskDto';
@@ -41,6 +41,13 @@ export async function getTaskAccess(c: Ctx, taskId: string) {
   });
   const assignee = await prisma.taskAssignee.findUnique({ where: { taskId_userId: { taskId, userId: user.id } } });
   return { task, isPm, can, isAssignee: Boolean(assignee) };
+}
+
+/** Reemplaza los responsables y suelta los pasos de quien deja de serlo. */
+async function replaceAssignees(tx: Prisma.TransactionClient, taskId: string, userIds: string[]) {
+  await tx.taskAssignee.deleteMany({ where: { taskId } });
+  await tx.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId, userId })) });
+  await tx.taskStep.updateMany({ where: { taskId, assigneeId: { notIn: userIds } }, data: { assigneeId: null } });
 }
 
 export function taskRoutes(app: App) {
@@ -154,7 +161,7 @@ export function taskRoutes(app: App) {
   app.patch('/api/tasks/:id', async (c) => {
     const { prisma } = c.var.deps;
     const task = await requireTaskPm(c, c.req.param('id'));
-    const { status: _status, progress: _progress, assigneeIds, ...input } = updateTaskSchema.parse(await readBody(c));
+    const { status: _status, progress: _progress, assigneeIds, version, ...input } = updateTaskSchema.parse(await readBody(c));
     const startDate = input.startDate === undefined ? task.startDate : input.startDate;
     const dueDate = input.dueDate === undefined ? task.dueDate : input.dueDate;
     if (!isDateOrderValid(startDate, dueDate)) throw fieldError('startDate', TASK_DATE_ORDER_MESSAGE);
@@ -166,16 +173,11 @@ export function taskRoutes(app: App) {
     await assertMilestone(c.var.deps.prisma, task.projectId, input.milestoneId);
     const userIds = assigneeIds && (await assertAssignable(c.var.deps.prisma, task.projectId, assigneeIds, 'assigneeIds', task.id));
     const before = userIds ? await assigneeIdsOf(prisma, task.id) : [];
-    await prisma.$transaction([
-      prisma.task.update({ where: { id: task.id }, data: input }),
-      ...(userIds
-        ? [
-            prisma.taskAssignee.deleteMany({ where: { taskId: task.id } }),
-            prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),
-            prisma.taskStep.updateMany({ where: { taskId: task.id, assigneeId: { notIn: userIds } }, data: { assigneeId: null } }),
-          ]
-        : []),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.task.updateMany({ where: { id: task.id, version }, data: { ...input, version: { increment: 1 } } });
+      if (count === 0) throw editConflict();
+      if (userIds) await replaceAssignees(tx, task.id, userIds);
+    });
     if (userIds) await notifyNewAssignees(c, { ...task, title: input.title ?? task.title }, before, userIds);
     return c.json(await loadDto(c.var.deps.prisma, task.id, true));
   });
@@ -195,11 +197,10 @@ export function taskRoutes(app: App) {
     const input = assigneesSchema.parse(await readBody(c));
     const userIds = await assertAssignable(c.var.deps.prisma, task.projectId, input.userIds, 'userIds', task.id);
     const before = await assigneeIdsOf(prisma, task.id);
-    await prisma.$transaction([
-      prisma.taskAssignee.deleteMany({ where: { taskId: task.id } }),
-      prisma.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId: task.id, userId })) }),
-      prisma.taskStep.updateMany({ where: { taskId: task.id, assigneeId: { notIn: userIds } }, data: { assigneeId: null } }),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      await replaceAssignees(tx, task.id, userIds);
+      await tx.task.update({ where: { id: task.id }, data: { version: { increment: 1 } } });
+    });
     await notifyNewAssignees(c, task, before, userIds);
     return c.json(await loadDto(c.var.deps.prisma, task.id, true));
   });

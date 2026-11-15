@@ -163,7 +163,7 @@ describe('pasos de tarea', () => {
       expect(await owner()).toBeNull();
     });
     it('por PATCH con asignados', async () => {
-      await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [] });
+      await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [], version: 1 });
       expect(await owner()).toBeNull();
     });
     it('conservándolo como asignado sigue la persona', async () => {

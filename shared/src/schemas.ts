@@ -259,6 +259,7 @@ export const updateTaskSchema = z.object({
   title: required('Escribe el título').optional(),
   ...taskCommonFields,
   assigneeIds: z.array(z.string()).optional(),
+  version: versionField,
   status: z.undefined({ message: useProgressRoute }),
   progress: z.undefined({ message: useProgressRoute }),
 });

@@ -27,7 +27,7 @@ describe('las tareas se asignan a miembros activos, PM incluidos', () => {
 
   it('asigna a un PM miembro al editar', async () => {
     const task = await ctx.makeTask(project.id);
-    expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [otherPm.id] })).statusCode).toBe(200);
+    expect((await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [otherPm.id], version: 1 })).statusCode).toBe(200);
     const put = await ctx.as(pm).put(`/api/tasks/${task.id}/assignees`, { userIds: [otherPm.id, collaborator.id] });
     expect(put.statusCode).toBe(200);
   });
@@ -48,7 +48,7 @@ describe('las tareas se asignan a miembros activos, PM incluidos', () => {
   it('un colaborador desactivado ya asignado se conserva', async () => {
     const task = await ctx.makeTask(project.id, { assignees: [collaborator] });
     await ctx.prisma.user.update({ where: { id: collaborator.id }, data: { active: false } });
-    const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [collaborator.id] });
+    const res = await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [collaborator.id], version: 1 });
     expect(res.statusCode).toBe(200);
   });
 

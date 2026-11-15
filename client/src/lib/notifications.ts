@@ -15,12 +15,18 @@ export function describeNotification(n: Notification): string {
       return `La tarea «${n.title}» venció ayer`;
     case 'INCIDENT_ASSIGNED':
       return `Te asignaron el incidente «${n.title}»`;
+    case 'CHANGE_PROPOSED':
+      return `${n.actorName} propuso el cambio «${n.title}»`;
+    case 'CHANGE_DECIDED':
+      return `${n.detail === 'APPROVED' ? 'Aprobaron' : 'Rechazaron'} tu cambio «${n.title}»`;
   }
 }
 
-/** A dónde lleva el aviso. Los incidentes no tienen página propia: van a la lista. */
+/** A dónde lleva el aviso. Incidentes y cambios no tienen página propia: van a su lista. */
 export function notificationLink(n: Notification): string {
-  return n.kind === 'INCIDENT_ASSIGNED' ? `/proyectos/${n.projectId}/incidentes` : `/proyectos/${n.projectId}/tareas/${n.entityId}`;
+  if (n.kind === 'INCIDENT_ASSIGNED') return `/proyectos/${n.projectId}/incidentes`;
+  if (n.kind === 'CHANGE_PROPOSED' || n.kind === 'CHANGE_DECIDED') return `/proyectos/${n.projectId}/cambios`;
+  return `/proyectos/${n.projectId}/tareas/${n.entityId}`;
 }
 
 /** «ahora», «hace 5 min», «hace 3 h», «ayer» o la fecha corta. */

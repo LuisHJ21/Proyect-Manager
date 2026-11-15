@@ -177,8 +177,13 @@ export type ChangeRequest = {
   decisionNote: string;
   decidedAt: string | null;
   decidedBy: PersonRef | null;
+  /** Colaborador que la propuso desde el equipo; null si la registró el PM. */
+  proposedBy: PersonRef | null;
   createdAt: string;
 };
+
+/** Lo que ve un colaborador de sus propias propuestas: sin impactos ni solicitante. */
+export type ChangeProposal = Pick<ChangeRequest, 'id' | 'number' | 'title' | 'description' | 'status' | 'decisionNote' | 'decidedAt' | 'decidedBy' | 'createdAt'>;
 
 export type BaselineInfo = {
   version: number;
@@ -350,6 +355,8 @@ export type Notification = {
   entityId: string;
   title: string;
   actorName: string;
+  /** En un cambio decidido: APPROVED o REJECTED. */
+  detail: string;
   readAt: string | null;
   createdAt: string;
 };

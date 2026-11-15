@@ -216,6 +216,7 @@ export const updateRiskSchema = z.object({
   responsePlan: z.string().optional(),
   ownerId: z.string().nullable().optional(),
   status: z.enum(RISK_STATUS).optional(),
+  version: versionField,
 });
 
 const amount = z.number({ message: 'Monto inválido' }).int('Monto inválido').positive('El monto debe ser mayor que cero').max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE);

@@ -4,7 +4,7 @@ import { readBody, type App, type Ctx } from '../http';
 import type { Section } from '@pm/shared';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
-import { forbidden, notFound } from '../errors';
+import { editConflict, forbidden, notFound } from '../errors';
 import { sanitizeFields } from '../richText';
 
 /** Subconjunto de un delegado de Prisma: los delegados no comparten un tipo genérico. */
@@ -13,6 +13,7 @@ type Delegate = {
   findFirst(args: object): Promise<any | null>;
   create(args: object): Promise<any>;
   update(args: object): Promise<any>;
+  updateMany(args: object): Promise<{ count: number }>;
   delete(args: object): Promise<any>;
 };
 
@@ -39,10 +40,12 @@ export type ProjectCrudOptions = {
   richTextFields?: readonly string[];
   /** Relaciones que se devuelven con cada registro. */
   include?: object;
+  /** La edición exige `version` y responde 409 si otra persona guardó antes (C11). */
+  versioned?: boolean;
 };
 
 export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
-  const { path, delegate: delegateOf, createSchema, updateSchema, section, validate, toDto = (item) => item, richTextFields = [], include, own } = options;
+  const { path, delegate: delegateOf, createSchema, updateSchema, section, validate, toDto = (item) => item, richTextFields = [], include, own, versioned = false } = options;
   const base = `/api/projects/:id/${path}`;
 
   const findItem = async (delegate: Delegate, projectId: string, itemId: string) => {
@@ -87,8 +90,14 @@ export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
     const current = await findItem(delegate, project.id, c.req.param('itemId')!);
     const input = updateSchema.parse(sanitizeFields(body, richTextFields));
     await validate?.({ ...current, ...input }, project, prisma);
-    const item = await delegate.update({ where: { id: current.id }, data: input, include });
-    return c.json(toDto(item, isPm));
+    if (!versioned) {
+      const item = await delegate.update({ where: { id: current.id }, data: input, include });
+      return c.json(toDto(item, isPm));
+    }
+    const { version, ...data } = input as { version: number };
+    const { count } = await delegate.updateMany({ where: { id: current.id, version }, data: { ...data, version: { increment: 1 } } });
+    if (count === 0) throw editConflict();
+    return c.json(toDto(await delegate.findFirst({ where: { id: current.id }, include }), isPm));
   });
 
   app.delete(`${base}/:itemId`, async (c) => {

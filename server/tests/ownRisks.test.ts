@@ -35,7 +35,7 @@ describe('riesgos propios del colaborador', () => {
   });
 
   it('cambia el estado de su riesgo', async () => {
-    const res = await ctx.as(ana).patch(`${base()}/${r1.id}`, { status: 'TREATING' });
+    const res = await ctx.as(ana).patch(`${base()}/${r1.id}`, { status: 'TREATING', version: 1 });
     expect(res.statusCode).toBe(200);
     expect(res.json().status).toBe('TREATING');
     expect(res.json()).not.toHaveProperty('incidents');
@@ -67,5 +67,59 @@ describe('riesgos propios del colaborador', () => {
     const risks = (await ctx.as(pm).get(base())).json();
     expect(risks).toHaveLength(2);
     expect(risks.find((r: Risk) => r.id === r1.id).incidents).toHaveLength(1);
+  });
+
+  describe('versión del riesgo', () => {
+    const conflict = 'Otra persona guardó cambios en este registro mientras editabas';
+    const versionOf = async (id: string) => (await ctx.prisma.risk.findUniqueOrThrow({ where: { id } })).version;
+
+    it('el PM edita con la versión actual y la sube; con una vieja recibe 409', async () => {
+      const first = await ctx.as(pm).patch(`${base()}/${r1.id}`, { impact: 5, version: 1 });
+      expect(first.statusCode).toBe(200);
+      expect(first.json()).toMatchObject({ impact: 5, version: 2, score: 10, incidents: [expect.objectContaining({ number: 1 })] });
+      const stale = await ctx.as(pm).patch(`${base()}/${r1.id}`, { impact: 1, version: 1 });
+      expect(stale.statusCode).toBe(409);
+      expect(stale.json().error).toMatchObject({ code: 'edit_conflict', message: conflict });
+      expect((await ctx.prisma.risk.findUniqueOrThrow({ where: { id: r1.id } })).impact).toBe(5);
+    });
+
+    it('el PM sin versión recibe 400 en el campo version', async () => {
+      const res = await ctx.as(pm).patch(`${base()}/${r1.id}`, { impact: 5 });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.fields.version).toBe('Recarga la página para editar este registro');
+    });
+
+    it('el colaborador cambia el estado con versión; repetirla choca', async () => {
+      const ok = await ctx.as(ana).patch(`${base()}/${r1.id}`, { status: 'TREATING', version: 1 });
+      expect(ok.statusCode).toBe(200);
+      expect(ok.json().version).toBe(2);
+      expect((await ctx.as(ana).patch(`${base()}/${r1.id}`, { status: 'CLOSED', version: 1 })).statusCode).toBe(409);
+    });
+
+    it('el colaborador sin versión recibe 400 y con otras claves sigue en 403', async () => {
+      const missing = await ctx.as(ana).patch(`${base()}/${r1.id}`, { status: 'TREATING' });
+      expect(missing.statusCode).toBe(400);
+      expect(missing.json().error.fields.version).toBe('Recarga la página para editar este registro');
+      const extra = await ctx.as(ana).patch(`${base()}/${r1.id}`, { status: 'TREATING', version: 1, description: 'Otra' });
+      expect(extra.statusCode).toBe(403);
+      expect(extra.json().error.message).toBe('Solo puedes cambiar el estado de los riesgos de los que eres responsable');
+    });
+
+    it('quitar al responsable del proyecto sube la versión de sus riesgos y de sus tareas', async () => {
+      const task = await ctx.makeTask(project.id, { assignees: [ana] });
+      const other = await ctx.makeTask(project.id, { assignees: [luis] });
+      expect((await ctx.as(pm).delete(`/api/projects/${project.id}/members/${ana.id}`)).statusCode).toBe(200);
+      expect(await versionOf(r1.id)).toBe(2);
+      expect(await versionOf(r2.id)).toBe(1);
+      expect((await ctx.prisma.task.findUniqueOrThrow({ where: { id: task.id } })).version).toBe(2);
+      expect((await ctx.prisma.task.findUniqueOrThrow({ where: { id: other.id } })).version).toBe(1);
+    });
+
+    it('los interesados siguen editándose sin versión', async () => {
+      const created = (await ctx.as(pm).post(`/api/projects/${project.id}/stakeholders`, { name: 'Dirección', influence: 'HIGH', interest: 'LOW' })).json();
+      const res = await ctx.as(pm).patch(`/api/projects/${project.id}/stakeholders/${created.id}`, { name: 'Gerencia' });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).not.toHaveProperty('version');
+    });
   });
 });

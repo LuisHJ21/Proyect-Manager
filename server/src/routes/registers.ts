@@ -49,7 +49,8 @@ export function registerRoutes(app: App) {
     richTextFields: ['description', 'responsePlan'],
     include: { incidents: { select: { id: true, number: true, title: true, status: true }, orderBy: { number: 'asc' } } },
     // El colaborador ve solo los riesgos de los que es responsable y solo cambia su estado.
-    own: { field: 'ownerId', editable: ['status'], message: 'Solo puedes cambiar el estado de los riesgos de los que eres responsable' },
+    versioned: true,
+    own: { field: 'ownerId', editable: ['status', 'version'], message: 'Solo puedes cambiar el estado de los riesgos de los que eres responsable' },
     // El vínculo con incidentes es del PM, como en el registro de incidentes.
     toDto: ({ incidents, ...risk }, isPm) => ({ ...risk, score: risk.probability * risk.impact, ...(isPm ? { incidents } : {}) }),
     validate: async (risk, project, prisma) => {

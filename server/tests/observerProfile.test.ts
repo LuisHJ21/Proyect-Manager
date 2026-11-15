@@ -74,7 +74,7 @@ describe('perfil Observador en usuarios y responsables', () => {
     expect(created.statusCode).toBe(400);
     expect(created.json().error.fields.ownerId).toBe(OWNER_MESSAGE);
     const risk = (await ctx.as(pm).post(base, body)).json();
-    const patched = await ctx.as(pm).patch(`${base}/${risk.id}`, { ownerId: olga.id });
+    const patched = await ctx.as(pm).patch(`${base}/${risk.id}`, { ownerId: olga.id, version: 1 });
     expect(patched.statusCode).toBe(400);
     expect(patched.json().error.fields.ownerId).toBe(OWNER_MESSAGE);
   });

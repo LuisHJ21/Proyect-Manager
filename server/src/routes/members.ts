@@ -77,9 +77,11 @@ export function memberRoutes(app: App) {
     const project = await requireProjectAccess(c, c.req.param('id'), 'members', 'write');
     const member = await findMember(prisma, project.id, c.req.param('userId'));
     await prisma.$transaction([
+      // Los responsables y el responsable del riesgo están en los formularios de edición: sube su versión (C11).
+      prisma.task.updateMany({ where: { projectId: project.id, assignees: { some: { userId: member.userId } } }, data: { version: { increment: 1 } } }),
       prisma.taskAssignee.deleteMany({ where: { userId: member.userId, task: { projectId: project.id } } }),
       prisma.taskStep.updateMany({ where: { assigneeId: member.userId, task: { projectId: project.id } }, data: { assigneeId: null } }),
-      prisma.risk.updateMany({ where: { ownerId: member.userId, projectId: project.id }, data: { ownerId: null } }),
+      prisma.risk.updateMany({ where: { ownerId: member.userId, projectId: project.id }, data: { ownerId: null, version: { increment: 1 } } }),
       prisma.raciCell.deleteMany({ where: { userId: member.userId, activity: { projectId: project.id } } }),
       prisma.incident.updateMany({ where: { ownerId: member.userId, projectId: project.id }, data: { ownerId: null } }),
       prisma.projectMember.delete({ where: { id: member.id } }),

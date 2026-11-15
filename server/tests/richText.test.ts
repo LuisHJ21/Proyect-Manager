@@ -82,7 +82,7 @@ describe('API con texto con formato', () => {
     expect(created.statusCode).toBe(400);
     expect(created.json().error.fields.description).toBeTruthy();
     const ok = await ctx.as(pm).post(`/api/projects/${project.id}/risks`, { ...risk, description: '<p>Retraso</p>' });
-    const patched = await ctx.as(pm).patch(`/api/projects/${project.id}/risks/${ok.json().id}`, { description: '<p> </p>' });
+    const patched = await ctx.as(pm).patch(`/api/projects/${project.id}/risks/${ok.json().id}`, { description: '<p> </p>', version: 1 });
     expect(patched.statusCode).toBe(400);
   });
 

@@ -75,7 +75,7 @@ describe('consulta de la bitácora', () => {
     const risk = await ctx.prisma.risk.create({
       data: { projectId: project.id, description: 'Proveedor tarde', type: 'THREAT', probability: 2, impact: 3, response: 'MITIGATE', ownerId: ana.id },
     });
-    expect((await ctx.as(ana).patch(`/api/projects/${project.id}/risks/${risk.id}`, { status: 'TREATING' })).statusCode).toBe(200);
+    expect((await ctx.as(ana).patch(`/api/projects/${project.id}/risks/${risk.id}`, { status: 'TREATING', version: 1 })).statusCode).toBe(200);
     const items = (await ctx.as(pm).get(base())).json().items;
     expect(items[0]).toMatchObject({ entity: 'risk', user: { id: ana.id, name: 'Ana' } });
     expect(items[0].changes).toContainEqual({ field: 'status', from: 'OPEN', to: 'TREATING' });

@@ -31,7 +31,7 @@ describe('registros del proyecto', () => {
     expect(created.statusCode).toBe(201);
     const id = created.json().id;
     expect((await client.get(url(path))).json()).toHaveLength(1);
-    expect((await client.patch(`${url(path)}/${id}`, {})).statusCode).toBe(200);
+    expect((await client.patch(`${url(path)}/${id}`, path === 'risks' ? { version: 1 } : {})).statusCode).toBe(200);
     expect((await client.delete(`${url(path)}/${id}`)).statusCode).toBe(200);
     expect((await client.get(url(path))).json()).toHaveLength(0);
   });
@@ -81,7 +81,7 @@ describe('registros del proyecto', () => {
 
   it('al editar, valida la respuesta contra el tipo guardado', async () => {
     const created = await ctx.as(pm).post(url('risks'), risk);
-    const res = await ctx.as(pm).patch(`${url('risks')}/${created.json().id}`, { type: 'OPPORTUNITY' });
+    const res = await ctx.as(pm).patch(`${url('risks')}/${created.json().id}`, { type: 'OPPORTUNITY', version: 1 });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.fields.response).toBeTruthy();
   });

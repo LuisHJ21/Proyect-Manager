@@ -50,7 +50,7 @@ describe('bitácora: registros, incidentes, decisiones, cambios y lecciones', ()
     const body = { description: 'Proveedor tarde', type: 'THREAT', probability: 2, impact: 3, response: 'MITIGATE', ownerId: ana.id };
     const risk = (await ctx.as(pm).post(`${p()}/risks`, body)).json();
     expect(await last()).toMatchObject({ entity: 'risk', action: 'created', entityLabel: 'Proveedor tarde' });
-    await ctx.as(pm).patch(`${p()}/risks/${risk.id}`, { ownerId: luis.id });
+    await ctx.as(pm).patch(`${p()}/risks/${risk.id}`, { ownerId: luis.id, version: 1 });
     expect((await last()).changes).toContainEqual({ field: 'ownerId', from: 'Ana', to: 'Luis' });
     expect((await ctx.as(pm).patch(`/api/users/${ana.id}`, { name: 'Ana María' })).statusCode).toBe(200);
     expect((await last()).changes).toContainEqual({ field: 'ownerId', from: 'Ana', to: 'Luis' });

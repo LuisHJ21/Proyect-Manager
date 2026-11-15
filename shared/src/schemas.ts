@@ -137,7 +137,9 @@ export const charterSchema = z.object({
   constraints: z.string().default(''),
   successCriteria: z.string().default(''),
   sponsor: z.string().default(''),
+  version: versionField,
 });
+export const approveCharterSchema = z.object({ version: versionField });
 
 const objectiveFields = {
   description: required('Describe el objetivo'),

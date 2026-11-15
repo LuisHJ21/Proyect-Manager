@@ -44,24 +44,24 @@ describe('API con texto con formato', () => {
   afterEach(() => ctx.close());
 
   it('guarda el acta ya limpia y deja el patrocinador como texto simple', async () => {
-    const res = await ctx.as(pm).put(charterUrl(), { justification: '<p>Hola<script>x</script></p>', sponsor: '<b>Ana</b>' });
+    const res = await ctx.as(pm).put(charterUrl(), { justification: '<p>Hola<script>x</script></p>', sponsor: '<b>Ana</b>', version: 1 });
     expect(res.json()).toMatchObject({ justification: '<p>Hola</p>', sponsor: '<b>Ana</b>' });
     const stored = await ctx.prisma.charter.findUniqueOrThrow({ where: { projectId: project.id } });
     expect(stored.justification).toBe('<p>Hola</p>');
   });
 
   it('no aprueba campos con formato vacíos', async () => {
-    await ctx.as(pm).put(charterUrl(), { justification: '<p><br></p>', scopeIncluded: '<p> </p>', successCriteria: '<p>Ok</p>' });
-    const res = await ctx.as(pm).post(`${charterUrl()}/approve`);
+    await ctx.as(pm).put(charterUrl(), { justification: '<p><br></p>', scopeIncluded: '<p> </p>', successCriteria: '<p>Ok</p>', version: 1 });
+    const res = await ctx.as(pm).post(`${charterUrl()}/approve`, { version: 2 });
     expect(res.statusCode).toBe(400);
     expect(Object.keys(res.json().error.fields).sort()).toEqual(['justification', 'scopeIncluded']);
   });
 
   it('guardar sin cambios reales no reabre el acta', async () => {
     const complete = { justification: '<p>Uno</p>', scopeIncluded: '<p>A</p>', successCriteria: '<p>C</p>' };
-    await ctx.as(pm).put(charterUrl(), complete);
-    await ctx.as(pm).post(`${charterUrl()}/approve`);
-    const res = await ctx.as(pm).put(charterUrl(), { ...complete, justification: '<p>Uno</p><script></script>' });
+    await ctx.as(pm).put(charterUrl(), { ...complete, version: 1 });
+    await ctx.as(pm).post(`${charterUrl()}/approve`, { version: 2 });
+    const res = await ctx.as(pm).put(charterUrl(), { ...complete, justification: '<p>Uno</p><script></script>', version: 3 });
     expect(res.json().status).toBe('APPROVED');
   });
 
@@ -70,7 +70,7 @@ describe('API con texto con formato', () => {
       where: { projectId: project.id },
       data: { justification: 'Uno\nDos', scopeIncluded: 'A', successCriteria: 'C', status: 'APPROVED', approvedById: pm.id, approvedAt: new Date() },
     });
-    const res = await ctx.as(pm).put(charterUrl(), { justification: '<p>Uno</p><p>Dos</p>', scopeIncluded: '<p>A</p>', successCriteria: '<p>C</p>' });
+    const res = await ctx.as(pm).put(charterUrl(), { justification: '<p>Uno</p><p>Dos</p>', scopeIncluded: '<p>A</p>', successCriteria: '<p>C</p>', version: 1 });
     expect(res.json().status).toBe('APPROVED');
   });
 

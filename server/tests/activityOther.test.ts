@@ -89,10 +89,10 @@ describe('bitácora: entregables, RACI, miembros, dependencias, anexos y acta', 
 
   it('acta, aprobación, línea base, cierre y reapertura', async () => {
     const charter = { justification: '<p>Ventas</p>', scopeIncluded: '<p>Portal</p>', successCriteria: '<p>Lanzado</p>' };
-    await ctx.as(pm).put(`${p()}/charter`, charter);
+    await ctx.as(pm).put(`${p()}/charter`, { ...charter, version: 1 });
     expect(await last()).toMatchObject({ entity: 'project', action: 'updated' });
     expect((await last()).changes).toContainEqual({ field: 'charter.scopeIncluded' });
-    expect((await ctx.as(pm).post(`${p()}/charter/approve`)).statusCode).toBe(200);
+    expect((await ctx.as(pm).post(`${p()}/charter/approve`, { version: 2 })).statusCode).toBe(200);
     expect(await last()).toMatchObject({ entity: 'project', action: 'approved' });
     await ctx.prisma.task.create({ data: { projectId: project.id, title: 'Obra', plannedCostCents: 1000, startDate: '2026-11-10', dueDate: '2026-11-20' } });
     expect((await ctx.as(pm).post(`${p()}/baselines`, {})).statusCode).toBe(201);

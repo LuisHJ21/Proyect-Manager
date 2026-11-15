@@ -31,6 +31,7 @@ export function notificationRoutes(app: App) {
       entityId: row.entityId,
       title: row.title,
       actorName: row.actorName,
+      detail: row.detail,
       readAt: row.readAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
     }));

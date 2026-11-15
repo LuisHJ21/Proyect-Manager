@@ -4,6 +4,7 @@ import { readBody, type App, type Ctx } from '../http';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError, forbidden, notFound } from '../errors';
+import { notify } from '../notifications';
 
 type ItemParams = { id: string; crId: string };
 
@@ -81,6 +82,15 @@ export function changeRequestRoutes(app: App) {
       const user = requireUser(c);
       const input = proposeChangeSchema.parse(body);
       const created = await createChangeRequest(prisma, project.id, { ...input, requestedById: user.id, requestedBy: user.name });
+      await notify(prisma, {
+        kind: 'CHANGE_PROPOSED',
+        projectId: project.id,
+        entityId: created.id,
+        title: `CR-${created.number} ${created.title}`,
+        userIds: async () => (await prisma.user.findMany({ where: { role: 'PM', active: true }, select: { id: true } })).map((u) => u.id),
+        actorId: user.id,
+        actorName: user.name,
+      });
       return c.json(toProposalDto(created), 201);
     }
     const { costImpactCents, ...input } = changeRequestSchema.parse(body);
@@ -120,6 +130,15 @@ export function changeRequestRoutes(app: App) {
       where: { id: cr.id },
       data: { status, decisionNote: note, decidedAt: c.var.deps.now(), decidedById: user.id },
       include: decidedByInclude,
+    });
+    await notify(prisma, {
+      kind: 'CHANGE_DECIDED',
+      projectId: project.id,
+      entityId: updated.id,
+      title: `CR-${updated.number} ${updated.title}`,
+      userIds: updated.requestedById ? [updated.requestedById] : [],
+      actorId: user.id,
+      detail: status,
     });
     return c.json(toChangeRequestDto(updated));
   });

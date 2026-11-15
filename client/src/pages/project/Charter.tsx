@@ -1,7 +1,7 @@
 import { LABELS } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { api, errorMessage, isBlockingError } from '../../api/client';
+import { api, errorMessage, isBlockingError, isEditConflict } from '../../api/client';
 import type { Charter } from '../../api/types';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../../components/FormField';
@@ -23,6 +23,8 @@ const FIELDS = [
 
 type FieldName = (typeof FIELDS)[number]['name'];
 type Draft = Record<FieldName, string>;
+
+const CONFLICT_MESSAGE = 'Otra persona guardó cambios en el acta mientras editabas. Tu texto sigue aquí para que lo copies; luego carga la versión actual.';
 
 const toDraft = (charter: Charter): Draft => Object.fromEntries(FIELDS.map((f) => [f.name, charter[f.name]])) as Draft;
 
@@ -65,6 +67,8 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  // Tras un choque el borrador se conserva para copiarlo; no se guarda hasta cargar la versión actual.
+  const [conflict, setConflict] = useState(false);
 
   useEffect(() => {
     setSaved(toDraft(charter));
@@ -78,8 +82,8 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
     setBusy(true);
     try {
       let result = charter;
-      if (dirty) result = await api<Charter>(url, { method: 'PUT', body: draft });
-      if (action === 'approve') result = await api<Charter>(`${url}/approve`, { method: 'POST' });
+      if (dirty) result = await api<Charter>(url, { method: 'PUT', body: { ...draft, version: charter.version } });
+      if (action === 'approve') result = await api<Charter>(`${url}/approve`, { method: 'POST', body: { version: result.version } });
       queryClient.setQueryData(['project', projectId, 'charter'], result);
       // El servidor devuelve el HTML ya limpio, que puede diferir del del editor (por ejemplo <br /> frente a <br>).
       // El borrador toma lo guardado para que no queden cambios pendientes falsos.
@@ -87,8 +91,23 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
       setDraft(toDraft(result));
       setNotice(action === 'approve' ? 'Acta aprobada.' : 'Cambios guardados.');
     } catch (error) {
-      applyFieldErrors(error, setErrors);
+      if (isEditConflict(error)) setConflict(true);
+      else applyFieldErrors(error, setErrors);
       void queryClient.invalidateQueries({ queryKey: ['project', projectId, 'charter'] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const loadCurrent = async () => {
+    setBusy(true);
+    try {
+      const fresh = await queryClient.fetchQuery({ queryKey: ['project', projectId, 'charter'], queryFn: () => api<Charter>(url), staleTime: 0 });
+      setSaved(toDraft(fresh));
+      setDraft(toDraft(fresh));
+      setConflict(false);
+    } catch (error) {
+      setErrors({ fields: {}, message: errorMessage(error) });
     } finally {
       setBusy(false);
     }
@@ -97,6 +116,14 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
   return (
     <Card>
       <ApprovalNote charter={charter} />
+      {conflict && (
+        <div role="alert" className="mt-3 flex flex-wrap items-center gap-3 rounded-md bg-risk-bg px-3 py-2 text-sm text-risk-fg">
+          <span>{CONFLICT_MESSAGE}</span>
+          <Button variant="secondary" disabled={busy} onClick={() => void loadCurrent()}>
+            Cargar la versión actual
+          </Button>
+        </div>
+      )}
       {charter.status === 'APPROVED' && dirty && (
         <p role="status" className="mt-3 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn-fg">
           Al guardar estos cambios, el acta volverá a Borrador y deberá aprobarse de nuevo.
@@ -126,11 +153,11 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
           </FormField>
         ))}
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" variant="secondary" disabled={busy || !dirty}>
+          <Button type="submit" variant="secondary" disabled={busy || !dirty || conflict}>
             Guardar
           </Button>
           {(charter.status !== 'APPROVED' || dirty) && (
-            <Button disabled={busy} onClick={() => void run('approve')}>
+            <Button disabled={busy || conflict} onClick={() => void run('approve')}>
               Aprobar acta
             </Button>
           )}

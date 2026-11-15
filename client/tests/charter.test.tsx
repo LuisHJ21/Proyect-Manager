@@ -16,6 +16,7 @@ const draft = {
   status: 'DRAFT',
   approvedAt: null,
   approvedBy: null,
+  version: 3,
 };
 const approved = {
   ...draft,
@@ -128,5 +129,60 @@ describe('acta', () => {
     renderApp('/proyectos/p1/acta');
     expect(await screen.findByRole('toolbar', { name: 'Formato de Justificación' })).toBeInTheDocument();
     expect(screen.queryByRole('toolbar', { name: 'Formato de Patrocinador' })).not.toBeInTheDocument();
+  });
+
+  describe('choque de ediciones', () => {
+    const CONFLICT = 'Otra persona guardó cambios en el acta mientras editabas. Tu texto sigue aquí para que lo copies; luego carga la versión actual.';
+    const conflict = apiError(409, 'edit_conflict', { message: 'Otra persona guardó cambios en este registro mientras editabas' });
+
+    it('guardar y aprobar mandan la versión', async () => {
+      const api = mockApi({
+        ...signedInAs(pmUser),
+        ...routes,
+        'GET /api/projects/p1/charter': draft,
+        'PUT /api/projects/p1/charter': { ...draft, justification: '<p>Uno</p>', version: 4 },
+        'POST /api/projects/p1/charter/approve': { ...approved, version: 5 },
+      });
+      renderApp('/proyectos/p1/acta');
+      const user = userEvent.setup();
+      await screen.findByRole('textbox', { name: 'Justificación' });
+      await setRichText('Justificación', '<p>Uno</p>');
+      await user.click(screen.getByRole('button', { name: 'Aprobar acta' }));
+      await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/projects/p1/charter/approve')?.body).toEqual({ version: 4 }));
+      expect(api.calls.find((c) => c.key === 'PUT /api/projects/p1/charter')?.body).toMatchObject({ justification: '<p>Uno</p>', version: 3 });
+    });
+
+    it('ante un choque el borrador sigue visible y no se puede guardar', async () => {
+      mockApi({ ...signedInAs(pmUser), ...routes, 'GET /api/projects/p1/charter': draft, 'PUT /api/projects/p1/charter': conflict });
+      renderApp('/proyectos/p1/acta');
+      const user = userEvent.setup();
+      await screen.findByRole('textbox', { name: 'Justificación' });
+      await setRichText('Justificación', '<p>Mi texto largo</p>');
+      await user.click(screen.getByRole('button', { name: 'Guardar' }));
+      expect(await screen.findByText(CONFLICT)).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Justificación' })).toHaveTextContent('Mi texto largo');
+      expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Aprobar acta' })).toBeDisabled();
+    });
+
+    it('«Cargar la versión actual» reemplaza el borrador', async () => {
+      let clashed = false;
+      const api = mockApi({
+        ...signedInAs(pmUser),
+        ...routes,
+        'GET /api/projects/p1/charter': () => (clashed ? { ...draft, justification: '<p>De Pedro</p>', version: 4 } : draft),
+        'PUT /api/projects/p1/charter': () => ((clashed = true), conflict),
+      });
+      renderApp('/proyectos/p1/acta');
+      const user = userEvent.setup();
+      await screen.findByRole('textbox', { name: 'Justificación' });
+      await setRichText('Justificación', '<p>Mi texto</p>');
+      await user.click(screen.getByRole('button', { name: 'Guardar' }));
+      await user.click(await screen.findByRole('button', { name: 'Cargar la versión actual' }));
+      await waitFor(() => expect(screen.getByRole('textbox', { name: 'Justificación' })).toHaveTextContent('De Pedro'));
+      expect(screen.queryByText(CONFLICT)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Aprobar acta' })).toBeEnabled();
+      expect(api.calls.filter((c) => c.key === 'GET /api/projects/p1/charter').length).toBeGreaterThan(1);
+    });
   });
 });

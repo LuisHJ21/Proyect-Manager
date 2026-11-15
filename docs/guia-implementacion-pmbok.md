@@ -103,6 +103,7 @@ Solo entregables y lecciones tienen máximo. Añadir `.max()` en `shared/src/sch
 
 **C11. Ediciones simultáneas.**
 Prevalece el último guardado. Al abrir más información al equipo aumenta el riesgo de pisar cambios. Enviar `updatedAt` en las ediciones de acta, tareas, riesgos y entregables y responder 409 si cambió.
+- Hecho (`docs/superpowers/specs/2026-11-15-ediciones-simultaneas-design.md`): en vez de `updatedAt` se usa un número de versión que solo sube con lo que muestran los formularios, así el avance y los pasos de una tarea no chocan con la edición del PM. Guardar con una versión vieja responde 409 `edit_conflict`; tareas, riesgos y entregables avisan y cargan la versión actual, y el acta conserva el borrador para copiarlo.
 
 ### Prioridad baja
 
@@ -215,7 +216,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 |---|---|---|
 | 1 | C12, M0 a M8 (con C4 y C5) | Cambiar de plataforma primero: todo lo demás se construye sobre Postgres y la nube |
 | 2 | C2, C1 + F1 | PM que ejecuta tareas y los tres perfiles de acceso |
-| 3 | F3 ✓, F2 ✓, F4 ✓, C11 | Control y comunicación al abrir más información |
+| 3 | F3 ✓, F2 ✓, F4 ✓, C11 ✓ | Control y comunicación al abrir más información |
 | 4 | C6, C7, C8, C9, C10 | Dejar fiables los números que ya se muestran |
 | 5 | F5, F6, F7, F8 | Planificación completa; F5 es requisito de F6, F7 y F12 |
 | 6 | F11, F9, F10 | Informes y comunicaciones para interesados |

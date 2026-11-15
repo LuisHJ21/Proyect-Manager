@@ -26,7 +26,7 @@ describe('línea base y cambios', () => {
     expect(createTaskSchema.safeParse({ title: 'T', plannedCostCents: -1 }).success).toBe(false);
     expect(createTaskSchema.safeParse({ title: 'T', plannedCostCents: 10.5 }).success).toBe(false);
     expect(createTaskSchema.safeParse({ title: 'T', plannedCostCents: 123450 }).success).toBe(true);
-    expect(updateTaskSchema.safeParse({ plannedCostCents: 5 }).success).toBe(true);
+    expect(updateTaskSchema.safeParse({ plannedCostCents: 5, version: 1 }).success).toBe(true);
   });
   it('un cambio admite impacto negativo en plazo y costo', () => {
     expect(changeRequestSchema.parse({ title: 'X', scheduleImpactDays: -3, costImpactCents: -5000 })).toMatchObject({ scheduleImpactDays: -3, costImpactCents: -5000 });

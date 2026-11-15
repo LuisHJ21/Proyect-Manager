@@ -1,7 +1,7 @@
 import { LABELS, PRIORITY, type Priority } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { api } from '../../api/client';
+import { api, EDIT_CONFLICT_NOTICE, isEditConflict } from '../../api/client';
 import type { Member, Milestone, Project, Task } from '../../api/types';
 import { Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
@@ -29,6 +29,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const [milestoneId, setMilestoneId] = useState(task?.milestoneId ?? '');
   const [plannedCostCents, setPlannedCostCents] = useState<number | null>(task?.plannedCostCents ?? 0);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(task?.assignees.map((a) => a.id) ?? []);
+  const [version, setVersion] = useState(task?.version);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
@@ -38,6 +39,21 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
 
   const toggleAssignee = (userId: string) =>
     setAssigneeIds((current) => (current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]));
+
+  /** Tras un choque, el formulario toma la versión guardada por la otra persona. */
+  const reload = async (taskId: string) => {
+    const fresh = await api<Task>(`/api/tasks/${taskId}`);
+    setTitle(fresh.title);
+    setDescription(fresh.description);
+    setPriority(fresh.priority);
+    setStartDate(fresh.startDate ?? '');
+    setDueDate(fresh.dueDate ?? '');
+    setMilestoneId(fresh.milestoneId ?? '');
+    setPlannedCostCents(fresh.plannedCostCents ?? 0);
+    setAssigneeIds(fresh.assignees.map((a) => a.id));
+    setVersion(fresh.version);
+    await refreshTaskData(queryClient, projectId, taskId);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -50,14 +66,19 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
     const fields = { title, description, priority, startDate: startDate || null, dueDate: dueDate || null, milestoneId: milestoneId || null, plannedCostCents };
     try {
       if (task) {
-        await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: { ...fields, assigneeIds } });
+        await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: { ...fields, assigneeIds, version } });
       } else {
         await api(`/api/projects/${projectId}/tasks`, { method: 'POST', body: { ...fields, assigneeIds } });
       }
       await refreshTaskData(queryClient, projectId, task?.id);
       onClose();
     } catch (error) {
-      applyFieldErrors(error, setErrors);
+      if (task && isEditConflict(error)) {
+        await reload(task.id);
+        setErrors({ fields: {}, message: EDIT_CONFLICT_NOTICE });
+      } else {
+        applyFieldErrors(error, setErrors);
+      }
     } finally {
       setBusy(false);
     }

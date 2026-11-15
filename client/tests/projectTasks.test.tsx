@@ -9,6 +9,7 @@ const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING'
 const member = { userId: 'c1', name: 'Carlos Vega', email: '', role: 'COLLABORATOR', projectRole: '', active: true };
 const task = (over: Partial<Task> = {}): Task => ({
   id: 't1',
+  version: 1,
   projectId: 'p1',
   milestoneId: null,
   title: 'Diseño',

@@ -1,7 +1,7 @@
 import { EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { api, errorMessage } from '../../api/client';
+import { api, EDIT_CONFLICT_NOTICE, errorMessage, isEditConflict } from '../../api/client';
 import type { Expense, Indicators, Member, Risk, Stakeholder, Task } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
@@ -105,9 +105,12 @@ function RiskStatusSelect({ projectId, risk }: { projectId: string; risk: Risk }
   const queryClient = useQueryClient();
   const toast = useToast();
   const change = useMutation({
-    mutationFn: (status: string) => api(`/api/projects/${projectId}/risks/${risk.id}`, { method: 'PATCH', body: { status } }),
+    mutationFn: (status: string) => api(`/api/projects/${projectId}/risks/${risk.id}`, { method: 'PATCH', body: { status, version: risk.version } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: registerKey(projectId, 'risks') }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => {
+      toast.error(isEditConflict(error) ? EDIT_CONFLICT_NOTICE : errorMessage(error));
+      if (isEditConflict(error)) void queryClient.invalidateQueries({ queryKey: registerKey(projectId, 'risks') });
+    },
   });
   return (
     <select

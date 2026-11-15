@@ -1,7 +1,7 @@
 import { canAccept, LABELS, type ReviewOutcome } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { api, ApiError, errorMessage } from '../../api/client';
+import { api, ApiError, EDIT_CONFLICT_NOTICE, errorMessage, isEditConflict } from '../../api/client';
 import type { DeliverableDetail, DeliverableReview } from '../../api/types';
 import { shortDate } from '../../lib/display';
 import { ConfirmDialog, Modal } from '../ConfirmDialog';
@@ -97,7 +97,7 @@ export function DeliverableDetailDialog({ projectId, id, readOnly = false, onClo
       applied(updated);
       return true;
     } catch (error) {
-      toast.error(errorMessage(error));
+      toast.error(isEditConflict(error) ? EDIT_CONFLICT_NOTICE : errorMessage(error));
       if (error instanceof ApiError && error.status === 404 && path === '') {
         void refreshList();
         onClose();
@@ -167,7 +167,7 @@ export function DeliverableDetailDialog({ projectId, id, readOnly = false, onClo
   }
 
   const acceptable = canAccept(d.criteria);
-  const setStatus = (status: string) => void change('', 'PATCH', { status });
+  const setStatus = (status: string) => void change('', 'PATCH', { status, version: d.version });
 
   return (
     <Modal title={`${deliverableCode(d)} · ${d.name}`} onClose={onClose} wide>

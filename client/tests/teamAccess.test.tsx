@@ -59,7 +59,7 @@ describe('entregables del equipo', () => {
   });
 });
 
-const risk = { id: 'r1', description: '<p>Proveedor tarde</p>', type: 'THREAT', probability: 2, impact: 3, score: 6, response: 'MITIGATE', responsePlan: '', ownerId: 'c1', status: 'OPEN' };
+const risk = { id: 'r1', description: '<p>Proveedor tarde</p>', type: 'THREAT', probability: 2, impact: 3, score: 6, response: 'MITIGATE', responsePlan: '', ownerId: 'c1', status: 'OPEN', version: 2 };
 const riskRoutes = {
   ...signedInAs(collaborator),
   'GET /api/projects/p1': project,
@@ -82,7 +82,7 @@ describe('riesgos del colaborador', () => {
     await user.selectOptions(dialog.getByLabelText('Estado del riesgo'), 'TREATING');
     await waitFor(() => {
       const call = api.calls.find((c) => c.key === 'PATCH /api/projects/p1/risks/r1');
-      expect(call?.body).toEqual({ status: 'TREATING' });
+      expect(call?.body).toEqual({ status: 'TREATING', version: 2 });
     });
   });
 

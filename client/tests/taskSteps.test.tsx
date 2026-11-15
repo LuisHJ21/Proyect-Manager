@@ -7,6 +7,7 @@ import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from '
 const carlos = { id: 'c1', name: 'Carlos' };
 const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   id: 't1',
+  version: 1,
   projectId: 'p1',
   milestoneId: null,
   title: 'Construir',

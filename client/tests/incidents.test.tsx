@@ -161,6 +161,7 @@ describe('pestaña Incidentes', () => {
 describe('reportar desde una tarea', () => {
   const task: TaskDetail = {
     id: 't1',
+    version: 1,
     projectId: 'p1',
     milestoneId: null,
     title: 'Construcción',

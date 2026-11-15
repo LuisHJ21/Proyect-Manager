@@ -7,6 +7,7 @@ import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs, wrap } 
 
 const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   id: 't1',
+  version: 1,
   projectId: 'p1',
   milestoneId: null,
   title: 'Construcción',

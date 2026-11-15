@@ -7,6 +7,7 @@ import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from '
 export const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'AGILE', startDate: null, endDate: null, plannedBudgetCents: 0, currency: 'USD' };
 export const row = (over: object = {}) => ({
   id: 'd2',
+  version: 4,
   number: 2,
   name: 'Portal publicado',
   status: 'IN_REVIEW',
@@ -162,7 +163,7 @@ describe('detalle de un entregable', () => {
     expect(await dialog.findByRole('checkbox', { name: 'Manual' })).toBeDisabled();
     expect(dialog.queryByRole('button', { name: 'Añadir criterio' })).not.toBeInTheDocument();
     await userEvent.setup().click(dialog.getByRole('button', { name: 'Reabrir' }));
-    await waitFor(() => expect(api.calls.find((c) => c.key === `PATCH ${url}/d2`)?.body).toEqual({ status: 'PENDING' }));
+    await waitFor(() => expect(api.calls.find((c) => c.key === `PATCH ${url}/d2`)?.body).toEqual({ status: 'PENDING', version: 4 }));
   });
 
   it('historial con anexo eliminado y anexo descargable', async () => {

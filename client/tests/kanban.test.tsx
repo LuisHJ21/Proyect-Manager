@@ -9,6 +9,7 @@ import { apiError, mockApi } from './helpers';
 
 const task = (over: Partial<Task> = {}): Task => ({
   id: 't1',
+  version: 1,
   projectId: 'p1',
   milestoneId: null,
   title: 'Construcción',

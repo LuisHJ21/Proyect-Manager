@@ -8,6 +8,7 @@ import { collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers'
 const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'AGILE', startDate: null, endDate: null, plannedBudgetCents: 0, currency: 'USD' };
 const task = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   id: 't1',
+  version: 1,
   projectId: 'p1',
   milestoneId: null,
   title: 'Diseño',

@@ -49,5 +49,9 @@ export function isBlockingError(query: { isError: boolean; data: unknown; error:
   return query.data === undefined || (query.error instanceof ApiError && query.error.status === 404);
 }
 
+/** Otra persona guardó el registro mientras se editaba (C11). */
+export const isEditConflict = (error: unknown) => error instanceof ApiError && error.code === 'edit_conflict';
+export const EDIT_CONFLICT_NOTICE = 'Otra persona guardó cambios en este registro. Cargamos la versión actual; vuelve a aplicar tus cambios.';
+
 export const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'Ocurrió un error inesperado';

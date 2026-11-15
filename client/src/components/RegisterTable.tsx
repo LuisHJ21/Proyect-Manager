@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { api, errorMessage } from '../api/client';
+import { api, EDIT_CONFLICT_NOTICE, errorMessage, isEditConflict } from '../api/client';
 import { ConfirmDialog, Modal } from './ConfirmDialog';
 import { ErrorState, Loading } from './ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from './FormField';
@@ -68,6 +68,7 @@ function RegisterForm({
   normalize,
   onSubmit,
   onClose,
+  notice,
 }: {
   title: string;
   fields: FieldDef[];
@@ -75,6 +76,8 @@ function RegisterForm({
   normalize?: (values: Values) => Values;
   onSubmit: (values: Values) => Promise<unknown>;
   onClose: () => void;
+  /** Aviso que se muestra al abrir, por ejemplo tras un choque de ediciones. */
+  notice?: string;
 }) {
   const [values, setValues] = useState<Values>(initial);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
@@ -107,7 +110,7 @@ function RegisterForm({
   return (
     <Modal title={title} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4" noValidate>
-        <FormMessage message={errors.message} />
+        <FormMessage message={errors.message ?? notice} />
         {fields.map((field) => (
           <FormField key={field.name} label={field.label} error={errors.fields[field.name]}>
             {field.type === 'money' ? (
@@ -164,6 +167,9 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
   const base = `/api/projects/${projectId}/${path}`;
   const list = useQuery({ queryKey: key, queryFn: () => api<T[]>(base) });
   const [editing, setEditing] = useState<T | 'new' | null>(null);
+  // Tras un choque se vuelve a montar el formulario con la versión guardada y el aviso.
+  const [conflict, setConflict] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const [deleting, setDeleting] = useState<T | null>(null);
   // Se guarda el id y no una copia: así el detalle abierto refleja los datos recargados.
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -186,7 +192,23 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
   const save = async (values: Values) => {
     const body = Object.fromEntries(fields.map((f) => [f.name, f.type === 'date' && values[f.name] === '' ? null : values[f.name]]));
     if (editing === 'new') await api(base, { method: 'POST', body });
-    else if (editing) await api(`${base}/${editing.id}`, { method: 'PATCH', body });
+    else if (editing) {
+      const { version } = editing as { version?: number };
+      try {
+        await api(`${base}/${editing.id}`, { method: 'PATCH', body: version === undefined ? body : { ...body, version } });
+      } catch (error) {
+        if (isEditConflict(error)) {
+          await refresh();
+          const fresh = queryClient.getQueryData<T[]>(key)?.find((item) => item.id === editing.id);
+          if (fresh) {
+            setEditing(fresh);
+            setConflict(true);
+            setFormKey((n) => n + 1);
+          }
+        }
+        throw error;
+      }
+    }
     await refresh();
   };
 
@@ -252,12 +274,17 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
       )}
       {editing && (
         <RegisterForm
+          key={formKey}
+          notice={conflict ? EDIT_CONFLICT_NOTICE : undefined}
           title={editing === 'new' ? `Añadir ${singular}` : `Editar ${singular}`}
           fields={fields}
           initial={editing === 'new' ? defaults : (editing as Values)}
           normalize={normalize}
           onSubmit={save}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            setEditing(null);
+            setConflict(false);
+          }}
         />
       )}
       {viewing && detail && (

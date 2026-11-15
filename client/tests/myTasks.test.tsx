@@ -7,6 +7,7 @@ import { apiError, collaborator, mockApi, renderApp, signedInAs } from './helper
 
 const task = (over: Partial<Task> = {}): Task => ({
   id: 't1',
+  version: 1,
   projectId: 'p1',
   milestoneId: null,
   title: 'Tarea',

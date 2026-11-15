@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { api } from '../../api/client';
+import { api, EDIT_CONFLICT_NOTICE, isEditConflict } from '../../api/client';
 import type { DeliverableDetail, Milestone } from '../../api/types';
 import { Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
@@ -20,11 +20,24 @@ export function DeliverableForm({ projectId, item, onClose }: { projectId: strin
   const [milestoneId, setMilestoneId] = useState(item?.milestone?.id ?? '');
   const [dueDate, setDueDate] = useState(item?.dueDate ?? '');
   const [criteria, setCriteria] = useState<string[]>(['']);
+  const [version, setVersion] = useState(item?.version);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
   // El servidor señala un criterio concreto (criteria.N) o la lista entera (criteria).
   const criteriaError = errors.fields.criteria ?? Object.entries(errors.fields).find(([key]) => key.startsWith('criteria.'))?.[1];
+
+  /** Tras un choque, el formulario toma la versión guardada por la otra persona. */
+  const reload = async (id: string) => {
+    const fresh = await api<DeliverableDetail>(`/api/projects/${projectId}/deliverables/${id}`);
+    setName(fresh.name);
+    setDescription(fresh.description);
+    setMilestoneId(fresh.milestone?.id ?? '');
+    setDueDate(fresh.dueDate ?? '');
+    setVersion(fresh.version);
+    queryClient.setQueryData([...deliverablesKey(projectId), id], fresh);
+    void queryClient.invalidateQueries({ queryKey: deliverablesKey(projectId), exact: false });
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -34,7 +47,7 @@ export function DeliverableForm({ projectId, item, onClose }: { projectId: strin
     try {
       const url = `/api/projects/${projectId}/deliverables`;
       if (item) {
-        const updated = await api<DeliverableDetail>(`${url}/${item.id}`, { method: 'PATCH', body: fields });
+        const updated = await api<DeliverableDetail>(`${url}/${item.id}`, { method: 'PATCH', body: { ...fields, version } });
         queryClient.setQueryData([...deliverablesKey(projectId), item.id], updated);
       } else {
         await api(url, { method: 'POST', body: { ...fields, criteria: criteria.map((c) => c.trim()).filter(Boolean) } });
@@ -45,7 +58,12 @@ export function DeliverableForm({ projectId, item, onClose }: { projectId: strin
       ]);
       onClose();
     } catch (error) {
-      applyFieldErrors(error, setErrors);
+      if (item && isEditConflict(error)) {
+        await reload(item.id);
+        setErrors({ fields: {}, message: EDIT_CONFLICT_NOTICE });
+      } else {
+        applyFieldErrors(error, setErrors);
+      }
     } finally {
       setBusy(false);
     }

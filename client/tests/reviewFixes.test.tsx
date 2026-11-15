@@ -93,6 +93,7 @@ describe('contraseña temporal', () => {
 describe('formulario de tarea', () => {
   const task = {
     id: 't1',
+    version: 1,
     projectId: 'p1',
     milestoneId: null,
     title: 'Diseño',

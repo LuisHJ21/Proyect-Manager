@@ -67,6 +67,7 @@ export type Dashboard = {
 export type Member = { userId: string; name: string; email: string; role: Role; projectRole: string; active?: boolean };
 
 export type Charter = {
+  version: number;
   justification: string;
   scopeIncluded: string;
   scopeExcluded: string;
@@ -94,6 +95,7 @@ export type Stakeholder = {
 };
 export type Risk = {
   id: string;
+  version: number;
   description: string;
   type: RiskType;
   probability: number;
@@ -110,6 +112,7 @@ export type Expense = { id: string; description: string; amountCents: number; da
 export type TaskWarning = 'predecessor_not_done' | 'starts_before_predecessor_due';
 export type Task = {
   id: string;
+  version: number;
   projectId: string;
   milestoneId: string | null;
   title: string;
@@ -263,6 +266,7 @@ export type DecisionRecord = {
 
 export type DeliverableRow = {
   id: string;
+  version: number;
   number: number;
   name: string;
   status: import('@pm/shared').DeliverableStatus;

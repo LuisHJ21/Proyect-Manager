@@ -21,6 +21,7 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   progress: 50,
   assignees: [carlos],
   predecessorIds: [],
+  predecessors: [],
   successorCount: 0,
   commentCount: 0,
   stepsDone: 1,

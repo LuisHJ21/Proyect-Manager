@@ -29,6 +29,7 @@ describe('choque al editar una tarea', () => {
     version: 3,
     assignees: [{ id: 'c1', name: 'Carlos' }],
     predecessorIds: [],
+    predecessors: [],
     successorCount: 0,
     commentCount: 0,
     stepsDone: 0,

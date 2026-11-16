@@ -1,6 +1,6 @@
 import { addDays, diffDays, type TaskStatus } from '@pm/shared';
 import { useId } from 'react';
-import type { Milestone, Task } from '../../api/types';
+import type { Milestone, Schedule, Task } from '../../api/types';
 import { EmptyState } from '../ui';
 import { buildTimelineLayout, ROW_HEIGHT } from './timelineLayout';
 
@@ -15,7 +15,8 @@ const BAR_COLOR: Record<TaskStatus, string> = {
   DONE: 'fill-ok-fg',
 };
 
-export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milestones: Milestone[]; onOpen: (task: Task) => void }) {
+export function Timeline({ tasks, milestones, onOpen, schedule }: { tasks: Task[]; milestones: Milestone[]; onOpen: (task: Task) => void; schedule?: Schedule }) {
+  const scheduleOf = new Map((schedule?.tasks ?? []).map((t) => [t.id, t]));
   const markerId = useId();
   const layout = buildTimelineLayout(tasks, milestones, DAY_WIDTH);
   const byId = new Map(tasks.map((t) => [t.id, t]));
@@ -76,10 +77,11 @@ export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milesto
                       height={bar.height}
                       rx={bar.summary ? 2 : 4}
                       {...(bar.summary ? { 'data-summary': '' } : {})}
-                      className={`cursor-pointer ${bar.summary ? 'fill-ink-nav' : BAR_COLOR[task.status]}`}
+                      {...(scheduleOf.get(task.id)?.critical ? { 'data-critical': '' } : {})}
+                      className={`cursor-pointer ${bar.summary ? 'fill-ink-nav' : BAR_COLOR[task.status]} ${scheduleOf.get(task.id)?.critical ? 'stroke-risk-fg stroke-2' : ''}`}
                       onClick={() => onOpen(task)}
                     >
-                      <title>{`${task.title}: ${task.startDate} a ${task.dueDate}`}</title>
+                      <title>{`${task.title}: ${task.startDate} a ${task.dueDate}${scheduleOf.has(task.id) ? ` · Holgura: ${scheduleOf.get(task.id)!.totalFloat} d` : ''}`}</title>
                     </rect>
                   );
                 })}
@@ -90,6 +92,12 @@ export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milesto
             </svg>
           </div>
         </div>
+      )}
+      {(schedule?.critical.length ?? 0) > 0 && (
+        <p className="flex items-center gap-2 text-xs text-ink-soft">
+          <span className="inline-block h-3 w-6 rounded border-2 border-risk-fg" aria-hidden="true" />
+          Ruta crítica
+        </p>
       )}
       {undatedTasks.length > 0 && (
         <div className="rounded-lg border border-line bg-surface p-4">

@@ -16,6 +16,7 @@ import { Timeline } from '../../components/tasks/Timeline';
 import { Button, EmptyState, Skeleton } from '../../components/ui';
 import { applyQuickFilter, type QuickFilter } from '../../lib/taskFilters';
 import { useProject } from './ProjectLayout';
+import { useSchedule } from '../../components/tasks/Reschedule';
 
 const VIEWS = [
   { id: 'tablero', label: 'Tablero' },
@@ -43,6 +44,7 @@ export function TasksPage() {
     enabled: view === 'cronograma',
   });
   const moveTask = useMoveTask(project.id);
+  const schedule = useSchedule(project.id, view === 'cronograma');
   const queryClient = useQueryClient();
   const toast = useToast();
   const reorder = useMutation({
@@ -110,7 +112,7 @@ export function TasksPage() {
       ) : view === 'tablero' ? (
         <KanbanBoard tasks={visible} canMove={canMove} onMove={moveTask} />
       ) : view === 'cronograma' ? (
-        <Timeline tasks={visible} milestones={milestones.data ?? []} onOpen={(task) => navigate(taskPath(task))} />
+        <Timeline tasks={visible} milestones={milestones.data ?? []} schedule={schedule.data} onOpen={(task) => navigate(taskPath(task))} />
       ) : (
         <TaskList
           tasks={tasks.data ?? []}

@@ -21,6 +21,7 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   progress: 0,
   assignees: [{ id: 'c1', name: 'Carlos' }],
   predecessorIds: [],
+  predecessors: [],
   successorCount: 0,
   commentCount: 0,
   stepsDone: 0,
@@ -58,10 +59,10 @@ const open = () => renderApp('/proyectos/p1/tareas/t1');
 
 describe('detalle de tarea', () => {
   it('muestra las advertencias de dependencias', async () => {
-    mockApi(routes(detail({ warnings: ['predecessor_not_done', 'starts_before_predecessor_due'] })));
+    mockApi(routes(detail({ warnings: ['predecessor_not_done', 'date_conflict'] })));
     open();
     expect(await screen.findByText(/predecesora sin terminar/i)).toBeInTheDocument();
-    expect(screen.getByText(/empieza antes de la fecha límite/i)).toBeInTheDocument();
+    expect(screen.getByText('Las fechas no respetan una dependencia')).toBeInTheDocument();
   });
 
   it('un ciclo muestra la cadena con los títulos de las tareas', async () => {

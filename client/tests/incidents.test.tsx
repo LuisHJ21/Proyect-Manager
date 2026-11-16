@@ -175,6 +175,7 @@ describe('reportar desde una tarea', () => {
     progress: 0,
     assignees: [{ id: 'c1', name: 'Carlos' }],
     predecessorIds: [],
+    predecessors: [],
     successorCount: 0,
     commentCount: 0,
     stepsDone: 0,

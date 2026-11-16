@@ -22,10 +22,11 @@ import { Avatar, Badge, Button, inputClass } from '../../components/ui';
 import { shortDate } from '../../lib/display';
 import { useProject } from './ProjectLayout';
 import { timeEntriesKey, TimeEntriesSection } from '../../components/tasks/TimeEntries';
+import { RescheduleNotice, useSchedule } from '../../components/tasks/Reschedule';
 
 const WARNINGS: Record<TaskWarning, string> = {
   predecessor_not_done: 'Esta tarea sigue activa, pero tiene una predecesora sin terminar.',
-  starts_before_predecessor_due: 'Esta tarea empieza antes de la fecha límite de una predecesora.',
+  date_conflict: 'Las fechas no respetan una dependencia',
 };
 
 function ProgressForm({ task }: { task: TaskDetail }) {
@@ -129,6 +130,7 @@ export function TaskDetailPage() {
   const tasksUrl = `/proyectos/${project.id}/tareas`;
 
   const detail = useQuery({ queryKey: taskKey(taskId), queryFn: () => api<TaskDetail>(`/api/tasks/${taskId}`) });
+  const schedule = useSchedule(project.id);
   const milestones = useQuery({
     queryKey: registerKey(project.id, 'milestones'),
     queryFn: () => api<Milestone[]>(`/api/projects/${project.id}/milestones`),
@@ -171,6 +173,7 @@ export function TaskDetailPage() {
   const task = detail.data!;
   const canUpdate = !readOnly && (isPm || task.assignees.some((a) => a.id === user?.id));
   const milestone = milestones.data?.find((m) => m.id === task.milestoneId);
+  const floatOf = schedule.data?.tasks.find((t) => t.id === task.id);
 
   return (
     <>
@@ -197,8 +200,15 @@ export function TaskDetailPage() {
               <Badge tone={STATUS_TONE[task.status]}>{LABELS.taskStatus[task.status]}</Badge>
               <span className="text-sm text-ink-soft">{task.progress} %</span>
             </div>
+            {floatOf && (
+              <p className="mt-2 flex items-center gap-2 text-sm text-ink-soft">
+                {floatOf.critical && <Badge tone="danger">Crítica</Badge>}
+                <span>{`Holgura: ${floatOf.totalFloat} d`}</span>
+              </p>
+            )}
             <WaitingNote task={task} />
             <div className="mt-3 space-y-2 empty:hidden">
+              {isPm && task.successorCount > 0 && <RescheduleNotice projectId={project.id} taskId={task.id} />}
               {task.warnings.map((warning) => (
                 <p key={warning} role="status" className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-fg">
                   {WARNINGS[warning]}

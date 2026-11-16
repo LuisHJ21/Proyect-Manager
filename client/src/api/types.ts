@@ -136,7 +136,7 @@ export type Risk = {
 };
 export type Expense = { id: string; description: string; amountCents: number; date: string; category: ExpenseCategory; taskId: string | null };
 
-export type TaskWarning = 'predecessor_not_done' | 'starts_before_predecessor_due';
+export type TaskWarning = 'predecessor_not_done' | 'date_conflict';
 export type Task = {
   id: string;
   version: number;
@@ -151,6 +151,7 @@ export type Task = {
   progress: number;
   assignees: PersonRef[];
   predecessorIds: string[];
+  predecessors: { id: string; type: import('@pm/shared').DependencyType; lagDays: number }[];
   successorCount: number;
   commentCount: number;
   stepsDone: number;
@@ -428,3 +429,7 @@ export type BudgetCategories = {
   unallocatedCents: number;
   overAllocated: boolean;
 };
+
+export type ScheduleTask = { id: string; earlyStart: string; earlyFinish: string; lateStart: string; lateFinish: string; totalFloat: number; critical: boolean };
+export type Schedule = { tasks: ScheduleTask[]; critical: string[]; unscheduled: string[] };
+export type RescheduleChange = { id: string; from: { startDate: string; dueDate: string }; to: { startDate: string; dueDate: string } };

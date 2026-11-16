@@ -25,6 +25,8 @@ export type DashboardInput = {
   milestones: { id: string; name: string; dueDate: string; status: string; projectId: string }[];
   incidents?: { id: string; number: number; title: string; projectId: string; priority: string; status: string; dueDate: string | null }[];
   deliverables?: { id: string; number: number; name: string; projectId: string; status: string; dueDate: string | null }[];
+  /** Solicitudes aprobadas que aún no se aplicaron. */
+  changes?: { id: string; number: number; title: string; projectId: string }[];
 };
 
 /** Fechas vacías al final. */
@@ -93,6 +95,9 @@ export function buildDashboard(input: DashboardInput, today: string) {
       projectName: projectName(d.projectId),
       dueDate: d.dueDate,
     })),
+    ...inScope(input.changes ?? [])
+      .sort((a, b) => a.number - b.number)
+      .map((cr) => ({ kind: 'change' as const, id: cr.id, number: cr.number, title: cr.title, projectId: cr.projectId, projectName: projectName(cr.projectId) })),
     ...[...highRisks]
       .sort((a, b) => b.probability * b.impact - a.probability * a.impact)
       .map((r) => ({ kind: 'risk' as const, id: r.id, title: toPlainText(r.description), projectId: r.projectId, projectName: projectName(r.projectId), score: r.probability * r.impact })),

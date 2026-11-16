@@ -64,4 +64,20 @@ describe('GET /api/dashboard con entregables', () => {
     const body = (await ctx.as(pm).get('/api/dashboard')).json();
     expect(body.attention).toEqual([expect.objectContaining({ kind: 'deliverable', number: 1, title: 'Manual', projectName: 'Portal', dueDate: '2026-11-05' })]);
   });
+
+  it('lista los cambios aprobados sin aplicar de proyectos activos', async () => {
+    ctx = await createTestApp();
+    const pm = await ctx.makeUser({ role: 'PM' });
+    const p = await ctx.makeProject({ name: 'Portal' });
+    const closed = await ctx.makeProject({ name: 'Viejo' });
+    const make = (projectId: string, number: number, status: string) =>
+      ctx.prisma.changeRequest.create({ data: { projectId, number, title: `Cambio ${number}`, status } });
+    const approved = await make(p.id, 1, 'APPROVED');
+    await make(p.id, 2, 'APPLIED');
+    await make(p.id, 3, 'PENDING');
+    await make(closed.id, 1, 'APPROVED');
+    await ctx.prisma.project.update({ where: { id: closed.id }, data: { status: 'CLOSED' } });
+    const changes = (await ctx.as(pm).get('/api/dashboard')).json().attention.filter((a: { kind: string }) => a.kind === 'change');
+    expect(changes).toEqual([{ kind: 'change', id: approved.id, number: 1, title: 'Cambio 1', projectId: p.id, projectName: 'Portal' }]);
+  });
 });

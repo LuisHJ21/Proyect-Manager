@@ -123,3 +123,14 @@ describe('entregables en el panel', () => {
     expect(link).toHaveAttribute('href', '/proyectos/p1/entregables');
   });
 });
+
+describe('cambios por aplicar en el panel', () => {
+  it('requiere atención muestra los cambios aprobados sin aplicar', async () => {
+    mockApi(routes({ ...dashboard, attention: [{ kind: 'change', id: 'cr1', number: 1, title: 'Agregar blog', projectId: 'p1', projectName: 'Portal' }] }));
+    renderApp('/');
+    const link = await screen.findByRole('link', { name: /CR-1 · Agregar blog/ });
+    expect(link).toHaveAttribute('href', '/proyectos/p1/cambios');
+    expect(link).toHaveTextContent('Aprobado sin aplicar · Portal');
+  });
+});
+

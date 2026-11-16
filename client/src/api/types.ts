@@ -59,6 +59,7 @@ export type Dashboard = {
     | { kind: 'risk'; id: string; title: string; projectId: string; projectName: string; score: number; dueDate?: undefined }
     | { kind: 'incident'; id: string; number: number; title: string; projectId: string; projectName: string; priority: Priority; dueDate: string | null; overdue: boolean; score?: undefined }
     | { kind: 'deliverable'; id: string; number: number; title: string; projectId: string; projectName: string; dueDate: string; score?: undefined }
+    | { kind: 'change'; id: string; number: number; title: string; projectId: string; projectName: string; dueDate?: undefined; score?: undefined }
   )[];
   workload: { userId: string; name: string; openTasks: number; overdueTasks: number }[];
   upcomingMilestones: { id: string; name: string; dueDate: string; projectId: string; projectName: string }[];

@@ -1,6 +1,6 @@
 import { diffDays, localToday } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
-import { CircleAlert, Clock, Flag, PackageCheck, Siren } from 'lucide-react';
+import { CircleAlert, Clock, Flag, GitPullRequestArrow, PackageCheck, Siren } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage, isBlockingError } from '../api/client';
@@ -57,6 +57,21 @@ function AttentionList({ items, today }: { items: Dashboard['attention']; today:
                   <span className="block text-xs text-ink-soft">
                     Comprometido para el {shortDate(item.dueDate)} · {item.projectName}
                   </span>
+                </span>
+              </Link>
+            </li>
+          );
+        }
+        if (item.kind === 'change') {
+          return (
+            <li key={`change-${item.id}`}>
+              <Link to={`/proyectos/${item.projectId}/cambios`} className="flex gap-2.5 px-5 py-3 transition-colors duration-150 hover:bg-raised">
+                <GitPullRequestArrow size={16} className="mt-0.5 shrink-0 text-warn-fg" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block font-medium text-ink">
+                    CR-{item.number} · {item.title}
+                  </span>
+                  <span className="block text-xs text-ink-soft">Aprobado sin aplicar · {item.projectName}</span>
                 </span>
               </Link>
             </li>

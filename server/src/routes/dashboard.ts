@@ -14,7 +14,7 @@ export function dashboardRoutes(app: App) {
       include: { members: { include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: 'asc' } } } },
     });
     const where = { projectId: { in: projects.map((p) => p.id) } };
-    const [tasks, risks, expenses, milestones, incidents, deliverables] = await Promise.all([
+    const [tasks, risks, expenses, milestones, incidents, deliverables, changes] = await Promise.all([
       prisma.task.findMany({
         where,
         include: { assignees: { include: { user: { select: { id: true, name: true, role: true, active: true } } } } },
@@ -30,6 +30,7 @@ export function dashboardRoutes(app: App) {
         where: { ...where, status: { not: 'ACCEPTED' }, dueDate: { not: null } },
         select: { id: true, number: true, name: true, projectId: true, status: true, dueDate: true },
       }),
+      prisma.changeRequest.findMany({ where: { ...where, status: 'APPROVED' }, select: { id: true, number: true, title: true, projectId: true } }),
     ]);
     const today = c.var.deps.today();
     const evm = await loadEvmIndexes(prisma, projects.map((p) => p.id), today);
@@ -51,6 +52,7 @@ export function dashboardRoutes(app: App) {
         milestones,
         incidents,
         deliverables,
+        changes,
       },
       today,
     ));

@@ -5,6 +5,7 @@ import { stepProgress } from '../domain/taskSteps';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { getTaskAccess } from './tasks';
 import { assertNotSummary } from './taskTree';
+import { isBlocking } from '../domain/dependencies';
 
 type TaskParams = { Params: { id: string } };
 type StepParams = { Params: { id: string; stepId: string } };
@@ -76,14 +77,16 @@ export function taskStepRoutes(app: App) {
       const marking = input.done === true && !current.done;
       const unmarking = input.done === false && current.done;
       if (marking) {
-        const pending = await tx.taskDependency.findMany({
-          where: { successorId: task.id, predecessor: { status: { not: 'DONE' } } },
-          include: { predecessor: { select: { id: true, title: true } } },
-        });
+        const pending = (
+          await tx.taskDependency.findMany({
+            where: { successorId: task.id, predecessor: { status: { not: 'DONE' } } },
+            include: { predecessor: { select: { id: true, title: true, status: true } } },
+          })
+        ).filter((d) => isBlocking(d.type, d.predecessor.status));
         if (pending.length > 0) {
           const titles = pending.map((d) => d.predecessor.title).join(', ');
           throw new AppError(409, 'predecessors_pending', `Antes deben terminar: ${titles}`, {
-            details: { pending: pending.map((d) => d.predecessor) },
+            details: { pending: pending.map((d) => ({ id: d.predecessor.id, title: d.predecessor.title })) },
           });
         }
       }

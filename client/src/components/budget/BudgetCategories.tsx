@@ -9,7 +9,8 @@ import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } 
 import { INVALID_MONEY_MESSAGE, MoneyInput } from '../MoneyInput';
 import { Button } from '../ui';
 
-export const budgetCategoriesKey = (projectId: string) => ['project', projectId, 'budget-categories'];
+/** Cuelga de la clave de los gastos: al cambiar un gasto se vuelve a pedir. */
+export const budgetCategoriesKey = (projectId: string) => ['project', projectId, 'expenses', 'categories'];
 
 function EditDialog({ projectId, data, onClose }: { projectId: string; data: BudgetCategories; onClose: () => void }) {
   const queryClient = useQueryClient();

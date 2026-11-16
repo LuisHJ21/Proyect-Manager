@@ -25,6 +25,9 @@ export function findDependencyCycle(edges: DependencyEdge[], predecessorId: stri
   return walk(successorId, [successorId]);
 }
 
+/** Una predecesora retiene a su sucesora: fin a inicio sin terminar o inicio a inicio sin empezar. */
+export const isBlocking = (type: string, status: string) => (type === 'FS' && status !== 'DONE') || (type === 'SS' && status === 'TODO');
+
 const ADVANCING_STATUSES = new Set(['IN_PROGRESS', 'DONE']);
 
 /**
@@ -32,7 +35,7 @@ const ADVANCING_STATUSES = new Set(['IN_PROGRESS', 'DONE']);
  * terminó o una inicio a inicio no empezó. Fin a fin e inicio a fin no bloquean el avance.
  */
 export function checkProgressChange(current: ProgressState, next: ProgressChange, predecessors: { type: DependencyType; status: string }[]): 'ok' | 'blocked' {
-  const blocking = predecessors.some((p) => (p.type === 'FS' && p.status !== 'DONE') || (p.type === 'SS' && p.status === 'TODO'));
+  const blocking = predecessors.some((p) => isBlocking(p.type, p.status));
   if (!blocking) return 'ok';
   const advancesStatus = next.status !== undefined && next.status !== current.status && ADVANCING_STATUSES.has(next.status);
   const advancesProgress = next.progress !== undefined && next.progress > current.progress;

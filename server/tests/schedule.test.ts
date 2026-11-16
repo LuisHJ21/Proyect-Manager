@@ -73,4 +73,18 @@ describe('GET /api/projects/:id/schedule', () => {
       expect((await reschedule(a.id, false, ana)).statusCode).toBe(403);
     });
   });
+
+  describe('hallazgos de la revisión final', () => {
+    it('la vista previa es una lectura y no escribe en la bitácora', async () => {
+      await ctx.prisma.project.update({ where: { id: project.id }, data: { endDate: '2026-01-31' } });
+      const a = await ctx.prisma.task.create({ data: { projectId: project.id, title: 'A', startDate: '2026-01-01', dueDate: '2026-01-08' } });
+      const b = await ctx.prisma.task.create({ data: { projectId: project.id, title: 'B', startDate: '2026-01-06', dueDate: '2026-01-07' } });
+      await ctx.prisma.taskDependency.create({ data: { predecessorId: a.id, successorId: b.id } });
+      const res = await ctx.as(pm).get(`/api/tasks/${a.id}/reschedule`);
+      expect(res.statusCode).toBe(200);
+      expect(res.json().changes).toHaveLength(1);
+      expect(await ctx.prisma.activityLog.count()).toBe(0);
+      expect((await ctx.as(ana).get(`/api/tasks/${a.id}/reschedule`)).statusCode).toBe(403);
+    });
+  });
 });

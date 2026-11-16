@@ -40,6 +40,7 @@ const ROUTE_SECTION: Record<string, Section> = {
   'PATCH /api/tasks/:id/dependencies/:predecessorId': 'tasks',
   'GET /api/projects/:id/schedule': 'tasks',
   'POST /api/tasks/:id/reschedule': 'tasks',
+  'GET /api/tasks/:id/reschedule': 'tasks',
   'DELETE /api/tasks/:id/dependencies/:predecessorId': 'tasks',
 
   'POST /api/tasks/:id/comments': 'comments',
@@ -141,7 +142,7 @@ const FINE_GRAINED = new Set([
 ]);
 
 /** Lecturas reservadas al PM aunque la sección se lea: herramientas de gestión. */
-const PM_ONLY_READS = new Set(['GET /api/projects/:id/members/:userId/impact']);
+const PM_ONLY_READS = new Set(['GET /api/projects/:id/members/:userId/impact', 'GET /api/tasks/:id/reschedule']);
 
 const isProjectRoute = (url: string) => /^\/api\/(projects\/:id|tasks\/:id)(\/|$)/.test(url);
 

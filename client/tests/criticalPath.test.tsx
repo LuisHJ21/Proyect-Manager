@@ -33,7 +33,7 @@ const routes = (open: TaskDetail, extra: object = {}) => ({
   'GET /api/projects/p1/expenses': [],
   'GET /api/projects/p1/deliverables': [],
   'GET /api/projects/p1/schedule': schedule,
-  [`POST /api/tasks/${open.id}/reschedule`]: { changes: [], applied: false },
+  [`GET /api/tasks/${open.id}/reschedule`]: { changes: [], applied: false },
   ...extra,
 });
 
@@ -95,7 +95,7 @@ describe('reprogramar sucesoras', () => {
   const changes = [{ id: 'b', from: { startDate: '2026-01-06', dueDate: '2026-01-07' }, to: { startDate: '2026-01-09', dueDate: '2026-01-10' } }];
 
   it('avisa, muestra la propuesta y aplica', async () => {
-    const api = mockApi(routes(detail(A), { 'POST /api/tasks/a/reschedule': (body: { apply: boolean }) => ({ changes, applied: body.apply }) }));
+    const api = mockApi(routes(detail(A), { 'GET /api/tasks/a/reschedule': { changes, applied: false }, 'POST /api/tasks/a/reschedule': { changes, applied: true } }));
     renderApp('/proyectos/p1/tareas/a');
     expect(await screen.findByText('Hay sucesoras que ya no respetan sus dependencias')).toBeInTheDocument();
     const user = userEvent.setup();
@@ -105,13 +105,13 @@ describe('reprogramar sucesoras', () => {
     expect(row).toHaveTextContent('6 ene');
     expect(row).toHaveTextContent('9 ene');
     await user.click(dialog.getByRole('button', { name: 'Aplicar' }));
-    // Tras aplicar, la propuesta se vuelve a pedir con apply: false.
-    await waitFor(() => expect(api.calls.some((c) => c.key === 'POST /api/tasks/a/reschedule' && (c.body as { apply: boolean }).apply)).toBe(true));
+    await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/tasks/a/reschedule')?.body).toEqual({ apply: true }));
+    expect(api.calls.filter((c) => c.key === 'POST /api/tasks/a/reschedule')).toHaveLength(1);
   });
 
   it('un 409 por fechas fuera del proyecto se muestra en la ventana', async () => {
     const message = 'La reprogramación deja tareas fuera del proyecto: Construcción';
-    mockApi(routes(detail(A), { 'POST /api/tasks/a/reschedule': (body: { apply: boolean }) => (body.apply ? apiError(409, 'reschedule_outside', { message }) : { changes, applied: false }) }));
+    mockApi(routes(detail(A), { 'GET /api/tasks/a/reschedule': { changes, applied: false }, 'POST /api/tasks/a/reschedule': apiError(409, 'reschedule_outside', { message }) }));
     renderApp('/proyectos/p1/tareas/a');
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Reprogramar sucesoras' }));
@@ -120,3 +120,17 @@ describe('reprogramar sucesoras', () => {
     expect(await dialog.findByText(message)).toBeInTheDocument();
   });
 });
+
+describe('datos que se refrescan', () => {
+  it('guardar una tarea vuelve a pedir la ruta crítica', async () => {
+    const api = mockApi(routes(detail(A), { 'PATCH /api/tasks/a': A }));
+    renderApp('/proyectos/p1/tareas/a');
+    const user = userEvent.setup();
+    await screen.findByText('Holgura: 0 d');
+    const before = api.calls.filter((c) => c.key === 'GET /api/projects/p1/schedule').length;
+    await user.click(screen.getByRole('button', { name: 'Editar tarea' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Guardar tarea' }));
+    await waitFor(() => expect(api.calls.filter((c) => c.key === 'GET /api/projects/p1/schedule').length).toBeGreaterThan(before));
+  });
+});
+

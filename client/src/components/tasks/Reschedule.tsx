@@ -27,7 +27,7 @@ export function RescheduleNotice({ projectId, taskId }: { projectId: string; tas
   const queryClient = useQueryClient();
   const preview = useQuery({
     queryKey: rescheduleKey(taskId),
-    queryFn: () => api<{ changes: RescheduleChange[] }>(`/api/tasks/${taskId}/reschedule`, { method: 'POST', body: { apply: false } }),
+    queryFn: () => api<{ changes: RescheduleChange[] }>(`/api/tasks/${taskId}/reschedule`),
   });
   const tasks = useQuery({ queryKey: tasksKey(projectId), queryFn: () => api<Task[]>(`/api/projects/${projectId}/tasks`) });
   const [open, setOpen] = useState(false);

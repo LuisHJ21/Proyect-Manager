@@ -12,6 +12,9 @@ export async function refreshTaskData(queryClient: QueryClient, projectId: strin
     queryClient.invalidateQueries({ queryKey: ['projects'] }),
     queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
     queryClient.invalidateQueries({ queryKey: ['calendar'] }),
+    // Fechas y horas cambian la ruta crítica y el costo real por categoría.
+    queryClient.invalidateQueries({ queryKey: ['project', projectId, 'schedule'] }),
+    queryClient.invalidateQueries({ queryKey: ['project', projectId, 'expenses', 'categories'] }),
     ...(taskId ? [queryClient.invalidateQueries({ queryKey: taskKey(taskId) })] : []),
   ]);
 }

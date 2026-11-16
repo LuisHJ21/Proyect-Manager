@@ -27,6 +27,14 @@ export async function loadSchedule(db: Db, projectId: string) {
 }
 
 export function scheduleRoutes(app: App) {
+  /** Vista previa: sucesoras en conflicto y sus fechas propuestas. Es una lectura; no escribe nada. */
+  app.get('/api/tasks/:id/reschedule', async (c) => {
+    const { task, isPm } = await getTaskAccess(c, c.req.param('id'));
+    if (!isPm) throw forbidden();
+    const { dated, dependencies } = await loadSchedule(c.var.deps.prisma, task.projectId);
+    return c.json({ changes: proposeReschedule(task.id, dated, dependencies), applied: false });
+  });
+
   /** Propone (apply: false) o guarda (apply: true) nuevas fechas para las sucesoras en conflicto. Solo el PM. */
   app.post('/api/tasks/:id/reschedule', async (c) => {
     const { prisma } = c.var.deps;

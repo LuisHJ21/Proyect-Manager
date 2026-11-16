@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { summarize, type WbsNode, type WbsTask } from '../domain/wbs';
 import type { DependencyType } from '@pm/shared';
-import { dependencyViolated } from '../domain/dependencies';
+import { dependencyViolated, isBlocking } from '../domain/dependencies';
 
 /** EDT del proyecto de la tarea, para el código y el resumen de las padres. */
 export type TaskTree = { nodes: Map<string, WbsNode>; byId: Map<string, WbsTask> };
@@ -19,8 +19,9 @@ export type TaskWarning = 'predecessor_not_done' | 'date_conflict';
 /** El costo planeado solo se envía al Project Manager, y como número: un BigInt no se puede convertir a JSON. */
 export function toTaskDto(task: TaskWithRelations, includeCost: boolean, tree: TaskTree) {
   const { assignees, predecessors, steps, _count, plannedCostCents, estimatedHours, ...fields } = task;
+  // Solo espera lo que de verdad la retiene según el tipo de dependencia.
   const waitingOn = predecessors
-    .filter((p) => p.predecessor.status !== 'DONE')
+    .filter((p) => isBlocking(p.type, p.predecessor.status))
     .map((p) => ({ id: p.predecessor.id, title: p.predecessor.title }));
 
   const warnings: TaskWarning[] = [];

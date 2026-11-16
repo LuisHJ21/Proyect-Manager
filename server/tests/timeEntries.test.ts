@@ -102,4 +102,10 @@ describe('registro de horas', () => {
     expect(bad.statusCode).toBe(400);
     expect(bad.json().error.fields.estimatedHours).toBe('Se calcula con sus subtareas');
   });
+
+  it('registrar horas queda en la bitácora como edición de la tarea', async () => {
+    await log(ana);
+    const entries = await ctx.prisma.activityLog.findMany();
+    expect(entries.map((e) => e.action)).toEqual(['updated']);
+  });
 });

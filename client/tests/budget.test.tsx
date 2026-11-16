@@ -118,3 +118,20 @@ describe('presupuesto por categoría y reservas', () => {
   });
 });
 
+describe('presupuesto por categoría al día', () => {
+  it('añadir un gasto vuelve a pedir el presupuesto por categoría', async () => {
+    const api = mockApi({ ...routes, 'POST /api/projects/p1/expenses': { id: 'e1' }, 'GET /api/projects/p1/tasks': [] });
+    renderApp('/proyectos/p1/presupuesto');
+    const user = userEvent.setup();
+    await screen.findByRole('region', { name: 'Presupuesto por categoría' });
+    const before = api.calls.filter((c) => c.key === 'GET /api/projects/p1/budget-categories').length;
+    await user.click(screen.getByRole('button', { name: 'Añadir gasto' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText('Descripción'), 'Cemento');
+    await user.type(dialog.getByLabelText('Monto'), '5');
+    await user.type(dialog.getByLabelText('Fecha'), '2026-11-01');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(api.calls.filter((c) => c.key === 'GET /api/projects/p1/budget-categories').length).toBeGreaterThan(before));
+  });
+});
+

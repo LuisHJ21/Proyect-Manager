@@ -172,4 +172,26 @@ describe('dependencias', () => {
     await link(design, build);
     expect((await dto(design)).successorCount).toBe(1);
   });
+
+  describe('el tipo de dependencia en pasos y avisos', () => {
+    it('fin a fin: marcar un paso no se bloquea y no queda «en espera»', async () => {
+      const a = await ctx.makeTask(project.id, { title: 'A', status: 'IN_PROGRESS', assignees: [ana] });
+      const b = await ctx.makeTask(project.id, { title: 'B', status: 'IN_PROGRESS', assignees: [ana] });
+      const step = await ctx.makeStep(b.id);
+      await ctx.as(pm).post(`/api/tasks/${b.id}/dependencies`, { predecessorId: a.id, type: 'FF' });
+      expect((await ctx.as(ana).patch(`/api/tasks/${b.id}/steps/${step.id}`, { done: true })).statusCode).toBe(200);
+      const dto = (await ctx.as(pm).get(`/api/tasks/${b.id}`)).json();
+      expect(dto.waitingOn).toEqual([]);
+      expect(dto.warnings).not.toContain('predecessor_not_done');
+    });
+
+    it('inicio a inicio: con la predecesora en curso no hay espera; sin empezar, sí', async () => {
+      const a = await ctx.makeTask(project.id, { title: 'A', assignees: [ana] });
+      const b = await ctx.makeTask(project.id, { title: 'B', assignees: [ana] });
+      await ctx.as(pm).post(`/api/tasks/${b.id}/dependencies`, { predecessorId: a.id, type: 'SS' });
+      expect((await ctx.as(pm).get(`/api/tasks/${b.id}`)).json().waitingOn).toEqual([{ id: a.id, title: 'A' }]);
+      await ctx.prisma.task.update({ where: { id: a.id }, data: { status: 'IN_PROGRESS' } });
+      expect((await ctx.as(pm).get(`/api/tasks/${b.id}`)).json().waitingOn).toEqual([]);
+    });
+  });
 });

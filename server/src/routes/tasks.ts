@@ -15,7 +15,7 @@ import { readBody, type App, type Ctx } from '../http';
 import { removeAfterDelete } from '../storage/fileStore';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
-import { checkProgressChange } from '../domain/dependencies';
+import { checkProgressChange, isBlocking } from '../domain/dependencies';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
 import { AppError, editConflict, fieldError, forbidden, notFound } from '../errors';
 import { incidentAccess } from '../domain/incidents';
@@ -283,7 +283,7 @@ export function taskRoutes(app: App) {
           where: { successorId: task.id, predecessor: { status: { not: 'DONE' } } },
           include: { predecessor: { select: { id: true, title: true, status: true } } },
         })
-      ).filter((d) => d.type === 'FS' || (d.type === 'SS' && d.predecessor.status === 'TODO'));
+      ).filter((d) => isBlocking(d.type, d.predecessor.status));
       const blocking = pending.map((d) => ({ type: d.type as DependencyType, status: d.predecessor.status }));
       if (checkProgressChange(current, data, blocking) === 'blocked') {
         const titles = pending.map((d) => d.predecessor.title).join(', ');

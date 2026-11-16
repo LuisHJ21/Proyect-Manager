@@ -19,7 +19,7 @@ export async function loadEvmInput(prisma: PrismaClient, projectId: string): Pro
   const baseline = await prisma.baseline.findFirst({ where: { projectId }, orderBy: { version: 'desc' }, include: { tasks: true } });
   if (!baseline) return null;
   const [project, tasks, expenses] = await Promise.all([
-    prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { plannedBudgetCents: true } }),
+    prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { plannedBudgetCents: true, contingencyReserveCents: true, managementReserveCents: true } }),
     prisma.task.findMany({ where: { projectId, ...leafWhere }, select: { id: true, title: true, progress: true, dueDate: true, plannedCostCents: true } }),
     prisma.expense.findMany({ where: { projectId }, select: { amountCents: true, date: true, taskId: true } }),
   ]);
@@ -31,6 +31,8 @@ export async function loadEvmInput(prisma: PrismaClient, projectId: string): Pro
     tasks: tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents) })),
     expenses: expenses.map((e) => ({ ...e, amountCents: Number(e.amountCents) })),
     plannedBudgetCents: Number(project.plannedBudgetCents),
+    contingencyCents: Number(project.contingencyReserveCents),
+    managementCents: Number(project.managementReserveCents),
   };
 }
 

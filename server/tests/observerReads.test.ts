@@ -2,7 +2,7 @@ import type { Project, Task, User } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
-const COST_KEYS = ['plannedCostCents', 'plannedBudgetCents', 'amountCents', 'spentCents', 'currency'];
+const COST_KEYS = ['plannedCostCents', 'plannedBudgetCents', 'amountCents', 'spentCents', 'currency', 'contingencyReserveCents', 'managementReserveCents'];
 
 describe('lo que lee el observador', () => {
   let ctx: TestCtx;

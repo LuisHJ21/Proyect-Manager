@@ -6,6 +6,8 @@ export type EvmInput = {
   tasks: { id: string; title: string; progress: number; dueDate: string | null; plannedCostCents: number }[];
   expenses: { amountCents: number; date: string; taskId: string | null }[];
   plannedBudgetCents: number;
+  contingencyCents: number;
+  managementCents: number;
 };
 export type EvmTaskRow = {
   taskId: string;
@@ -32,7 +34,13 @@ export type EvmMetrics = {
   etcCents: number;
   vacCents: number;
   percentComplete: number;
-  reserveCents: number;
+  contingencyCents: number;
+  managementCents: number;
+  /** Presupuesto − BAC − contingencia − gestión; negativo si no alcanza. */
+  unallocatedCents: number;
+  /** Sobrecosto proyectado (EAC − BAC) que consumiría la contingencia. */
+  contingencyUseCents: number;
+  contingencyExceeded: boolean;
 };
 
 /** Fracción del plazo de una tarea transcurrida a una fecha, contando el día de inicio y el de fin. */
@@ -113,7 +121,11 @@ export function computeEvm(
       etcCents: Math.max(eacCents - acCents, 0),
       vacCents: bacCents - eacCents,
       percentComplete: bacCents === 0 ? 0 : Math.round((evCents / bacCents) * 100),
-      reserveCents: input.plannedBudgetCents - bacCents,
+      contingencyCents: input.contingencyCents,
+      managementCents: input.managementCents,
+      unallocatedCents: input.plannedBudgetCents - bacCents - input.contingencyCents - input.managementCents,
+      contingencyUseCents: Math.max(0, eacCents - bacCents),
+      contingencyExceeded: eacCents - bacCents > input.contingencyCents,
     },
     tasks: rows,
     outsideBaseline: outside.length,

@@ -8,6 +8,8 @@ const input = (overrides: Partial<EvmInput> = {}): EvmInput => ({
   tasks: [{ id: 't1', title: 'Diseño', progress: 40, dueDate: '2026-11-10', plannedCostCents: 100000 }],
   expenses: [],
   plannedBudgetCents: 100000,
+  contingencyCents: 0,
+  managementCents: 0,
   ...overrides,
 });
 
@@ -56,7 +58,11 @@ describe('computeEvm', () => {
       etcCents: 75000,
       vacCents: -25000,
       percentComplete: 40,
-      reserveCents: 0,
+      contingencyCents: 0,
+      managementCents: 0,
+      unallocatedCents: 0,
+      contingencyUseCents: 25000,
+      contingencyExceeded: true,
     });
   });
 
@@ -113,7 +119,7 @@ describe('computeEvm', () => {
   });
 
   it('reserva negativa cuando el BAC supera el presupuesto', () => {
-    expect(computeEvm(input({ plannedBudgetCents: 80000 }), '2026-11-05').metrics.reserveCents).toBe(-20000);
+    expect(computeEvm(input({ plannedBudgetCents: 80000 }), '2026-11-05').metrics.unallocatedCents).toBe(-20000);
   });
 
   it('redondea los centavos de PV', () => {
@@ -130,6 +136,8 @@ describe('EAC según el CPI', () => {
         tasks: [{ id: 't1', title: 'Diseño', progress, dueDate: '2026-11-10', plannedCostCents: 1000 }],
         expenses,
         plannedBudgetCents: 1000,
+        contingencyCents: 0,
+        managementCents: 0,
       },
       '2026-11-05',
     );
@@ -168,6 +176,22 @@ describe('gasto fuera de la línea base', () => {
     );
     expect(result.outsideBaselineCostCents).toBe(300);
     expect(result.metrics.acCents).toBe(350);
+  });
+});
+
+describe('reservas', () => {
+  it('contingencia usada por el sobrecosto proyectado y presupuesto sin asignar', () => {
+    const { metrics } = computeEvm(
+      input({ plannedBudgetCents: 130000, contingencyCents: 20000, managementCents: 5000, expenses: [{ amountCents: 50000, date: '2026-11-04', taskId: null }] }),
+      '2026-11-05',
+    );
+    expect(metrics).toMatchObject({ eacCents: 125000, contingencyUseCents: 25000, contingencyExceeded: true, unallocatedCents: 5000 });
+  });
+
+  it('sin sobrecosto no se usa contingencia', () => {
+    const { metrics } = computeEvm(input({ contingencyCents: 10000, expenses: [{ amountCents: 10000, date: '2026-11-04', taskId: null }] }), '2026-11-05');
+    expect(metrics.eacCents).toBeLessThan(metrics.bacCents);
+    expect(metrics).toMatchObject({ contingencyUseCents: 0, contingencyExceeded: false });
   });
 });
 

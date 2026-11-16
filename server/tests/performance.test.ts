@@ -107,7 +107,7 @@ describe('líneas base y desempeño', () => {
     await ctx.prisma.task.update({ where: { id: design.id }, data: { progress: 40 } });
     await ctx.prisma.expense.create({ data: { projectId: project.id, description: 'G', amountCents: 50000, date: '2026-11-04', category: 'OTHER', taskId: design.id } });
     const { metrics } = (await ctx.as(pm).get(perf())).json();
-    expect(metrics).toMatchObject({ pvCents: 50000, evCents: 40000, acCents: 50000, bacCents: 400000, cpi: 0.8, spi: 0.8, reserveCents: 100000 });
+    expect(metrics).toMatchObject({ pvCents: 50000, evCents: 40000, acCents: 50000, bacCents: 400000, cpi: 0.8, spi: 0.8, unallocatedCents: 100000, contingencyCents: 0 });
   });
 
   it('leer el desempeño no guarda fotos', async () => {

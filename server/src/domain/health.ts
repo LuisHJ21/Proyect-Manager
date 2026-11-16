@@ -1,10 +1,18 @@
 import { ACTIVE_PROJECT_STATUS, type Health } from '@pm/shared';
 import { HIGH_RISK_SCORE, weightedProgress, type ProgressTask } from './indicators';
 
-const AT_RISK_OVERDUE_TASKS = 3;
-const ATTENTION_BUDGET_RATIO = 0.9;
-/** Con línea base, un CPI o SPI bajo este valor pide atención. */
-const ATTENTION_EVM_INDEX = 0.9;
+/**
+ * Umbrales de salud de un proyecto (F16): tareas vencidas para «En riesgo», porcentaje del presupuesto
+ * y CPI/SPI mínimo (en centésimas) para «Atención», y puntaje desde el que un riesgo es alto.
+ */
+export type HealthThresholds = { overdueTasks: number; budgetPercent: number; indexMin: number; highRiskScore: number };
+export const DEFAULT_THRESHOLDS: HealthThresholds = { overdueTasks: 3, budgetPercent: 90, indexMin: 90, highRiskScore: HIGH_RISK_SCORE };
+export const thresholdsOf = (p: { healthOverdueTasks?: number; healthBudgetPercent?: number; healthIndexMin?: number; highRiskScore?: number }): HealthThresholds => ({
+  overdueTasks: p.healthOverdueTasks ?? DEFAULT_THRESHOLDS.overdueTasks,
+  budgetPercent: p.healthBudgetPercent ?? DEFAULT_THRESHOLDS.budgetPercent,
+  indexMin: p.healthIndexMin ?? DEFAULT_THRESHOLDS.indexMin,
+  highRiskScore: p.highRiskScore ?? DEFAULT_THRESHOLDS.highRiskScore,
+});
 
 export type HealthInput = {
   status: string;
@@ -23,19 +31,19 @@ export const isActiveProject = (status: string) => (ACTIVE_PROJECT_STATUS as rea
 export const isOverdue = (task: { status: string; dueDate: string | null }, today: string) =>
   task.status !== 'DONE' && task.dueDate !== null && task.dueDate < today;
 
-export const isHighRisk = (risk: { probability: number; impact: number; status: string }) =>
-  risk.status !== 'CLOSED' && risk.probability * risk.impact >= HIGH_RISK_SCORE;
+export const isHighRisk = (risk: { probability: number; impact: number; status: string }, score: number = HIGH_RISK_SCORE) =>
+  risk.status !== 'CLOSED' && risk.probability * risk.impact >= score;
 
 /** Única fuente de las reglas de salud. Las condiciones se evalúan en orden. */
-export function computeHealth(input: HealthInput, today: string): Health | null {
+export function computeHealth(input: HealthInput, today: string, t: HealthThresholds = DEFAULT_THRESHOLDS): Health | null {
   if (!isActiveProject(input.status)) return null;
   const hasBudget = input.plannedBudgetCents > 0;
   const overBudget = hasBudget && input.spentCents > input.plannedBudgetCents;
-  if ((input.endDate !== null && input.endDate < today) || overBudget || input.overdueTasks >= AT_RISK_OVERDUE_TASKS) {
+  if ((input.endDate !== null && input.endDate < today) || overBudget || input.overdueTasks >= t.overdueTasks) {
     return 'AT_RISK';
   }
-  const nearBudget = hasBudget && input.spentCents >= input.plannedBudgetCents * ATTENTION_BUDGET_RATIO;
-  const lowIndex = [input.cpi, input.spi].some((value) => value !== null && value !== undefined && value < ATTENTION_EVM_INDEX);
+  const nearBudget = hasBudget && input.spentCents >= (input.plannedBudgetCents * t.budgetPercent) / 100;
+  const lowIndex = [input.cpi, input.spi].some((value) => value !== null && value !== undefined && value < t.indexMin / 100);
   if (input.overdueTasks > 0 || input.highRisks > 0 || nearBudget || lowIndex) return 'ATTENTION';
   return 'ON_TRACK';
 }
@@ -54,16 +62,17 @@ export function summarizeProject(
   expenses: SummaryExpense[],
   today: string,
   evm?: EvmIndexes,
+  thresholds: HealthThresholds = DEFAULT_THRESHOLDS,
 ) {
   const overdueTasks = tasks.filter((t) => isOverdue(t, today)).length;
-  const highRisks = risks.filter(isHighRisk).length;
+  const highRisks = risks.filter((r) => isHighRisk(r, thresholds.highRiskScore)).length;
   const spentCents = expenses.reduce((sum, e) => sum + e.amountCents, 0);
   return {
     progress: weightedProgress(tasks),
     overdueTasks,
     highRisks,
     spentCents,
-    health: computeHealth({ ...project, spentCents, overdueTasks, highRisks, cpi: evm?.cpi, spi: evm?.spi }, today),
+    health: computeHealth({ ...project, spentCents, overdueTasks, highRisks, cpi: evm?.cpi, spi: evm?.spi }, today, thresholds),
   };
 }
 

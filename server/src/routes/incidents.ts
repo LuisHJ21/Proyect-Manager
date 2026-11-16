@@ -4,7 +4,6 @@ import { readBody, readQuery, type App, type Ctx } from '../http';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { incidentAccess, isIncidentOverdue, truncateTitle, type IncidentViewer } from '../domain/incidents';
-import { HIGH_RISK_SCORE } from '../domain/indicators';
 import { fieldError, forbidden, notFound } from '../errors';
 import { assertOwnerCanOwn } from '../domain/owners';
 import { createDecision } from './decisions';
@@ -195,7 +194,7 @@ export function incidentRoutes(app: App) {
       title: truncateTitle(toPlainText(risk.description)) || 'Riesgo materializado',
       riskId: risk.id,
       ownerId: risk.ownerId,
-      priority: risk.probability * risk.impact >= HIGH_RISK_SCORE ? 'HIGH' : 'MEDIUM',
+      priority: risk.probability * risk.impact >= project.highRiskScore ? 'HIGH' : 'MEDIUM',
       reportedById: viewer.userId,
     });
     await notifyOwner(c, created);

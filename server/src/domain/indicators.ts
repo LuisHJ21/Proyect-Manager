@@ -7,6 +7,8 @@ export type IndicatorsInput = {
   plannedBudgetCents?: number;
   expenses?: { amountCents: number }[];
   risks?: { probability: number; impact: number; status: string }[];
+  /** Puntaje de riesgo alto del proyecto; por defecto HIGH_RISK_SCORE. */
+  highRiskScore?: number;
 };
 
 export const HIGH_RISK_SCORE = 15;
@@ -51,7 +53,7 @@ export function computeIndicators(input: IndicatorsInput, today: string) {
       .map(({ id, name, dueDate }) => ({ id, name, dueDate })),
     ...(input.plannedBudgetCents !== undefined ? { budget: computeBudget(input.plannedBudgetCents, input.expenses ?? []) } : {}),
     ...(input.risks
-      ? { highRisks: input.risks.filter((r) => r.status !== 'CLOSED' && r.probability * r.impact >= HIGH_RISK_SCORE).length }
+      ? { highRisks: input.risks.filter((r) => r.status !== 'CLOSED' && r.probability * r.impact >= (input.highRiskScore ?? HIGH_RISK_SCORE)).length }
       : {}),
   };
 }

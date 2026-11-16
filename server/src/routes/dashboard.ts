@@ -3,6 +3,7 @@ import { readBody, type App, type Ctx } from '../http';
 import { requirePm } from '../auth/guards';
 import { buildDashboard } from '../domain/dashboard';
 import { isReportDue } from '../domain/statusReport';
+import { thresholdsOf } from '../domain/health';
 import { loadEvmIndexes } from './evmLoader';
 import { leafWhere } from '../domain/wbs';
 import { loadLaborCosts } from './laborCost';
@@ -51,6 +52,7 @@ export function dashboardRoutes(app: App) {
           plannedBudgetCents: Number(p.plannedBudgetCents),
           team: p.members.map((m) => m.user),
           evm: evm.get(p.id),
+          thresholds: thresholdsOf(p),
           reportDue: isReportDue(p.statusReportFrequency, lastReportEnd.get(p.id) ?? null, p.startDate, today),
         })),
         tasks: tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours), assignees: t.assignees.map((a) => a.user) })),

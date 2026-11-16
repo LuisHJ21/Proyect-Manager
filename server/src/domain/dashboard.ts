@@ -1,5 +1,5 @@
 import { addDays, isDeliverableOverdue, toPlainText, type Health } from '@pm/shared';
-import { isActiveProject, isHighRisk, isOverdue, summarizeProject, type EvmIndexes } from './health';
+import { DEFAULT_THRESHOLDS, isActiveProject, isHighRisk, isOverdue, summarizeProject, type EvmIndexes, type HealthThresholds } from './health';
 import { isIncidentOverdue } from './incidents';
 import { weekStart, weeklyLoad } from './workload';
 
@@ -9,7 +9,7 @@ const HEALTH_ORDER: Record<Health, number> = { AT_RISK: 0, ATTENTION: 1, ON_TRAC
 
 export type Person = { id: string; name: string };
 export type DashboardInput = {
-  projects: { id: string; name: string; status: string; endDate: string | null; plannedBudgetCents: number; team: Person[]; evm?: EvmIndexes; reportDue?: boolean }[];
+  projects: { id: string; name: string; status: string; endDate: string | null; plannedBudgetCents: number; team: Person[]; evm?: EvmIndexes; reportDue?: boolean; thresholds?: HealthThresholds }[];
   tasks: {
     id: string;
     title: string;
@@ -59,11 +59,13 @@ export function buildDashboard(input: DashboardInput, today: string) {
       expenses.filter((e) => e.projectId === project.id),
       today,
       project.evm,
+      project.thresholds,
     ),
   }));
 
   const overdue = tasks.filter((t) => isOverdue(t, today));
-  const highRisks = risks.filter(isHighRisk);
+  const thresholdOf = new Map(projects.map((p) => [p.id, (p.thresholds ?? DEFAULT_THRESHOLDS).highRiskScore]));
+  const highRisks = risks.filter((r) => isHighRisk(r, thresholdOf.get(r.projectId)));
   // Incidentes urgentes: abiertos o en curso, de prioridad alta o vencidos. Primero los vencidos.
   const urgentIncidents = inScope(input.incidents ?? [])
     .map((i) => ({ ...i, overdue: isIncidentOverdue(i, today) }))

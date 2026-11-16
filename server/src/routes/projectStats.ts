@@ -1,5 +1,5 @@
 import type { Project, PrismaClient } from '@prisma/client';
-import { summarizeProject, type ProjectSummary } from '../domain/health';
+import { summarizeProject, thresholdsOf, type ProjectSummary } from '../domain/health';
 import { loadEvmIndexes } from './evmLoader';
 import { leafWhere } from '../domain/wbs';
 import { loadLaborCosts } from './laborCost';
@@ -24,6 +24,7 @@ export async function loadProjectSummaries(prisma: PrismaClient, projects: Proje
         [...expenses.filter((e) => e.projectId === project.id).map((e) => ({ amountCents: Number(e.amountCents) })), ...labor.filter((l) => l.projectId === project.id)],
         today,
         evm.get(project.id),
+        thresholdsOf(project),
       ),
     ]),
   );

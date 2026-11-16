@@ -19,6 +19,7 @@ export function indicatorRoutes(app: App) {
             ...(await loadLaborCosts(prisma, [project.id])),
           ],
           risks: await prisma.risk.findMany({ where }),
+          highRiskScore: project.highRiskScore,
         }
       : {};
     const progressTasks = tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours) }));

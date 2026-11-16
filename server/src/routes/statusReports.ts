@@ -4,7 +4,7 @@ import { readBody, type App, type Ctx } from '../http';
 import { getProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { buildStatusReport, isReportDue, reportPeriod, stripMoney, type StatusReportInput, type StatusReportSnapshot } from '../domain/statusReport';
-import { isActiveProject } from '../domain/health';
+import { isActiveProject, thresholdsOf } from '../domain/health';
 import { leafWhere } from '../domain/wbs';
 import { forbidden, notFound } from '../errors';
 import { notify } from '../notifications';
@@ -36,6 +36,7 @@ async function loadStatusReportInput(prisma: PrismaClient, project: Project, dat
     risks: risks.map((r) => ({ ...r, description: toPlainText(r.description) })),
     incidents: incidents.map((i) => ({ status: i.status, createdOn: dateOf(i.createdAt), resolvedOn: day(i.resolvedAt) })),
     changes: changes.map((c) => ({ status: c.status, decidedOn: day(c.decidedAt), appliedOn: day(c.appliedAt) })),
+    thresholds: thresholdsOf(project),
     actualCostCents: expenses.reduce((sum, e) => sum + Number(e.amountCents), 0) + labor.reduce((sum, l) => sum + l.amountCents, 0),
     evm,
   };

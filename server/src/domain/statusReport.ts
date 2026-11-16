@@ -1,7 +1,7 @@
 import { addDays, REPORT_FREQUENCY_DAYS, type Health } from '@pm/shared';
 import { computeEvm, type EvmInput, type EvmMetrics } from './evm';
-import { computeHealth, isHighRisk, isOverdue } from './health';
-import { HIGH_RISK_SCORE, weightedProgress, type ProgressTask } from './indicators';
+import { computeHealth, DEFAULT_THRESHOLDS, isHighRisk, isOverdue, type HealthThresholds } from './health';
+import { weightedProgress, type ProgressTask } from './indicators';
 
 const UPCOMING_MILESTONE_DAYS = 30;
 const TOP_RISKS = 5;
@@ -21,6 +21,8 @@ export type StatusReportInput = {
   /** Gastos más mano de obra del equipo. */
   actualCostCents: number;
   evm: EvmInput | null;
+  /** Umbrales del proyecto; por defecto los de siempre. */
+  thresholds?: HealthThresholds;
 };
 
 type MilestoneLine = { name: string; dueDate: string };
@@ -61,6 +63,7 @@ const line = ({ name, dueDate }: MilestoneLine) => ({ name, dueDate });
 
 export function buildStatusReport(input: StatusReportInput, period: ReportPeriod, today: string): StatusReportSnapshot {
   const { project, tasks } = input;
+  const t = input.thresholds ?? DEFAULT_THRESHOLDS;
   const overdueTasks = tasks.filter((t) => isOverdue(t, today)).length;
   const metrics = input.evm ? computeEvm(input.evm, today).metrics : null;
   const openRisks = input.risks.filter((r) => r.status !== 'CLOSED');
@@ -76,11 +79,12 @@ export function buildStatusReport(input: StatusReportInput, period: ReportPeriod
         plannedBudgetCents: project.plannedBudgetCents,
         spentCents: input.actualCostCents,
         overdueTasks,
-        highRisks: input.risks.filter(isHighRisk).length,
+        highRisks: input.risks.filter((r) => isHighRisk(r, t.highRiskScore)).length,
         cpi: metrics?.cpi,
         spi: metrics?.spi,
       },
       today,
+      t,
     ),
     progress: {
       percent: weightedProgress(tasks),
@@ -116,7 +120,7 @@ export function buildStatusReport(input: StatusReportInput, period: ReportPeriod
     risks: {
       openCount: openRisks.length,
       top: openRisks
-        .map((r) => ({ description: r.description, score: r.probability * r.impact, high: r.probability * r.impact >= HIGH_RISK_SCORE, status: r.status }))
+        .map((r) => ({ description: r.description, score: r.probability * r.impact, high: r.probability * r.impact >= t.highRiskScore, status: r.status }))
         .sort((a, b) => b.score - a.score || a.description.localeCompare(b.description))
         .slice(0, TOP_RISKS),
     },

@@ -103,7 +103,14 @@ export type IncidentKind = (typeof INCIDENT_KIND)[number];
 export const METRIC_DIRECTION = ['HIGHER_BETTER', 'LOWER_BETTER'] as const;
 export type MetricDirection = (typeof METRIC_DIRECTION)[number];
 
+/** Etapa 7B: supuestos. */
+export const ASSUMPTION_STATUS = ['PENDING', 'VALID', 'FALSE'] as const;
+export type AssumptionStatus = (typeof ASSUMPTION_STATUS)[number];
+export const ASSUMPTION_TARGET = ['risk', 'incident'] as const;
+export type AssumptionTarget = (typeof ASSUMPTION_TARGET)[number];
+
 export const LABELS = {
+  assumptionStatus: { PENDING: 'Por validar', VALID: 'Válido', FALSE: 'Falso' },
   requirementStatus: { PROPOSED: 'Propuesto', APPROVED: 'Aprobado', MET: 'Cumplido', REJECTED: 'Rechazado' },
   incidentKind: { INCIDENT: 'Incidente', DEFECT: 'Defecto', NONCONFORMITY: 'No conformidad' },
   metricDirection: { HIGHER_BETTER: 'Mayor es mejor', LOWER_BETTER: 'Menor es mejor' },

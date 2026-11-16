@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { diffDays, isValidCalendarDate } from './dates';
 import { MAX_FILE_BYTES } from './fileTypes';
 import {
+  ASSUMPTION_STATUS,
+  ASSUMPTION_TARGET,
   INCIDENT_KIND,
   METRIC_DIRECTION,
   REQUIREMENT_STATUS,
@@ -96,6 +98,9 @@ export const MAX_AMOUNT_CENTS = 99_999_999_999_999;
 const AMOUNT_TOO_LARGE = 'El monto es demasiado grande';
 const budgetAmount = z.number({ message: 'Monto inválido' }).int('Monto inválido').min(0, 'Monto inválido').max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE);
 
+/** Umbrales de salud del proyecto (F16): enteros en un rango. */
+const threshold = (min: number, max: number) => z.number({ message: `Usa un número de ${min} a ${max}` }).int(`Usa un número de ${min} a ${max}`).min(min, `Usa un número de ${min} a ${max}`).max(max, `Usa un número de ${min} a ${max}`);
+
 const CLOSE_VIA_TAB = 'Para cerrar el proyecto usa la pestaña Cierre';
 const openProjectStatus = z.enum(PROJECT_STATUS).refine((s) => !(CLOSED_PROJECT_STATUS as readonly string[]).includes(s), CLOSE_VIA_TAB);
 
@@ -111,6 +116,10 @@ const projectFields = {
   managementReserveCents: budgetAmount.default(0),
   currency: z.string().trim().toUpperCase().length(3, 'Usa un código de 3 letras, por ejemplo USD').default('USD'),
   statusReportFrequency: z.enum(STATUS_REPORT_FREQUENCY).default('NONE'),
+  healthOverdueTasks: threshold(1, 50).default(3),
+  healthBudgetPercent: threshold(50, 100).default(90),
+  healthIndexMin: threshold(50, 100).default(90),
+  highRiskScore: threshold(1, 25).default(15),
 };
 export const DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la de fin';
 export const isDateOrderValid = (start?: string | null, end?: string | null) => !start || !end || start <= end;
@@ -131,6 +140,10 @@ export const updateProjectSchema = z.object({
   managementReserveCents: budgetAmount.optional(),
   currency: z.string().trim().toUpperCase().length(3, 'Usa un código de 3 letras, por ejemplo USD').optional(),
   statusReportFrequency: z.enum(STATUS_REPORT_FREQUENCY).optional(),
+  healthOverdueTasks: threshold(1, 50).optional(),
+  healthBudgetPercent: threshold(50, 100).optional(),
+  healthIndexMin: threshold(50, 100).optional(),
+  highRiskScore: threshold(1, 25).optional(),
 });
 
 /** Presupuesto planeado por categoría de gasto; cada categoría va una sola vez. */
@@ -279,6 +292,25 @@ const riskResponse = z.enum(ALL_RESPONSES, { message: 'Selecciona una respuesta'
 export const INVALID_RESPONSE_MESSAGE = 'Esta respuesta no corresponde al tipo de riesgo';
 export const isResponseValidForType = (type: RiskType, response: string) =>
   (RISK_RESPONSE[type] as readonly string[]).includes(response);
+export const RESIDUAL_PAIR_MESSAGE = 'Indica probabilidad e impacto residuales juntos';
+/** Campos de F15: disparador, revisión, costo de contingencia y evaluación residual. */
+const riskDetailFields = {
+  trigger: noteText().optional(),
+  nextReviewDate: optionalDateSchema,
+  contingencyCostCents: budgetAmount.nullable().optional(),
+  residualProbability: scale.nullable().optional(),
+  residualImpact: scale.nullable().optional(),
+};
+/** El residual va completo (los dos valores) o no va (los dos nulos o ausentes). */
+function checkResidual(value: { residualProbability?: number | null; residualImpact?: number | null }, ctx: z.RefinementCtx) {
+  const p = value.residualProbability;
+  const i = value.residualImpact;
+  const given = (x: number | null | undefined) => x !== undefined && x !== null;
+  const cleared = (x: number | null | undefined) => x === null;
+  if (given(p) !== given(i) || (p === undefined) !== (i === undefined) || cleared(p) !== cleared(i)) {
+    ctx.addIssue({ code: 'custom', path: ['residualProbability'], message: RESIDUAL_PAIR_MESSAGE });
+  }
+}
 export const createRiskSchema = z
   .object({
     description: longText('Describe el riesgo'),
@@ -289,11 +321,13 @@ export const createRiskSchema = z
     responsePlan: longText().default(''),
     ownerId: z.string().nullable().optional(),
     status: z.enum(RISK_STATUS).default('OPEN'),
+    ...riskDetailFields,
   })
   .superRefine((value, ctx) => {
     if (!isResponseValidForType(value.type, value.response)) {
       ctx.addIssue({ code: 'custom', path: ['response'], message: INVALID_RESPONSE_MESSAGE });
     }
+    checkResidual(value, ctx);
   });
 export const updateRiskSchema = z.object({
   description: longText('Describe el riesgo').optional(),
@@ -304,8 +338,9 @@ export const updateRiskSchema = z.object({
   responsePlan: longText().optional(),
   ownerId: z.string().nullable().optional(),
   status: z.enum(RISK_STATUS).optional(),
+  ...riskDetailFields,
   version: versionField,
-});
+}).superRefine(checkResidual);
 
 const amount = z.number({ message: 'Monto inválido' }).int('Monto inválido').positive('El monto debe ser mayor que cero').max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE);
 export const createExpenseSchema = z.object({
@@ -604,3 +639,19 @@ export const measurementSchema = z.object({
   value: metricNumber,
   note: noteText().default(''),
 });
+
+/** Registro de supuestos (F15). */
+export const createAssumptionSchema = z.object({
+  description: longText('Describe el supuesto'),
+  ownerId: optionalId,
+  validateBy: optionalDateSchema,
+  status: z.enum(ASSUMPTION_STATUS).default('PENDING'),
+});
+export const updateAssumptionSchema = z.object({
+  description: longText('Describe el supuesto').optional(),
+  ownerId: optionalId,
+  validateBy: optionalDateSchema,
+  status: z.enum(ASSUMPTION_STATUS).optional(),
+  version: versionField,
+});
+export const convertAssumptionSchema = z.object({ kind: z.enum(ASSUMPTION_TARGET) });

@@ -49,8 +49,19 @@ export function MeetingForm({ projectId, meeting, onClose, onSaved }: { projectI
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
-  const team = members.data?.map((m) => ({ id: m.userId, name: m.name })) ?? [];
-  const owners = members.data?.filter((m) => m.role !== 'OBSERVER') ?? [];
+  // Quien ya dejó el proyecto sigue en el acta: se muestra para poder conservarlo o quitarlo.
+  const memberIds = new Set(members.data?.map((m) => m.userId) ?? []);
+  const former = (person: { id: string; name: string }) => ({ id: person.id, name: `${person.name} (ya no es miembro)` });
+  const formerPeople = [...(meeting?.attendees.users ?? []), ...(meeting?.agreements.flatMap((a) => (a.owner ? [a.owner] : [])) ?? [])].filter(
+    (p, i, list) => members.data && !memberIds.has(p.id) && list.findIndex((x) => x.id === p.id) === i,
+  );
+  const team = [...(members.data?.map((m) => ({ id: m.userId, name: m.name })) ?? []), ...formerPeople.filter((p) => meeting?.attendees.users.some((u) => u.id === p.id)).map(former)];
+  const owners = [...(members.data?.filter((m) => m.role !== 'OBSERVER').map((m) => ({ id: m.userId, name: m.name })) ?? []), ...formerPeople.map(former)];
+  // Errores que el formulario no muestra junto a un campo (por ejemplo, de un acuerdo concreto).
+  const shown = new Set(['title', 'date', 'notes', 'userIds', 'stakeholderIds', 'agreements']);
+  const agreementError = (index: number) =>
+    Object.entries(errors.fields).find(([key]) => key.startsWith(`agreements.${index}.`))?.[1];
+  const otherError = Object.entries(errors.fields).find(([key]) => !shown.has(key) && !/^agreements\.\d+\./.test(key))?.[1];
   const setAgreement = (index: number, patch: Partial<AgreementDraft>) => setAgreements((list) => list.map((a, i) => (i === index ? { ...a, ...patch } : a)));
 
   const submit = async (event: FormEvent) => {
@@ -80,7 +91,7 @@ export function MeetingForm({ projectId, meeting, onClose, onSaved }: { projectI
   return (
     <Modal title={meeting ? 'Editar reunión' : 'Nueva reunión'} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-4" noValidate>
-        <FormMessage message={errors.message} />
+        <FormMessage message={errors.message ?? otherError} />
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Título" error={errors.fields.title}>
             <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -111,7 +122,7 @@ export function MeetingForm({ projectId, meeting, onClose, onSaved }: { projectI
               <select className={inputClass} aria-label={`Responsable del acuerdo ${index + 1}`} value={a.ownerId ?? ''} onChange={(e) => setAgreement(index, { ownerId: e.target.value || null })}>
                 <option value="">Sin responsable</option>
                 {owners.map((m) => (
-                  <option key={m.userId} value={m.userId}>
+                  <option key={m.id} value={m.id}>
                     {m.name}
                   </option>
                 ))}
@@ -120,6 +131,7 @@ export function MeetingForm({ projectId, meeting, onClose, onSaved }: { projectI
               <Button variant="ghost" aria-label={`Quitar acuerdo ${index + 1}`} disabled={a.locked} onClick={() => setAgreements((list) => list.filter((_, i) => i !== index))}>
                 <Trash2 size={16} aria-hidden="true" />
               </Button>
+              {agreementError(index) && <p className="text-sm text-danger sm:col-span-4">{agreementError(index)}</p>}
             </div>
           ))}
           {errors.fields.agreements && <p className="text-sm text-danger">{errors.fields.agreements}</p>}

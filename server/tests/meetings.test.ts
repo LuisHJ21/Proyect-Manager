@@ -97,6 +97,24 @@ describe('actas de reunión', () => {
     expect(await ctx.prisma.incident.count()).toBe(0);
   });
 
+  it('el acta se sigue editando aunque un asistente o responsable ya no sea miembro', async () => {
+    const meeting = await create({ userIds: [ana.id], agreements: [{ text: 'Revisar plano', ownerId: ana.id }] });
+    await convert(meeting.id, meeting.agreements[0].id, 'task');
+    expect((await ctx.as(pm).delete(`/api/projects/${project.id}/members/${ana.id}`)).statusCode).toBe(200);
+    // El formulario envía todo lo guardado; solo se valida lo nuevo.
+    const res = await ctx.as(pm).patch(`${url()}/${meeting.id}`, {
+      title: 'Seguimiento 2',
+      userIds: [ana.id],
+      agreements: [{ id: meeting.agreements[0].id, text: 'Revisar plano', ownerId: ana.id }],
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().attendees.users).toEqual([{ id: ana.id, name: 'Ana' }]);
+    // Agregarla de nuevo como asistente o responsable nueva sí se rechaza.
+    const other = await create({});
+    expect((await ctx.as(pm).patch(`${url()}/${other.id}`, { userIds: [ana.id] })).statusCode).toBe(400);
+    expect((await ctx.as(pm).patch(`${url()}/${other.id}`, { agreements: [{ text: 'Nuevo', ownerId: ana.id }] })).statusCode).toBe(400);
+  });
+
   it('quitar a un miembro lo saca como responsable de los acuerdos sin convertir', async () => {
     const meeting = await create({ agreements: [{ text: 'Medir el terreno', ownerId: ana.id }] });
     expect((await ctx.as(pm).delete(`/api/projects/${project.id}/members/${ana.id}`)).statusCode).toBe(200);

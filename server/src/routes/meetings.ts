@@ -128,15 +128,24 @@ export function meetingRoutes(app: App) {
     const { project } = await access(c, 'write');
     const current = await findMeeting(c, project, true);
     const input = updateMeetingSchema.parse(await readBody(c));
+    // Como en las tareas: solo se valida a quien se agrega; quien ya estaba puede haber dejado el proyecto.
     if (input.userIds || input.stakeholderIds) {
-      const users = input.userIds ?? current.attendees.flatMap((a) => (a.userId ? [a.userId] : []));
-      const stakeholders = input.stakeholderIds ?? current.attendees.flatMap((a) => (a.stakeholderId ? [a.stakeholderId] : []));
-      await assertAttendees(prisma, project.id, users, stakeholders);
+      const savedUsers = current.attendees.flatMap((a) => (a.userId ? [a.userId] : []));
+      const savedStakeholders = current.attendees.flatMap((a) => (a.stakeholderId ? [a.stakeholderId] : []));
+      const users = input.userIds ?? savedUsers;
+      const stakeholders = input.stakeholderIds ?? savedStakeholders;
+      await assertAttendees(
+        prisma,
+        project.id,
+        users.filter((id) => !savedUsers.includes(id)),
+        stakeholders.filter((id) => !savedStakeholders.includes(id)),
+      );
       input.userIds = users;
       input.stakeholderIds = stakeholders;
     }
     if (input.agreements) {
-      await assertOwners(prisma, project.id, input.agreements);
+      const savedOwner = new Map(current.agreements.map((a) => [a.id, a.ownerId]));
+      await assertOwners(prisma, project.id, input.agreements.filter((a) => !a.id || (a.ownerId ?? null) !== savedOwner.get(a.id)));
       const byId = new Map(current.agreements.map((a) => [a.id, a]));
       for (const a of input.agreements) {
         if (!a.id) continue;

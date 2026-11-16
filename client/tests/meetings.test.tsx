@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
+import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
 
 const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'PREDICTIVE', startDate: null, endDate: null, closedAt: null };
 const agreement = (over: object = {}) => ({ id: 'a1', text: 'Enviar minuta', owner: null, dueDate: null, position: 0, taskId: null, decisionId: null, incidentId: null, convertedTo: null, ...over });
@@ -54,6 +54,38 @@ describe('actas de reunión', () => {
     expect(await screen.findByText('Convertido en decisión')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Crear tarea' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+  });
+
+  it('al editar, quien ya no es miembro sigue como asistente y responsable', async () => {
+    mockApi({
+      ...base(pmUser),
+      'GET /api/projects/p1/meetings/m1': meeting({
+        attendees: { users: [{ id: 'u-ana', name: 'Ana' }], stakeholders: [] },
+        agreements: [agreement({ owner: { id: 'u-ana', name: 'Ana' }, taskId: 't9', convertedTo: 'task' })],
+      }),
+    });
+    renderApp('/proyectos/p1/reuniones/m1');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Editar' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Editar reunión' }));
+    expect(dialog.getByRole('checkbox', { name: 'Ana (ya no es miembro)' })).toBeChecked();
+    expect(dialog.getByLabelText('Responsable del acuerdo 1')).toHaveValue('u-ana');
+    expect(within(dialog.getByLabelText('Responsable del acuerdo 1')).getByRole('option', { name: 'Ana (ya no es miembro)' })).toBeInTheDocument();
+  });
+
+  it('muestra el error de un acuerdo vacío en su fila', async () => {
+    mockApi({
+      ...base(pmUser),
+      'GET /api/projects/p1/meetings': [],
+      'POST /api/projects/p1/meetings': apiError(400, 'validation_error', { fields: { 'agreements.0.text': 'Escribe el acuerdo' } }),
+    });
+    renderApp('/proyectos/p1/reuniones');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Nueva reunión' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Nueva reunión' }));
+    await user.click(dialog.getByRole('button', { name: 'Añadir acuerdo' }));
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+    expect(await dialog.findByText('Escribe el acuerdo')).toBeInTheDocument();
   });
 
   it('el PM crea una reunión con asistentes y acuerdos; el formulario avisa que los asistentes verán las notas', async () => {

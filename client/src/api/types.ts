@@ -305,7 +305,8 @@ export type ClosureReport = {
   performance: { cpi: number | null; spi: number | null; eacCents: number; vacCents: number } | null;
   objectives: { met: number; notMet: number; pending: number };
   deliverables: Record<import('@pm/shared').DeliverableStatus, number>;
-  changes: { approved: number; rejected: number; pending: number };
+  /** `applied` falta en los informes congelados antes de que existiera el estado «Aplicada». */
+  changes: { approved: number; applied?: number; rejected: number; pending: number };
   incidents: { total: number; open: number };
   risks: { total: number; open: number };
   pendings: { kind: import('@pm/shared').ClosurePendingKind; count: number }[];

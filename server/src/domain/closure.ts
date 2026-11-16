@@ -24,7 +24,8 @@ export type ClosureReport = {
   performance: { cpi: number | null; spi: number | null; eacCents: number; vacCents: number } | null;
   objectives: { met: number; notMet: number; pending: number };
   deliverables: { PENDING: number; IN_REVIEW: number; ACCEPTED: number; REJECTED: number };
-  changes: { approved: number; rejected: number; pending: number };
+  /** `applied` falta en los informes congelados antes del estado «Aplicada». */
+  changes: { approved: number; applied?: number; rejected: number; pending: number };
   incidents: { total: number; open: number };
   risks: { total: number; open: number };
   pendings: ClosurePending[];
@@ -69,7 +70,12 @@ export function buildClosureReport(input: ClosureInput, closingDate: string): Cl
       ACCEPTED: count(input.deliverables, 'ACCEPTED'),
       REJECTED: count(input.deliverables, 'REJECTED'),
     },
-    changes: { approved: count(input.changes, 'APPROVED'), rejected: count(input.changes, 'REJECTED'), pending: count(input.changes, 'PENDING') },
+    changes: {
+      approved: count(input.changes, 'APPROVED'),
+      applied: count(input.changes, 'APPLIED'),
+      rejected: count(input.changes, 'REJECTED'),
+      pending: count(input.changes, 'PENDING'),
+    },
     incidents: { total: input.incidents.length, open: count(input.incidents, 'OPEN', 'IN_PROGRESS') },
     risks: { total: input.risks.length, open: count(input.risks, 'OPEN', 'TREATING') },
     pendings: closurePendings(input),

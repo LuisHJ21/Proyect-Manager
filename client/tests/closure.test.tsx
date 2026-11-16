@@ -109,4 +109,18 @@ describe('pestaña Cierre', () => {
     open();
     expect(await screen.findByText('Cerrado antes del registro de cierres')).toBeInTheDocument();
   });
+
+  it('el informe cuenta los cambios aplicados', async () => {
+    mockApi(routes(state({ report: report({ changes: { approved: 1, applied: 3, rejected: 0, pending: 0 } }) })));
+    open();
+    const label = await screen.findByText('Aplicados');
+    expect(label.nextElementSibling).toHaveTextContent('3');
+  });
+
+  it('un informe congelado antes de los cambios aplicados muestra 0', async () => {
+    mockApi(routes(state()));
+    open();
+    const label = await screen.findByText('Aplicados');
+    expect(label.nextElementSibling).toHaveTextContent('0');
+  });
 });

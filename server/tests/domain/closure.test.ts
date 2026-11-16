@@ -108,7 +108,7 @@ describe('informe de cierre', () => {
         ...base,
         objectives: s('MET', 'NOT_MET', 'PENDING', 'MET'),
         deliverables: s('ACCEPTED', 'ACCEPTED', 'REJECTED'),
-        changes: s('APPROVED', 'REJECTED', 'PENDING', 'APPROVED'),
+        changes: s('APPROVED', 'REJECTED', 'PENDING', 'APPROVED', 'APPLIED'),
         incidents: s('OPEN', 'CLOSED', 'RESOLVED'),
         risks: s('OPEN', 'TREATING', 'CLOSED'),
       },
@@ -116,7 +116,7 @@ describe('informe de cierre', () => {
     );
     expect(report.objectives).toEqual({ met: 2, notMet: 1, pending: 1 });
     expect(report.deliverables).toEqual({ PENDING: 0, IN_REVIEW: 0, ACCEPTED: 2, REJECTED: 1 });
-    expect(report.changes).toEqual({ approved: 2, rejected: 1, pending: 1 });
+    expect(report.changes).toEqual({ approved: 2, applied: 1, rejected: 1, pending: 1 });
     expect(report.incidents).toEqual({ total: 3, open: 1 });
     expect(report.risks).toEqual({ total: 3, open: 2 });
     expect(report.pendings.map((p) => p.kind)).toEqual(['deliverables', 'incidents', 'risks', 'objectives']);

@@ -71,6 +71,7 @@ export function ClosureReportView({ report, preview }: { report: ClosureReport; 
         </Section>
         <Section title="Cambios">
           <Row label="Aprobados">{report.changes.approved}</Row>
+          <Row label="Aplicados">{report.changes.applied ?? 0}</Row>
           <Row label="Rechazados">{report.changes.rejected}</Row>
           <Row label="Pendientes">{report.changes.pending}</Row>
         </Section>

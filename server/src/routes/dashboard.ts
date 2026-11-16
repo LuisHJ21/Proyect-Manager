@@ -4,6 +4,7 @@ import { requirePm } from '../auth/guards';
 import { buildDashboard } from '../domain/dashboard';
 import { loadEvmIndexes } from './evmLoader';
 import { leafWhere } from '../domain/wbs';
+import { loadLaborCosts } from './laborCost';
 
 export function dashboardRoutes(app: App) {
 
@@ -15,7 +16,7 @@ export function dashboardRoutes(app: App) {
       include: { members: { include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: 'asc' } } } },
     });
     const where = { projectId: { in: projects.map((p) => p.id) } };
-    const [tasks, risks, expenses, milestones, incidents, deliverables, changes] = await Promise.all([
+    const [tasks, risks, expenses, milestones, incidents, deliverables, changes, labor] = await Promise.all([
       prisma.task.findMany({
         where: { ...where, ...leafWhere },
         include: { assignees: { include: { user: { select: { id: true, name: true, role: true, active: true } } } } },
@@ -32,6 +33,7 @@ export function dashboardRoutes(app: App) {
         select: { id: true, number: true, name: true, projectId: true, status: true, dueDate: true },
       }),
       prisma.changeRequest.findMany({ where: { ...where, status: 'APPROVED' }, select: { id: true, number: true, title: true, projectId: true } }),
+      loadLaborCosts(prisma, projects.map((p) => p.id)),
     ]);
     const today = c.var.deps.today();
     const evm = await loadEvmIndexes(prisma, projects.map((p) => p.id), today);
@@ -47,9 +49,9 @@ export function dashboardRoutes(app: App) {
           team: p.members.map((m) => m.user),
           evm: evm.get(p.id),
         })),
-        tasks: tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), assignees: t.assignees.map((a) => a.user) })),
+        tasks: tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours), assignees: t.assignees.map((a) => a.user) })),
         risks,
-        expenses: expenses.map((e) => ({ projectId: e.projectId, amountCents: Number(e.amountCents) })),
+        expenses: [...expenses.map((e) => ({ projectId: e.projectId, amountCents: Number(e.amountCents) })), ...labor.map(({ projectId, amountCents }) => ({ projectId, amountCents }))],
         milestones,
         incidents,
         deliverables,

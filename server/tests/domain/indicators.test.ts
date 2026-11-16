@@ -91,3 +91,13 @@ describe('weightedProgress', () => {
     expect(weightedProgress([])).toBe(0);
   });
 });
+
+describe('weightedProgress con horas estimadas', () => {
+  const h = (progress: number, estimatedHours: number | null, plannedCostCents = 100) => ({ progress, estimatedHours, plannedCostCents, startDate: null, dueDate: null });
+  it('pondera por horas si todas las hojas las tienen', () => {
+    expect(weightedProgress([h(100, 2), h(0, 6)])).toBe(25);
+  });
+  it('si a una le faltan horas, usa el costo', () => {
+    expect(weightedProgress([h(100, 2, 100), h(0, null, 100)])).toBe(50);
+  });
+});

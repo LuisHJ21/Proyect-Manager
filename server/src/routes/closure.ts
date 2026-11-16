@@ -8,13 +8,14 @@ import { AppError, fieldError } from '../errors';
 import { sanitizeRichText } from '../richText';
 import { loadEvmInput } from './performance';
 import { leafWhere } from '../domain/wbs';
+import { loadLaborCosts } from './laborCost';
 
 const person = { select: { id: true, name: true } } as const;
 
 /** Reúne lo necesario para calcular pendientes e informe de cierre de un proyecto. */
 export async function loadClosureInput(prisma: PrismaClient, projectId: string): Promise<ClosureInput> {
   const status = { select: { status: true } } as const;
-  const [project, tasks, deliverables, incidents, risks, objectives, charter, expenses, changes, evm] = await Promise.all([
+  const [project, tasks, deliverables, incidents, risks, objectives, charter, expenses, changes, evm, labor] = await Promise.all([
     prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { startDate: true, endDate: true, plannedBudgetCents: true, currency: true } }),
     prisma.task.findMany({ where: { projectId, ...leafWhere }, select: { status: true, startDate: true } }),
     prisma.deliverable.findMany({ where: { projectId }, ...status }),
@@ -25,6 +26,7 @@ export async function loadClosureInput(prisma: PrismaClient, projectId: string):
     prisma.expense.findMany({ where: { projectId }, select: { amountCents: true } }),
     prisma.changeRequest.findMany({ where: { projectId }, ...status }),
     loadEvmInput(prisma, projectId),
+    loadLaborCosts(prisma, [projectId]),
   ]);
   return {
     project: { ...project, plannedBudgetCents: Number(project.plannedBudgetCents) },
@@ -34,7 +36,7 @@ export async function loadClosureInput(prisma: PrismaClient, projectId: string):
     risks,
     objectives,
     charterStatus: charter?.status ?? null,
-    expenses: expenses.map((e) => ({ amountCents: Number(e.amountCents) })),
+    expenses: [...expenses.map((e) => ({ amountCents: Number(e.amountCents) })), ...labor.map(({ amountCents }) => ({ amountCents }))],
     changes,
     evm,
   };

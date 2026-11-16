@@ -24,10 +24,10 @@ export function projectRoutes(app: App) {
     });
     const tasks = await prisma.task.findMany({
       where: { projectId: { in: projects.map((p) => p.id) }, ...leafWhere },
-      select: { projectId: true, progress: true, plannedCostCents: true, startDate: true, dueDate: true },
+      select: { projectId: true, progress: true, plannedCostCents: true, startDate: true, dueDate: true, estimatedHours: true },
     });
     const progressOf = (projectId: string) =>
-      weightedProgress(tasks.filter((t) => t.projectId === projectId).map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents) })));
+      weightedProgress(tasks.filter((t) => t.projectId === projectId).map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours) })));
     const summaries = isPm ? await loadProjectSummaries(prisma, projects, c.var.deps.today()) : null;
     return c.json(projects.map(({ members, ...project }) => {
       const summary = summaries?.get(project.id);

@@ -6,6 +6,7 @@ import { requireUser } from '../auth/guards';
 import { computeEvm, plannedValueAt, type EvmInput } from '../domain/evm';
 import { AppError, fieldError } from '../errors';
 import { leafWhere } from '../domain/wbs';
+import { loadLaborCosts } from './laborCost';
 
 const MAX_SERIES_POINTS = 730;
 
@@ -18,10 +19,11 @@ const baselineInclude = {
 export async function loadEvmInput(prisma: PrismaClient, projectId: string): Promise<EvmInput | null> {
   const baseline = await prisma.baseline.findFirst({ where: { projectId }, orderBy: { version: 'desc' }, include: { tasks: true } });
   if (!baseline) return null;
-  const [project, tasks, expenses] = await Promise.all([
+  const [project, tasks, expenses, labor] = await Promise.all([
     prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { plannedBudgetCents: true, contingencyReserveCents: true, managementReserveCents: true } }),
     prisma.task.findMany({ where: { projectId, ...leafWhere }, select: { id: true, title: true, progress: true, dueDate: true, plannedCostCents: true } }),
     prisma.expense.findMany({ where: { projectId }, select: { amountCents: true, date: true, taskId: true } }),
+    loadLaborCosts(prisma, [projectId]),
   ]);
   return {
     baseline: {
@@ -29,7 +31,8 @@ export async function loadEvmInput(prisma: PrismaClient, projectId: string): Pro
       tasks: baseline.tasks.map((t) => ({ taskId: t.taskId, title: t.title, startDate: t.startDate, dueDate: t.dueDate, plannedCostCents: Number(t.plannedCostCents) })),
     },
     tasks: tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents) })),
-    expenses: expenses.map((e) => ({ ...e, amountCents: Number(e.amountCents) })),
+    // La mano de obra del equipo cuenta como costo real, ligada a su tarea.
+    expenses: [...expenses.map((e) => ({ ...e, amountCents: Number(e.amountCents) })), ...labor.map(({ taskId, date, amountCents }) => ({ taskId, date, amountCents }))],
     plannedBudgetCents: Number(project.plannedBudgetCents),
     contingencyCents: Number(project.contingencyReserveCents),
     managementCents: Number(project.managementReserveCents),

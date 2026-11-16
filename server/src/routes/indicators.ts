@@ -2,6 +2,7 @@ import { readBody, type App, type Ctx } from '../http';
 import { getProjectAccess } from '../auth/access';
 import { computeIndicators } from '../domain/indicators';
 import { leafWhere } from '../domain/wbs';
+import { loadLaborCosts } from './laborCost';
 
 export function indicatorRoutes(app: App) {
 
@@ -13,11 +14,14 @@ export function indicatorRoutes(app: App) {
     const pmData = isPm
       ? {
           plannedBudgetCents: Number(project.plannedBudgetCents),
-          expenses: (await prisma.expense.findMany({ where })).map((e) => ({ amountCents: Number(e.amountCents) })),
+          expenses: [
+            ...(await prisma.expense.findMany({ where })).map((e) => ({ amountCents: Number(e.amountCents) })),
+            ...(await loadLaborCosts(prisma, [project.id])),
+          ],
           risks: await prisma.risk.findMany({ where }),
         }
       : {};
-    const progressTasks = tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents) }));
+    const progressTasks = tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours) }));
     return c.json(computeIndicators({ tasks: progressTasks, milestones, ...pmData }, c.var.deps.today()));
   });
 }

@@ -12,7 +12,7 @@ export type IndicatorsInput = {
 export const HIGH_RISK_SCORE = 15;
 const UPCOMING_MILESTONE_DAYS = 14;
 
-export type ProgressTask = { progress: number; plannedCostCents: number; startDate: string | null; dueDate: string | null };
+export type ProgressTask = { progress: number; plannedCostCents: number; startDate: string | null; dueDate: string | null; estimatedHours?: number | null };
 
 /** Días de la tarea contando el inicio y el fin; 1 si falta una fecha o están al revés. */
 function durationDays(task: ProgressTask): number {
@@ -26,8 +26,10 @@ function durationDays(task: ProgressTask): number {
  */
 export function weightedProgress(tasks: ProgressTask[]): number {
   if (tasks.length === 0) return 0;
+  // Primero el esfuerzo estimado, luego el costo, luego la duración; nunca se mezclan.
+  const byHours = tasks.every((t) => (t.estimatedHours ?? 0) > 0);
   const byCost = tasks.every((t) => t.plannedCostCents > 0);
-  const weight = (t: ProgressTask) => (byCost ? t.plannedCostCents : durationDays(t));
+  const weight = (t: ProgressTask) => (byHours ? t.estimatedHours! : byCost ? t.plannedCostCents : durationDays(t));
   const total = tasks.reduce((sum, t) => sum + weight(t), 0);
   return Math.round(tasks.reduce((sum, t) => sum + weight(t) * t.progress, 0) / total);
 }

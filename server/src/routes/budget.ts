@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, type App } from '../http';
 import { requireProjectAccess } from '../auth/access';
 import { leafWhere } from '../domain/wbs';
+import { laborTotal, loadLaborCosts } from './laborCost';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -35,9 +36,11 @@ export async function loadBudgetCategories(db: Db, projectId: string, teamLaborC
 export function budgetRoutes(app: App) {
   const base = '/api/projects/:id/budget-categories';
 
+  const load = async (db: Db, projectId: string) => loadBudgetCategories(db, projectId, laborTotal(await loadLaborCosts(db, [projectId])));
+
   app.get(base, async (c) => {
     const project = await requireProjectAccess(c, c.req.param('id'), 'budget', 'read');
-    return c.json(await loadBudgetCategories(c.var.deps.prisma, project.id));
+    return c.json(await load(c.var.deps.prisma, project.id));
   });
 
   app.put(base, async (c) => {
@@ -48,6 +51,6 @@ export function budgetRoutes(app: App) {
       prisma.budgetCategory.deleteMany({ where: { projectId: project.id } }),
       prisma.budgetCategory.createMany({ data: items.map((i) => ({ projectId: project.id, category: i.category, plannedCents: BigInt(i.plannedCents) })) }),
     ]);
-    return c.json(await loadBudgetCategories(prisma, project.id));
+    return c.json(await load(prisma, project.id));
   });
 }

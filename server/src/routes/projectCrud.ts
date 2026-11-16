@@ -30,7 +30,9 @@ export type ProjectCrudOptions = {
   /** Reglas sobre el registro resultante, ya combinado con lo guardado. `current` es lo guardado; falta al crear. */
   validate?: (merged: Record<string, any>, project: Project, prisma: PrismaClient, current?: Record<string, any>) => Promise<void>;
   /** `isPm`: quien pide es PM; permite ocultar relaciones a los demás perfiles. */
-  toDto?: (item: any, isPm: boolean) => object;
+  toDto?: (item: any, isPm: boolean, today: string) => object;
+  /** Tras crear (sin `current`) o editar: p. ej. el historial de evaluaciones de un riesgo. */
+  afterSave?: (prisma: PrismaClient, saved: Record<string, any>, current: Record<string, any> | undefined, userId: string) => Promise<void>;
   /**
    * Nivel `own` de la tabla de capacidades: la persona ve los registros donde `field` es su id
    * y solo puede cambiar `editable`. El registro ajeno responde 404.
@@ -45,8 +47,9 @@ export type ProjectCrudOptions = {
 };
 
 export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
-  const { path, delegate: delegateOf, createSchema, updateSchema, section, validate, toDto = (item) => item, richTextFields = [], include, own, versioned = false } = options;
+  const { path, delegate: delegateOf, createSchema, updateSchema, section, validate, toDto: rawDto = (item) => item, afterSave, richTextFields = [], include, own, versioned = false } = options;
   const base = `/api/projects/:id/${path}`;
+  const dtoFor = (c: Ctx) => (item: any, isPm: boolean) => rawDto(item, isPm, c.var.deps.today());
 
   const findItem = async (delegate: Delegate, projectId: string, itemId: string) => {
     const item = await delegate.findFirst({ where: { id: itemId, projectId } });
@@ -61,6 +64,7 @@ export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
     const mine = level === 'own' && own ? { [own.field]: requireUser(c).id } : null;
     if (level !== 'read' && level !== 'write' && !mine) throw forbidden();
     const items = await delegate.findMany({ where: { projectId: project.id, ...mine }, orderBy: { createdAt: 'asc' }, include });
+    const toDto = dtoFor(c);
     return c.json(items.map((item) => toDto(item, isPm)));
   });
 
@@ -70,8 +74,10 @@ export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
     const project = await requireProjectAccess(c, c.req.param('id')!, section, 'write');
     const input = createSchema.parse(sanitizeFields(await readBody(c), richTextFields));
     await validate?.(input, project, prisma);
-    const item = await delegate.create({ data: { ...input, projectId: project.id }, include });
-    return c.json(toDto(item, true), 201);
+    const created = await delegate.create({ data: { ...input, projectId: project.id }, include });
+    if (afterSave) await afterSave(prisma, created, undefined, requireUser(c).id);
+    const item = afterSave ? await delegate.findFirst({ where: { id: created.id }, include }) : created;
+    return c.json(dtoFor(c)(item, true), 201);
   });
 
   app.patch(`${base}/:itemId`, async (c) => {
@@ -90,14 +96,19 @@ export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
     const current = await findItem(delegate, project.id, c.req.param('itemId')!);
     const input = updateSchema.parse(sanitizeFields(body, richTextFields));
     await validate?.({ ...current, ...input }, project, prisma, current);
+    const toDto = dtoFor(c);
+    const reload = async () => delegate.findFirst({ where: { id: current.id }, include });
     if (!versioned) {
       const item = await delegate.update({ where: { id: current.id }, data: input, include });
-      return c.json(toDto(item, isPm));
+      if (!afterSave) return c.json(toDto(item, isPm));
+      await afterSave(prisma, item, current, requireUser(c).id);
+      return c.json(toDto(await reload(), isPm));
     }
     const { version, ...data } = input as { version: number };
     const { count } = await delegate.updateMany({ where: { id: current.id, version }, data: { ...data, version: { increment: 1 } } });
     if (count === 0) throw editConflict();
-    return c.json(toDto(await delegate.findFirst({ where: { id: current.id }, include }), isPm));
+    if (afterSave) await afterSave(prisma, (await reload())!, current, requireUser(c).id);
+    return c.json(toDto(await reload(), isPm));
   });
 
   app.delete(`${base}/:itemId`, async (c) => {

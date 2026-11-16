@@ -82,12 +82,31 @@ export function registerRoutes(app: App) {
     updateSchema: updateRiskSchema,
     section: 'risks',
     richTextFields: ['description', 'responsePlan'],
-    include: { incidents: { select: { id: true, number: true, title: true, status: true }, orderBy: { number: 'asc' } } },
+    include: {
+      incidents: { select: { id: true, number: true, title: true, status: true }, orderBy: { number: 'asc' } },
+      assessments: { include: { assessedBy: { select: { id: true, name: true } } }, orderBy: { assessedAt: 'desc' } },
+    },
     // El colaborador ve solo los riesgos de los que es responsable y solo cambia su estado.
     versioned: true,
     own: { field: 'ownerId', editable: ['status', 'version'], message: 'Solo puedes cambiar el estado de los riesgos de los que eres responsable' },
     // El vínculo con incidentes es del PM, como en el registro de incidentes.
-    toDto: ({ incidents, ...risk }, isPm) => ({ ...risk, score: risk.probability * risk.impact, ...(isPm ? { incidents } : {}) }),
+    // El costo de contingencia es dinero: solo para el PM.
+    toDto: ({ incidents, assessments, contingencyCostCents, ...risk }, isPm, today) => ({
+      ...risk,
+      score: risk.probability * risk.impact,
+      residualScore: risk.residualProbability && risk.residualImpact ? risk.residualProbability * risk.residualImpact : null,
+      reviewOverdue: risk.status !== 'CLOSED' && risk.nextReviewDate !== null && risk.nextReviewDate < today,
+      assessments: assessments.map(({ id: _id, riskId: _r, assessedById: _a, ...a }: Record<string, unknown>) => a),
+      ...(isPm ? { incidents, contingencyCostCents: contingencyCostCents === null ? null : Number(contingencyCostCents) } : {}),
+    }),
+    // Historial: al crear y cuando cambia la evaluación (no al cambiar solo el estado).
+    afterSave: async (prisma, risk, current, userId) => {
+      const keys = ['probability', 'impact', 'residualProbability', 'residualImpact'] as const;
+      if (current && keys.every((k) => risk[k] === current[k])) return;
+      await prisma.riskAssessment.create({
+        data: { riskId: risk.id, probability: risk.probability, impact: risk.impact, residualProbability: risk.residualProbability, residualImpact: risk.residualImpact, assessedById: userId },
+      });
+    },
     validate: async (risk, project, prisma) => {
       if (!isResponseValidForType(risk.type, risk.response)) throw fieldError('response', INVALID_RESPONSE_MESSAGE);
       await assertOwnerCanOwn(prisma, project.id, risk.ownerId);

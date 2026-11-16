@@ -115,6 +115,7 @@ describe('formulario de tarea', () => {
     deliverableId: null,
     childCount: 0,
     isSummary: false,
+    estimatedHours: null,
     waitingOn: [],
     warnings: [],
   } as Task;

@@ -268,7 +268,17 @@ export function BudgetPage() {
           { name: 'description', label: 'Descripción', type: 'text' },
           { name: 'amountCents', label: 'Monto', type: 'money' },
           { name: 'date', label: 'Fecha', type: 'date' },
-          { name: 'category', label: 'Categoría', type: 'select', options: options(EXPENSE_CATEGORY, LABELS.expenseCategory) },
+          {
+            name: 'category',
+            label: 'Categoría',
+            type: 'select',
+            options: options(EXPENSE_CATEGORY, LABELS.expenseCategory),
+            // Contra el costo doble: las horas del equipo ya suman su costo.
+            hint: (values) =>
+              values.category === 'LABOR'
+                ? 'Usa esta categoría para trabajo externo. Las horas del equipo ya suman su costo desde la tarifa de cada miembro.'
+                : undefined,
+          },
           {
             name: 'taskId',
             label: 'Tarea (opcional)',

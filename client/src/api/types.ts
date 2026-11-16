@@ -64,11 +64,34 @@ export type Dashboard = {
     | { kind: 'deliverable'; id: string; number: number; title: string; projectId: string; projectName: string; dueDate: string; score?: undefined }
     | { kind: 'change'; id: string; number: number; title: string; projectId: string; projectName: string; dueDate?: undefined; score?: undefined }
   )[];
-  workload: { userId: string; name: string; openTasks: number; overdueTasks: number }[];
+  workload: { userId: string; name: string; openTasks: number; overdueTasks: number; weeks?: WorkloadWeek[] }[];
   upcomingMilestones: { id: string; name: string; dueDate: string; projectId: string; projectName: string }[];
 };
 
-export type Member = { userId: string; name: string; email: string; role: Role; projectRole: string; active?: boolean };
+export type Member = {
+  userId: string;
+  name: string;
+  email: string;
+  role: Role;
+  projectRole: string;
+  active?: boolean;
+  weeklyCapacityHours?: number;
+  /** Solo llega al Project Manager. */
+  hourlyRateCents?: number;
+};
+export type TimeEntry = {
+  id: string;
+  taskId: string;
+  date: string;
+  hours: number;
+  note: string;
+  user: PersonRef;
+  createdAt: string;
+  /** Solo llegan al Project Manager. */
+  rateCents?: number;
+  costCents?: number;
+};
+export type WorkloadWeek = { start: string; assignedHours: number; capacityHours: number; overloaded: boolean };
 
 export type Charter = {
   version: number;
@@ -142,6 +165,8 @@ export type Task = {
   childCount: number;
   /** Tiene subtareas: fechas, avance, estado y costo salen de ellas. */
   isSummary: boolean;
+  /** En una padre, la suma de sus hojas. */
+  estimatedHours: number | null;
   projectName?: string;
   /** Solo llega al Project Manager. */
   plannedCostCents?: number;

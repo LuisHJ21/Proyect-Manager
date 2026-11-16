@@ -31,6 +31,7 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   deliverableId: null,
   childCount: 0,
   isSummary: false,
+  estimatedHours: null,
   waitingOn: [],
   warnings: [],
   comments: [],

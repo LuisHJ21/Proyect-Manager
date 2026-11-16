@@ -185,6 +185,7 @@ describe('reportar desde una tarea', () => {
     deliverableId: null,
     childCount: 0,
     isSummary: false,
+    estimatedHours: null,
     waitingOn: [],
     warnings: [],
     comments: [],

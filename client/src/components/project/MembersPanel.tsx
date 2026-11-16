@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api, errorMessage } from '../../api/client';
 import type { Member, User } from '../../api/types';
-import { ConfirmDialog } from '../ConfirmDialog';
+import { ConfirmDialog, Modal } from '../ConfirmDialog';
+import { INVALID_MONEY_MESSAGE, MoneyInput } from '../MoneyInput';
 import { ErrorState, Loading } from '../ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { useToast } from '../Toast';
@@ -47,6 +48,54 @@ function RemoveMemberDialog({ projectId, member, onClose }: { projectId: string;
   );
 }
 
+/** Tarifa por hora (solo la ve el PM) y capacidad semanal del miembro en este proyecto. */
+function RateDialog({ projectId, member, onClose }: { projectId: string; member: Member; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [rate, setRate] = useState<number | null>(member.hourlyRateCents ?? 0);
+  const [capacity, setCapacity] = useState(String(member.weeklyCapacityHours ?? 40));
+  const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
+  const save = useMutation({
+    mutationFn: () =>
+      api(`/api/projects/${projectId}/members/${member.userId}`, { method: 'PATCH', body: { hourlyRateCents: rate, weeklyCapacityHours: Number(capacity) } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: membersKey(projectId) });
+      onClose();
+    },
+    onError: (error) => applyFieldErrors(error, setErrors),
+  });
+  return (
+    <Modal title={`Tarifa y capacidad de ${member.name}`} onClose={onClose}>
+      <form
+        className="space-y-4"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (rate === null) return setErrors({ fields: { hourlyRateCents: INVALID_MONEY_MESSAGE } });
+          if (!/^\d+$/.test(capacity.trim())) return setErrors({ fields: { weeklyCapacityHours: 'Usa un número entero de horas' } });
+          setErrors(NO_ERRORS);
+          save.mutate();
+        }}
+      >
+        <FormMessage message={errors.message} />
+        <FormField label="Tarifa por hora" error={errors.fields.hourlyRateCents} hint="Solo la ves tú. Se usa para el costo de las horas que registre.">
+          <MoneyInput value={rate} onChange={setRate} blankIsZero />
+        </FormField>
+        <FormField label="Capacidad semanal (h)" error={errors.fields.weeklyCapacityHours}>
+          <input className={inputClass} inputMode="numeric" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+        </FormField>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={save.isPending}>
+            Guardar
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
   const queryClient = useQueryClient();
   const members = useQuery({ queryKey: membersKey(projectId), queryFn: () => api<Member[]>(`/api/projects/${projectId}/members`) });
@@ -55,6 +104,7 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
   const [projectRole, setProjectRole] = useState('');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [removing, setRemoving] = useState<Member | null>(null);
+  const [rating, setRating] = useState<Member | null>(null);
 
   const add = useMutation({
     mutationFn: () => api(`/api/projects/${projectId}/members`, { method: 'POST', body: { userId, projectRole } }),
@@ -92,9 +142,16 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
                 <span className="text-ink-soft"> · {member.projectRole || LABELS.role[member.role]}</span>
               </span>
               {canEdit && (
-                <Button variant="ghost" aria-label={`Quitar a ${member.name}`} onClick={() => setRemoving(member)}>
-                  Quitar
-                </Button>
+                <span className="flex items-center gap-1">
+                  {member.hourlyRateCents !== undefined && (
+                    <Button variant="ghost" aria-label={`Tarifa y capacidad de ${member.name}`} onClick={() => setRating(member)}>
+                      Tarifa
+                    </Button>
+                  )}
+                  <Button variant="ghost" aria-label={`Quitar a ${member.name}`} onClick={() => setRemoving(member)}>
+                    Quitar
+                  </Button>
+                </span>
               )}
             </li>
           ))}
@@ -123,6 +180,7 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
           </div>
         </form>
       )}
+      {rating && <RateDialog projectId={projectId} member={rating} onClose={() => setRating(null)} />}
       {removing && <RemoveMemberDialog projectId={projectId} member={removing} onClose={() => setRemoving(null)} />}
     </Card>
   );

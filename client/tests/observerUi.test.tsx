@@ -31,6 +31,7 @@ const task = {
   deliverableId: null,
   childCount: 0,
   isSummary: false,
+  estimatedHours: null,
   ancestors: [],
   children: [],
   waitingOn: [],

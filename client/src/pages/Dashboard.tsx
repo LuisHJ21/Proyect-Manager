@@ -10,6 +10,7 @@ import { ErrorState } from '../components/ErrorState';
 import { Avatar, AvatarStack, EmptyState, HealthBadge, ProgressBar, Skeleton } from '../components/ui';
 import { projectColor, shortDate } from '../lib/display';
 import { greeting, longDate } from '../lib/greeting';
+import { formatHours } from '../components/tasks/TimeEntries';
 
 type NoteTone = 'soft' | 'risk' | 'ok';
 const NOTE_CLASS: Record<NoteTone, string> = { soft: 'text-ink-soft', risk: 'text-risk-fg', ok: 'text-ok-fg' };
@@ -249,6 +250,17 @@ export function DashboardPage() {
                         {plural(person.openTasks, 'abierta', 'abiertas')}
                         {person.overdueTasks > 0 && <span className="font-semibold text-risk-fg"> · {plural(person.overdueTasks, 'vencida', 'vencidas')}</span>}
                       </span>
+                      {person.weeks && person.weeks.length > 0 && (
+                        <ul aria-label={`Carga semanal de ${person.name}`} className="grid grid-cols-2 gap-2 sm:col-span-3 sm:grid-cols-4">
+                          {person.weeks.map((week) => (
+                            <li key={week.start} className={`rounded-md px-2 py-1 text-xs ${week.overloaded ? 'bg-risk-bg text-risk-fg' : 'bg-raised text-ink-nav'}`}>
+                              <span className="block text-ink-soft">Semana del {shortDate(week.start)}</span>
+                              <span className="font-medium">{`${formatHours(week.assignedHours)} / ${formatHours(week.capacityHours)}`}</span>
+                              {week.overloaded && <span className="block font-semibold">Sobrecargada</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </li>
                   ))}
                 </ul>

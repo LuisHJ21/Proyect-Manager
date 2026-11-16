@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, errorMessage, isBlockingError } from '../../api/client';
-import type { Expense, Milestone, TaskDetail, TaskWarning } from '../../api/types';
+import type { Expense, Milestone, TaskDetail, TaskWarning, TimeEntry } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { useAccess } from '../../auth/useAccess';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
@@ -21,6 +21,7 @@ import { refreshTaskData, taskKey } from '../../components/tasks/taskQueries';
 import { Avatar, Badge, Button, inputClass } from '../../components/ui';
 import { shortDate } from '../../lib/display';
 import { useProject } from './ProjectLayout';
+import { timeEntriesKey, TimeEntriesSection } from '../../components/tasks/TimeEntries';
 
 const WARNINGS: Record<TaskWarning, string> = {
   predecessor_not_done: 'Esta tarea sigue activa, pero tiene una predecesora sin terminar.',
@@ -92,7 +93,11 @@ function Panel({ title, children }: { title?: string; children: ReactNode }) {
 /** Costo planeado y gasto ligado de la tarea. Solo para el Project Manager. */
 function TaskCosts({ projectId, currency, task }: { projectId: string; currency: string; task: TaskDetail }) {
   const expenses = useQuery({ queryKey: registerKey(projectId, 'expenses'), queryFn: () => api<Expense[]>(`/api/projects/${projectId}/expenses`) });
-  const linked = expenses.data?.filter((e) => e.taskId === task.id).reduce((sum, e) => sum + e.amountCents, 0);
+  const entries = useQuery({ queryKey: timeEntriesKey(task.id), queryFn: () => api<TimeEntry[]>(`/api/tasks/${task.id}/time-entries`) });
+  // Gastos ligados más la mano de obra del equipo registrada en la tarea.
+  const labor = entries.data?.reduce((sum, e) => sum + (e.costCents ?? 0), 0);
+  const spent = expenses.data?.filter((e) => e.taskId === task.id).reduce((sum, e) => sum + e.amountCents, 0);
+  const linked = spent === undefined || labor === undefined ? undefined : spent + labor;
   return (
     <section aria-label="Costos de la tarea" className="rounded-xl border border-line bg-surface p-5">
       <dl>
@@ -230,6 +235,17 @@ export function TaskDetailPage() {
             </section>
           ) : (
             <StepList task={task} canManage={isPm} canCheck={canUpdate} />
+          )}
+          {canRead('comments') && (
+            <TimeEntriesSection
+              projectId={project.id}
+              taskId={task.id}
+              estimatedHours={task.estimatedHours}
+              currency={project.currency ?? 'USD'}
+              canLog={canUpdate && !task.isSummary}
+              isPm={isPmUser}
+              currentUserId={user?.id}
+            />
           )}
           {canRead('incidents') && (
           <section aria-label="Incidentes de la tarea" className="rounded-xl border border-line bg-surface p-5">

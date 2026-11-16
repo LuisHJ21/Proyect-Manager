@@ -8,11 +8,14 @@ import { ErrorState } from '../components/ErrorState';
 import { WaitingNote } from '../components/tasks/TaskCard';
 import { refreshTaskData } from '../components/tasks/taskQueries';
 import { useToast } from '../components/Toast';
-import { EmptyState, PageHeader, Skeleton } from '../components/ui';
+import { Button, EmptyState, PageHeader, Skeleton } from '../components/ui';
+import { Modal } from '../components/ConfirmDialog';
+import { LogHoursForm } from '../components/tasks/TimeEntries';
 import { projectColor, shortDate } from '../lib/display';
 import { groupMyTasks } from '../lib/myTasks';
 
 function TaskRow({ task, overdue }: { task: Task; overdue?: boolean }) {
+  const [logging, setLogging] = useState(false);
   const queryClient = useQueryClient();
   const toast = useToast();
   const done = task.status === 'DONE';
@@ -55,6 +58,14 @@ function TaskRow({ task, overdue }: { task: Task; overdue?: boolean }) {
           {task.dueDate && <span className={`font-medium ${overdue ? 'text-risk-fg' : ''}`}>{shortDate(task.dueDate)}</span>}
         </div>
       </div>
+      <Button variant="ghost" onClick={() => setLogging(true)} aria-label={`Registrar horas en ${task.title}`}>
+        Registrar horas
+      </Button>
+      {logging && (
+        <Modal title={`Registrar horas · ${task.title}`} onClose={() => setLogging(false)}>
+          <LogHoursForm projectId={task.projectId} taskId={task.id} onDone={() => setLogging(false)} />
+        </Modal>
+      )}
     </li>
   );
 }

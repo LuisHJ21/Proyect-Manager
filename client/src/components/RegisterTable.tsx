@@ -23,6 +23,8 @@ export type FieldDef = {
   nullable?: boolean;
   /** Texto de la opción vacía de un select nullable. */
   emptyLabel?: string;
+  /** Pista bajo el campo, según lo escrito en el formulario. */
+  hint?: (values: Values) => string | undefined;
 };
 
 export type Column<T> = { header: string; cell: (item: T) => ReactNode };
@@ -112,7 +114,7 @@ function RegisterForm({
       <form onSubmit={submit} className="space-y-4" noValidate>
         <FormMessage message={errors.message ?? notice} />
         {fields.map((field) => (
-          <FormField key={field.name} label={field.label} error={errors.fields[field.name]}>
+          <FormField key={field.name} label={field.label} error={errors.fields[field.name]} hint={field.hint?.(values)}>
             {field.type === 'money' ? (
               <MoneyInput value={values[field.name]} onChange={(cents) => setField(field.name, cents)} />
             ) : field.type === 'select' ? (

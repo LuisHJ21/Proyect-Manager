@@ -29,6 +29,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   deliverableId: null,
   childCount: 0,
   isSummary: false,
+  estimatedHours: null,
   waitingOn: [],
   warnings: [],
   projectName: 'Portal',

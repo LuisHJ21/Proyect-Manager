@@ -36,6 +36,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const [milestoneId, setMilestoneId] = useState(task?.milestoneId ?? '');
   const [plannedCostCents, setPlannedCostCents] = useState<number | null>(task?.plannedCostCents ?? 0);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(task?.assignees.map((a) => a.id) ?? []);
+  const [hours, setHours] = useState(task?.estimatedHours != null ? String(task.estimatedHours).replace('.', ',') : '');
   const [parentId, setParentId] = useState(task?.parentId ?? '');
   const [deliverableId, setDeliverableId] = useState(task?.deliverableId ?? '');
   const [version, setVersion] = useState(task?.version);
@@ -65,6 +66,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
     setMilestoneId(fresh.milestoneId ?? '');
     setPlannedCostCents(fresh.plannedCostCents ?? 0);
     setAssigneeIds(fresh.assignees.map((a) => a.id));
+    setHours(fresh.estimatedHours != null ? String(fresh.estimatedHours).replace('.', ',') : '');
     setParentId(fresh.parentId ?? '');
     setDeliverableId(fresh.deliverableId ?? '');
     setVersion(fresh.version);
@@ -79,7 +81,13 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
     }
     setErrors(NO_ERRORS);
     setBusy(true);
-    const own = isSummary ? {} : { startDate: startDate || null, dueDate: dueDate || null, plannedCostCents, assigneeIds };
+    const estimatedHours = hours.trim() === '' ? null : Number(hours.replace(',', '.'));
+    if (estimatedHours !== null && Number.isNaN(estimatedHours)) {
+      setBusy(false);
+      setErrors({ fields: { estimatedHours: 'Escribe las horas, por ejemplo 12,5' } });
+      return;
+    }
+    const own = isSummary ? {} : { startDate: startDate || null, dueDate: dueDate || null, plannedCostCents, assigneeIds, estimatedHours };
     // Padre y entregable solo viajan si cambiaron.
     const tree = {
       ...((parentId || null) !== (task?.parentId ?? null) ? { parentId: parentId || null } : {}),
@@ -173,6 +181,9 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
           hint={isSummary ? SUMMARY_NOTE : 'Para el valor ganado. Déjalo vacío si la tarea no tiene costo.'}
         >
           <MoneyInput value={plannedCostCents} onChange={setPlannedCostCents} blankIsZero disabled={isSummary} />
+        </FormField>
+        <FormField label="Horas estimadas" error={errors.fields.estimatedHours} hint={isSummary ? SUMMARY_NOTE : 'Esfuerzo total de la tarea, por ejemplo 12,5.'}>
+          <input className={inputClass} inputMode="decimal" value={hours} disabled={isSummary} onChange={(e) => setHours(e.target.value)} />
         </FormField>
         {isSummary ? (
           <p className="text-sm text-ink-soft sm:col-span-2">Asignados: {SUMMARY_NOTE.toLowerCase()}.</p>

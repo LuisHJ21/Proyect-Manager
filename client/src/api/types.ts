@@ -182,6 +182,8 @@ export type ChangeRequest = {
   decidedBy: PersonRef | null;
   /** Colaborador que la propuso desde el equipo; null si la registró el PM. */
   proposedBy: PersonRef | null;
+  appliedAt: string | null;
+  appliedBy: PersonRef | null;
   createdAt: string;
 };
 

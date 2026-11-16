@@ -63,6 +63,7 @@ const base = {
   'GET /api/projects/p1/change-requests': [
     { id: 'cr1', number: 1, title: 'Agregar blog', status: 'APPROVED' },
     { id: 'cr2', number: 2, title: 'Pendiente', status: 'PENDING' },
+    { id: 'cr3', number: 3, title: 'Ya aplicado', status: 'APPLIED' },
   ],
 };
 const open = () => renderApp('/proyectos/p1/desempeno');
@@ -166,6 +167,7 @@ describe('pestaña Desempeño', () => {
     const dialog = within(screen.getByRole('dialog', { name: 'Fijar nueva línea base' }));
     const select = dialog.getByLabelText('Cambio aprobado (opcional)');
     expect(within(select).getByRole('option', { name: 'CR-1 · Agregar blog' })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: 'CR-3 · Ya aplicado' })).toBeInTheDocument();
     expect(within(select).queryByRole('option', { name: /Pendiente/ })).not.toBeInTheDocument();
     expect(dialog.getByRole('button', { name: 'Fijar' })).toBeDisabled();
     await user.type(dialog.getByLabelText('Motivo'), 'Replan');

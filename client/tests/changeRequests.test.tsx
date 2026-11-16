@@ -174,4 +174,73 @@ describe('pestaña Cambios', () => {
     expect(screen.getByRole('button', { name: 'Aprobar CR-2' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Eliminar CR-3' })).toBeInTheDocument();
   });
+
+describe('aplicar un cambio aprobado', () => {
+  const dated = { ...project, endDate: '2026-06-30', plannedBudgetCents: 100000 };
+  const approved = cr({ id: 'cr1', number: 1, scheduleImpactDays: 10, costImpactCents: 5000, status: 'APPROVED', decisionNote: 'Ok', decidedAt: '2026-11-07T12:00:00.000Z', decidedBy: { id: 'pm', name: 'Paula' } });
+  const routes = (over: object = {}, performance: object | null = { baseline: { version: 1 } }) => ({
+    ...base,
+    'GET /api/projects/p1': dated,
+    [`GET ${url}`]: [approved, cr({ id: 'cr3', number: 3, status: 'REJECTED' }), cr({ id: 'cr4', number: 4, status: 'APPLIED' })],
+    'GET /api/projects/p1/performance': performance ?? { baseline: null },
+    [`POST ${url}/cr1/apply`]: { ...approved, status: 'APPLIED' },
+    ...over,
+  });
+  const openDialog = async () => {
+    open();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Aplicar CR-1' }));
+    return { user, dialog: within(await screen.findByRole('dialog', { name: 'Aplicar CR-1' })) };
+  };
+  const sent = (api: ReturnType<typeof mockApi>) => api.calls.find((c) => c.key === `POST ${url}/cr1/apply`)?.body;
+
+  it('solo una aprobada tiene Aplicar, y una aplicada muestra su estado', async () => {
+    mockApi(routes());
+    open();
+    expect(await screen.findByRole('button', { name: 'Aplicar CR-1' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Aplicar CR-3' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Aplicar CR-4' })).not.toBeInTheDocument();
+    const row = screen.getByText('CR-4').closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('Aplicada');
+  });
+
+  it('propone la fecha, el presupuesto, la línea base y el motivo, y los envía', async () => {
+    const api = mockApi(routes());
+    const { user, dialog } = await openDialog();
+    expect(dialog.getByLabelText('Nueva fecha de fin')).toHaveValue('2026-07-10');
+    expect(dialog.getByLabelText('Nuevo presupuesto')).toHaveValue('1050,00');
+    await waitFor(() => expect(dialog.getByLabelText('Fijar nueva línea base citando este cambio')).toBeChecked());
+    expect(dialog.getByLabelText('Motivo')).toHaveValue('CR-1 Agregar blog');
+    await user.click(dialog.getByRole('button', { name: 'Aplicar' }));
+    await waitFor(() => expect(sent(api)).toEqual({ endDate: '2026-07-10', plannedBudgetCents: 105000, baseline: true, reason: 'CR-1 Agregar blog' }));
+  });
+
+  it('no envía la fecha si queda igual a la actual', async () => {
+    const api = mockApi(routes());
+    const { user, dialog } = await openDialog();
+    const date = dialog.getByLabelText('Nueva fecha de fin');
+    await user.clear(date);
+    await user.type(date, '2026-06-30');
+    await user.click(dialog.getByRole('button', { name: 'Aplicar' }));
+    await waitFor(() => expect(sent(api)).toBeTruthy());
+    expect(sent(api)).not.toHaveProperty('endDate');
+  });
+
+  it('sin impactos ni línea base propone los valores actuales', async () => {
+    const empty = { ...approved, scheduleImpactDays: null, costImpactCents: null };
+    const api = mockApi(routes({ [`GET ${url}`]: [empty] }, null));
+    const { user, dialog } = await openDialog();
+    expect(dialog.getByLabelText('Nueva fecha de fin')).toHaveValue('2026-06-30');
+    expect(dialog.getByLabelText('Fijar nueva línea base citando este cambio')).not.toBeChecked();
+    await user.click(dialog.getByRole('button', { name: 'Aplicar' }));
+    await waitFor(() => expect(sent(api)).toEqual({ baseline: false, reason: 'CR-1 Agregar blog' }));
+  });
+
+  it('muestra el error de campo de la API', async () => {
+    mockApi(routes({ [`POST ${url}/cr1/apply`]: apiError(400, 'validation_error', { fields: { endDate: '1 tarea quedaría fuera del proyecto. Ajusta sus fechas primero.' } }) }));
+    const { user, dialog } = await openDialog();
+    await user.click(dialog.getByRole('button', { name: 'Aplicar' }));
+    expect(await dialog.findByText('1 tarea quedaría fuera del proyecto. Ajusta sus fechas primero.')).toBeInTheDocument();
+  });
+});
 });

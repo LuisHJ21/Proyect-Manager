@@ -1,12 +1,12 @@
-import { formatMoney, LABELS, parseMoneyToCents, type ChangeStatus } from '@pm/shared';
+import { addDays, formatMoney, LABELS, parseMoneyToCents, type ChangeStatus } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { api, errorMessage } from '../../api/client';
-import type { ChangeRequest } from '../../api/types';
+import type { ChangeRequest, Performance, Project } from '../../api/types';
 import { ConfirmDialog, Modal } from '../../components/ConfirmDialog';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../../components/FormField';
-import { INVALID_MONEY_MESSAGE } from '../../components/MoneyInput';
+import { INVALID_MONEY_MESSAGE, MoneyInput } from '../../components/MoneyInput';
 import { DecisionsCard } from '../../components/decisions/DecisionsCard';
 import { DetailList } from '../../components/RegisterTable';
 import { useToast } from '../../components/Toast';
@@ -157,6 +157,86 @@ function DecisionDialog({ projectId, item, status, onClose }: { projectId: strin
   );
 }
 
+/**
+ * Aplica un cambio aprobado. Propone la fecha de fin y el presupuesto con los impactos declarados;
+ * el PM los ajusta y solo se envía lo que cambia respecto al proyecto.
+ */
+function ApplyDialog({ project, item, onClose }: { project: Project; item: ChangeRequest; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const performance = useQuery({
+    queryKey: ['project', project.id, 'performance'],
+    queryFn: () => api<Performance>(`/api/projects/${project.id}/performance`),
+  });
+  const currentBudget = project.plannedBudgetCents ?? 0;
+  const [endDate, setEndDate] = useState(project.endDate && item.scheduleImpactDays ? addDays(project.endDate, item.scheduleImpactDays) : (project.endDate ?? ''));
+  const [budget, setBudget] = useState<number | null>(currentBudget + (item.costImpactCents ?? 0));
+  const [baseline, setBaseline] = useState<boolean | null>(null);
+  const [reason, setReason] = useState(`${code(item)} ${item.title}`);
+  const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
+  // Hasta que el usuario la toque, la casilla sigue a si el proyecto ya tiene línea base.
+  const withBaseline = baseline ?? Boolean(performance.data?.baseline);
+
+  const apply = useMutation({
+    mutationFn: () => {
+      const body: Record<string, unknown> = { baseline: withBaseline, reason };
+      if ((endDate || null) !== project.endDate) body.endDate = endDate || null;
+      if (budget !== currentBudget) body.plannedBudgetCents = budget;
+      return api(`/api/projects/${project.id}/change-requests/${item.id}/apply`, { method: 'POST', body });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['project', project.id] });
+      onClose();
+    },
+    onError: (error) => {
+      applyFieldErrors(error, setErrors);
+      void queryClient.invalidateQueries({ queryKey: changeRequestsKey(project.id) });
+    },
+  });
+
+  return (
+    <Modal title={`Aplicar ${code(item)}`} onClose={onClose}>
+      <form
+        className="space-y-4"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (budget === null) {
+            setErrors({ fields: { plannedBudgetCents: INVALID_MONEY_MESSAGE } });
+            return;
+          }
+          setErrors(NO_ERRORS);
+          apply.mutate();
+        }}
+      >
+        <FormMessage message={errors.message} />
+        <p className="text-sm text-ink-nav">{item.title}</p>
+        <FormField label="Nueva fecha de fin" error={errors.fields.endDate ?? errors.fields.startDate}>
+          <input type="date" className={inputClass} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </FormField>
+        <FormField label="Nuevo presupuesto" error={errors.fields.plannedBudgetCents}>
+          <MoneyInput value={budget} onChange={setBudget} />
+        </FormField>
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input type="checkbox" checked={withBaseline} onChange={(e) => setBaseline(e.target.checked)} />
+          Fijar nueva línea base citando este cambio
+        </label>
+        {errors.fields.baseline && <p className="text-xs text-risk-fg">{errors.fields.baseline}</p>}
+        <FormField label="Motivo" error={errors.fields.reason}>
+          <input className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </FormField>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={apply.isPending}>
+            Aplicar
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function ChangeDetail({ item, currency, onClose }: { item: ChangeRequest; currency: string; onClose: () => void }) {
   const rows: { label: string; value: ReactNode }[] = [
     { label: 'Estado', value: <Badge tone={STATUS_TONE[item.status]}>{LABELS.changeStatus[item.status]}</Badge> },
@@ -191,7 +271,8 @@ function ChangeDetail({ item, currency, onClose }: { item: ChangeRequest; curren
 type Dialog =
   | { kind: 'new' }
   | { kind: 'edit' | 'view' | 'delete'; item: ChangeRequest }
-  | { kind: 'decide'; item: ChangeRequest; status: 'APPROVED' | 'REJECTED' };
+  | { kind: 'decide'; item: ChangeRequest; status: 'APPROVED' | 'REJECTED' }
+  | { kind: 'apply'; item: ChangeRequest };
 
 /** Registro de solicitudes de cambio. El PM las gestiona; un colaborador solo ve y propone las suyas. */
 export function ChangeRequestsPage() {
@@ -265,6 +346,7 @@ function ChangeRegister() {
                     <td className="py-2 pr-4 align-top whitespace-nowrap text-ink-nav">{new Date(item.createdAt).toLocaleDateString('es')}</td>
                     <td className="py-1 text-right whitespace-nowrap">
                       {action('Ver', item, () => setDialog({ kind: 'view', item }))}
+                      {item.status === 'APPROVED' && !readOnly && action('Aplicar', item, () => setDialog({ kind: 'apply', item }))}
                       {item.status === 'PENDING' && !readOnly && (
                         <>
                           {action('Aprobar', item, () => setDialog({ kind: 'decide', item, status: 'APPROVED' }))}
@@ -285,6 +367,7 @@ function ChangeRegister() {
         {dialog?.kind === 'edit' && <ChangeForm projectId={project.id} item={dialog.item} onClose={close} />}
         {dialog?.kind === 'view' && <ChangeDetail item={dialog.item} currency={currency} onClose={close} />}
         {dialog?.kind === 'decide' && <DecisionDialog projectId={project.id} item={dialog.item} status={dialog.status} onClose={close} />}
+        {dialog?.kind === 'apply' && <ApplyDialog project={project} item={dialog.item} onClose={close} />}
         {dialog?.kind === 'delete' && (
           <ConfirmDialog title="Eliminar cambio" danger confirmLabel="Eliminar" onCancel={close} onConfirm={() => remove.mutate(dialog.item)}>
             Se eliminará «{code(dialog.item)} · {dialog.item.title}» de forma permanente.

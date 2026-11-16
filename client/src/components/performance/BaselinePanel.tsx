@@ -13,7 +13,8 @@ const describe = (b: BaselineInfo, currency: string) =>
 
 function NewBaselineDialog({ projectId, onSubmit, onClose }: { projectId: string; onSubmit: (body: { reason: string; changeRequestId?: string }) => Promise<void>; onClose: () => void }) {
   const changes = useQuery({ queryKey: changeRequestsKey(projectId), queryFn: () => api<ChangeRequest[]>(`/api/projects/${projectId}/change-requests`) });
-  const approved = changes.data?.filter((c) => c.status === 'APPROVED') ?? [];
+  // Un cambio ya aplicado sin línea base también se puede citar después.
+  const approved = changes.data?.filter((c) => c.status === 'APPROVED' || c.status === 'APPLIED') ?? [];
   const [reason, setReason] = useState('');
   const [changeRequestId, setChangeRequestId] = useState('');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);

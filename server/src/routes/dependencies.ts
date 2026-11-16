@@ -5,7 +5,7 @@ import { findDependencyCycle } from '../domain/dependencies';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { taskInclude, toTaskDto } from './taskDto';
 import { getTaskAccess } from './tasks';
-import { assertNotSummary } from './taskTree';
+import { assertNotSummary, loadTree } from './taskTree';
 
 type Params = { Params: { id: string; predecessorId: string } };
 
@@ -16,8 +16,10 @@ export function dependencyRoutes(app: App) {
     if (!isPm) throw forbidden();
     return task;
   };
-  const loadDto = async (prisma: PrismaClient, taskId: string) =>
-    toTaskDto(await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude }), true);
+  const loadDto = async (prisma: PrismaClient, taskId: string) => {
+    const task = await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude });
+    return toTaskDto(task, true, await loadTree(prisma, task.projectId));
+  };
 
   app.post('/api/tasks/:id/dependencies', async (c) => {
     const { prisma } = c.var.deps;

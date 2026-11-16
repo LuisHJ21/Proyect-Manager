@@ -183,4 +183,59 @@ describe('EDT: jerarquía de tareas', () => {
       expect((await ctx.as(pm).post(`/api/tasks/${parent.id}/comments`, { body: 'Bien' })).statusCode).toBe(201);
     });
   });
+
+  describe('lo que devuelve la API', () => {
+    let parent: Task;
+    let h1: Task;
+    let h2: Task;
+    beforeEach(async () => {
+      await ctx.prisma.project.update({ where: { id: project.id }, data: { startDate: '2026-01-01', endDate: '2026-12-31' } });
+      parent = await create('P');
+      h1 = await create('H1', parent.id);
+      h2 = await create('H2', parent.id);
+      await ctx.prisma.task.update({ where: { id: h1.id }, data: { plannedCostCents: 100n, progress: 100, status: 'DONE', startDate: '2026-03-01', dueDate: '2026-03-05' } });
+      await ctx.prisma.task.update({ where: { id: h2.id }, data: { plannedCostCents: 300n, progress: 0, startDate: '2026-03-06', dueDate: '2026-03-20' } });
+    });
+
+    it('la lista sale en orden EDT con el resumen de la padre', async () => {
+      const list = (await ctx.as(pm).get(tasksUrl())).json();
+      expect(list.map((t: { title: string }) => t.title)).toEqual(['P', 'H1', 'H2']);
+      expect(list[0]).toMatchObject({
+        wbsCode: '1', isSummary: true, childCount: 2, parentId: null,
+        startDate: '2026-03-01', dueDate: '2026-03-20', progress: 25, status: 'IN_PROGRESS', plannedCostCents: 400,
+      });
+      expect(list[1]).toMatchObject({ wbsCode: '1.1', isSummary: false, childCount: 0, parentId: parent.id });
+    });
+
+    it('el colaborador recibe el resumen sin costo', async () => {
+      const [p] = (await ctx.as(ana).get(tasksUrl())).json();
+      expect(p).toMatchObject({ wbsCode: '1', progress: 25, status: 'IN_PROGRESS', dueDate: '2026-03-20' });
+      expect(p).not.toHaveProperty('plannedCostCents');
+      const detail = (await ctx.as(ana).get(`/api/tasks/${parent.id}`)).json();
+      expect(detail).toMatchObject({ wbsCode: '1', progress: 25 });
+      expect(detail).not.toHaveProperty('plannedCostCents');
+    });
+
+    it('el detalle trae antecesoras y subtareas', async () => {
+      const child = (await ctx.as(pm).get(`/api/tasks/${h1.id}`)).json();
+      expect(child.ancestors).toEqual([{ id: parent.id, title: 'P', wbsCode: '1' }]);
+      const p = (await ctx.as(pm).get(`/api/tasks/${parent.id}`)).json();
+      expect(p.children).toEqual([
+        { id: h1.id, title: 'H1', wbsCode: '1.1' },
+        { id: h2.id, title: 'H2', wbsCode: '1.2' },
+      ]);
+    });
+
+    it('una tarea se liga a un entregable del proyecto y el entregable muestra el trabajo', async () => {
+      const deliverable = (await ctx.as(pm).post(`/api/projects/${project.id}/deliverables`, { name: 'Portal' })).json();
+      const other = await ctx.makeProject();
+      const foreign = (await ctx.as(pm).post(`/api/projects/${other.id}/deliverables`, { name: 'Ajeno' })).json();
+      const bad = await patch(h1.id, { deliverableId: foreign.id });
+      expect(bad.statusCode).toBe(400);
+      expect(bad.json().error.fields.deliverableId).toBe('Elige un entregable de este proyecto');
+      expect((await patch(h1.id, { deliverableId: deliverable.id })).statusCode).toBe(200);
+      const detail = (await ctx.as(ana).get(`/api/projects/${project.id}/deliverables/${deliverable.id}`)).json();
+      expect(detail.work).toEqual([{ id: h1.id, title: 'H1', wbsCode: '1.1', progress: 100 }]);
+    });
+  });
 });

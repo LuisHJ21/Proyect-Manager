@@ -14,6 +14,8 @@ import { readBody, readQuery, type App, type Ctx } from '../http';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { AppError, editConflict, fieldError, forbidden, notFound } from '../errors';
 import { sanitizeRichText } from '../richText';
+import { summarize } from '../domain/wbs';
+import { inWbsOrder, loadTree } from './taskTree';
 
 type Params = { id: string; did: string };
 type CriterionParams = Params & { cid: string };
@@ -77,7 +79,17 @@ export async function findDeliverable(prisma: PrismaClient, projectId: string, d
 
 export async function loadDeliverableDetail(prisma: PrismaClient, id: string, today: string, isPm = true) {
   const d = await prisma.deliverable.findUniqueOrThrow({ where: { id }, include: deliverableDetailInclude });
-  return toDeliverableDto(d, today, true, isPm);
+  // Trabajo ligado, con el avance resumido si la tarea tiene subtareas.
+  const [linked, tree] = await Promise.all([
+    prisma.task.findMany({ where: { deliverableId: id }, select: { id: true, title: true, progress: true } }),
+    loadTree(prisma, d.projectId),
+  ]);
+  const progressOf = (taskId: string, own: number) => {
+    const node = tree.nodes.get(taskId);
+    return node && node.childIds.length > 0 ? summarize(node.leafIds.map((leaf) => tree.byId.get(leaf)!)).progress : own;
+  };
+  const work = inWbsOrder(linked, tree).map((t) => ({ id: t.id, title: t.title, wbsCode: tree.nodes.get(t.id)?.code ?? '', progress: progressOf(t.id, t.progress) }));
+  return { ...toDeliverableDto(d, today, true, isPm), work };
 }
 
 const acceptedLocked = () => new AppError(409, 'deliverable_accepted', 'El entregable está aceptado: reábrelo para cambiar sus criterios');

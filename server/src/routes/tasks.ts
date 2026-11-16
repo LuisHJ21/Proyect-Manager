@@ -20,7 +20,7 @@ import { AppError, editConflict, fieldError, forbidden, notFound } from '../erro
 import { incidentAccess } from '../domain/incidents';
 import { notify } from '../notifications';
 import { taskInclude, toTaskDto } from './taskDto';
-import { assertNotSummary, assertParent, isSummaryTask, moveTask, nextPosition, SUMMARY_FIELD_MESSAGE } from './taskTree';
+import { assertDeliverable, assertNotSummary, assertParent, inWbsOrder, isSummaryTask, loadTree, loadTrees, moveTask, nextPosition, SUMMARY_FIELD_MESSAGE } from './taskTree';
 
 type TaskParams = { Params: { id: string } };
 
@@ -54,8 +54,16 @@ async function replaceAssignees(tx: Prisma.TransactionClient, taskId: string, us
 
 export function taskRoutes(app: App) {
 
-  const loadDto = async (prisma: PrismaClient, taskId: string, includeCost: boolean) =>
-    toTaskDto(await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude }), includeCost);
+  const loadDto = async (prisma: PrismaClient, taskId: string, includeCost: boolean) => {
+    const task = await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude });
+    return toTaskDto(task, includeCost, await loadTree(prisma, task.projectId));
+  };
+
+  /** Todas las tareas del proyecto en orden EDT. */
+  const listDtos = async (prisma: PrismaClient, projectId: string, includeCost: boolean) => {
+    const [tasks, tree] = await Promise.all([prisma.task.findMany({ where: { projectId }, include: taskInclude }), loadTree(prisma, projectId)]);
+    return inWbsOrder(tasks, tree).map((task) => toTaskDto(task, includeCost, tree));
+  };
 
   const requireTaskPm = async (c: Ctx, taskId: string) => {
     const { task, isPm } = await getTaskAccess(c, taskId);
@@ -91,12 +99,7 @@ export function taskRoutes(app: App) {
   app.get('/api/projects/:id/tasks', async (c) => {
     const { prisma } = c.var.deps;
     const { project, isPm } = await getProjectAccess(c, c.req.param('id'));
-    const tasks = await prisma.task.findMany({
-      where: { projectId: project.id },
-      include: taskInclude,
-      orderBy: { createdAt: 'asc' },
-    });
-    return c.json(tasks.map((task) => toTaskDto(task, isPm)));
+    return c.json(await listDtos(prisma, project.id, isPm));
   });
 
   app.post('/api/projects/:id/tasks', async (c) => {
@@ -107,13 +110,14 @@ export function taskRoutes(app: App) {
     await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
     const userIds = await assertAssignable(c.var.deps.prisma, project.id, assigneeIds, 'assigneeIds');
     await assertParent(prisma, { projectId: project.id }, input.parentId);
+    await assertDeliverable(prisma, project.id, input.deliverableId);
     const position = await nextPosition(prisma, project.id, input.parentId ?? null);
     const task = await prisma.task.create({
       data: { ...input, position, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
       include: taskInclude,
     });
     await notifyNewAssignees(c, task, [], userIds);
-    return c.json(toTaskDto(task, true), 201);
+    return c.json(toTaskDto(task, true, await loadTree(prisma, project.id)), 201);
   });
 
   app.get('/api/me/tasks', async (c) => {
@@ -126,7 +130,8 @@ export function taskRoutes(app: App) {
       include: { ...taskInclude, project: { select: { name: true } } },
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
     });
-    return c.json(tasks.map(({ project, ...task }) => ({ ...toTaskDto(task, false), projectName: project.name })));
+    const trees = await loadTrees(prisma, tasks.map((t) => t.projectId));
+    return c.json(tasks.map(({ project, ...task }) => ({ ...toTaskDto(task, false, trees.get(task.projectId)!), projectName: project.name })));
   });
 
   app.get('/api/tasks/:id', async (c) => {
@@ -154,8 +159,14 @@ export function taskRoutes(app: App) {
       include: { assignee: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'asc' },
     });
+    const tree = await loadTree(prisma, task.projectId);
+    const titles = new Map((await prisma.task.findMany({ where: { projectId: task.projectId }, select: { id: true, title: true } })).map((t) => [t.id, t.title]));
+    const ref = (id: string) => ({ id, title: titles.get(id)!, wbsCode: tree.nodes.get(id)!.code });
+    const node = tree.nodes.get(task.id)!;
     return c.json({
       ...(await loadDto(c.var.deps.prisma, task.id, isPm)),
+      ancestors: node.ancestorIds.map(ref),
+      children: node.childIds.map(ref),
       ...(comments ? { comments } : {}),
       steps: steps.map((s) => ({ id: s.id, title: s.title, done: s.done, assignee: s.assignee })),
       incidents,
@@ -190,6 +201,7 @@ export function taskRoutes(app: App) {
     const before = userIds ? await assigneeIdsOf(prisma, task.id) : [];
     const parentChanged = input.parentId !== undefined && input.parentId !== task.parentId;
     if (parentChanged) await assertParent(prisma, task, input.parentId);
+    await assertDeliverable(prisma, task.projectId, input.deliverableId);
     await prisma.$transaction(async (tx) => {
       // Al cambiar de padre, la tarea queda al final de sus nuevas hermanas.
       const position = parentChanged ? { position: await nextPosition(tx, task.projectId, input.parentId ?? null) } : {};
@@ -219,8 +231,7 @@ export function taskRoutes(app: App) {
     const task = await requireTaskPm(c, c.req.param('id'));
     const { direction } = moveTaskSchema.parse(await readBody(c));
     await prisma.$transaction((tx) => moveTask(tx, task.id, direction));
-    const tasks = await prisma.task.findMany({ where: { projectId: task.projectId }, include: taskInclude, orderBy: { createdAt: 'asc' } });
-    return c.json(tasks.map((t) => toTaskDto(t, true)));
+    return c.json(await listDtos(prisma, task.projectId, true));
   });
 
   app.put('/api/tasks/:id/assignees', async (c) => {

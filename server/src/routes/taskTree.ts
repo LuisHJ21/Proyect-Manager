@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { buildWbs, MAX_WBS_DEPTH, subtreeHeight, type WbsNode, type WbsTask } from '../domain/wbs';
 import { AppError, fieldError } from '../errors';
+import type { TaskTree } from './taskDto';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -17,7 +18,7 @@ export const wbsSelect = {
 } as const;
 
 /** EDT completa de un proyecto, con las filas listas para resumir. */
-export async function loadTree(db: Db, projectId: string): Promise<{ nodes: Map<string, WbsNode>; byId: Map<string, WbsTask> }> {
+export async function loadTree(db: Db, projectId: string): Promise<TaskTree> {
   const rows = await db.task.findMany({ where: { projectId }, select: wbsSelect });
   const tasks = rows.map((r) => ({ ...r, plannedCostCents: Number(r.plannedCostCents) }));
   return { nodes: buildWbs(tasks), byId: new Map(tasks.map((t) => [t.id, t])) };
@@ -96,4 +97,23 @@ export async function isSummaryTask(db: Db, taskId: string): Promise<boolean> {
 /** Rechaza actualizar el trabajo de una tarea padre: avance, pasos, dependencias y gastos van en sus subtareas. */
 export async function assertNotSummary(db: Db, taskId: string): Promise<void> {
   if (await isSummaryTask(db, taskId)) throw new AppError(409, 'task_is_summary', 'Una tarea con subtareas se actualiza a través de ellas');
+}
+
+/** Orden EDT (recorrido en profundidad) para ordenar una lista de tareas del proyecto. */
+export function inWbsOrder<T extends { id: string }>(tasks: T[], tree: TaskTree): T[] {
+  const order = new Map([...tree.nodes.keys()].map((id, index) => [id, index]));
+  return [...tasks].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
+/** EDT de varios proyectos, para listas que mezclan tareas de distintos proyectos. */
+export async function loadTrees(db: Db, projectIds: string[]): Promise<Map<string, TaskTree>> {
+  const unique = [...new Set(projectIds)];
+  return new Map(await Promise.all(unique.map(async (id) => [id, await loadTree(db, id)] as const)));
+}
+
+/** Rechaza un entregable de otro proyecto. */
+export async function assertDeliverable(db: Db, projectId: string, deliverableId: string | null | undefined): Promise<void> {
+  if (!deliverableId) return;
+  const found = await db.deliverable.findFirst({ where: { id: deliverableId, projectId }, select: { id: true } });
+  if (!found) throw fieldError('deliverableId', 'Elige un entregable de este proyecto');
 }

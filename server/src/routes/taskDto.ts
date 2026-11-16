@@ -1,4 +1,8 @@
 import type { Prisma } from '@prisma/client';
+import { summarize, type WbsNode, type WbsTask } from '../domain/wbs';
+
+/** EDT del proyecto de la tarea, para el código y el resumen de las padres. */
+export type TaskTree = { nodes: Map<string, WbsNode>; byId: Map<string, WbsTask> };
 
 export const taskInclude = {
   assignees: { include: { user: { select: { id: true, name: true } } } },
@@ -11,7 +15,7 @@ export type TaskWithRelations = Prisma.TaskGetPayload<{ include: typeof taskIncl
 export type TaskWarning = 'predecessor_not_done' | 'starts_before_predecessor_due';
 
 /** El costo planeado solo se envía al Project Manager, y como número: un BigInt no se puede convertir a JSON. */
-export function toTaskDto(task: TaskWithRelations, includeCost: boolean) {
+export function toTaskDto(task: TaskWithRelations, includeCost: boolean, tree: TaskTree) {
   const { assignees, predecessors, steps, _count, plannedCostCents, ...fields } = task;
   const waitingOn = predecessors
     .filter((p) => p.predecessor.status !== 'DONE')
@@ -26,9 +30,19 @@ export function toTaskDto(task: TaskWithRelations, includeCost: boolean) {
     warnings.push('starts_before_predecessor_due');
   }
 
+  const node = tree.nodes.get(task.id);
+  const childCount = node?.childIds.length ?? 0;
+  // Una padre no tiene trabajo propio: fechas, costo, avance y estado salen de sus hojas.
+  const summary = childCount > 0 ? summarize(node!.leafIds.map((id) => tree.byId.get(id)!)) : null;
+  const cost = summary ? summary.plannedCostCents : Number(plannedCostCents);
+
   return {
     ...fields,
-    ...(includeCost ? { plannedCostCents: Number(plannedCostCents) } : {}),
+    ...(summary ? { startDate: summary.startDate, dueDate: summary.dueDate, progress: summary.progress, status: summary.status } : {}),
+    ...(includeCost ? { plannedCostCents: cost } : {}),
+    wbsCode: node?.code ?? '',
+    childCount,
+    isSummary: childCount > 0,
     assignees: assignees.map((a) => a.user),
     predecessorIds: predecessors.map((p) => p.predecessorId),
     successorCount: _count.successors,

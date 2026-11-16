@@ -9,6 +9,8 @@ export type Deps = {
   now(): Date;
   /** Fecha de hoy (YYYY-MM-DD) en la zona configurada. */
   today(): string;
+  /** Fecha (YYYY-MM-DD) de una marca de tiempo, en la misma zona que `today`. */
+  dateOf(date: Date): string;
   clientIp(c: Ctx): string;
   /** Cookie de sesión con `Secure` (producción, HTTPS). */
   secureCookies: boolean;

@@ -42,6 +42,11 @@ model User {
   lessons            Lesson[]            @relation("lessonAuthor")
   activityLogs       ActivityLog[]
   notifications      Notification[]
+  statusReports      StatusReport[]
+  communicationItems CommunicationItem[]
+  createdMeetings    Meeting[]
+  meetingAttendances MeetingAttendee[]
+  meetingAgreements  MeetingAgreement[]
 }
 
 model Session {
@@ -82,6 +87,9 @@ model Project {
   lastIncidentNumber      Int       @default(0)
   lastDecisionNumber      Int       @default(0)
   lastDeliverableNumber   Int       @default(0)
+  lastStatusReportNumber  Int       @default(0)
+  /// Cada cuánto se emite el informe de estado: NONE, WEEKLY, BIWEEKLY, MONTHLY.
+  statusReportFrequency   String    @default("NONE")
   closedAt                DateTime?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
@@ -107,6 +115,9 @@ model Project {
   activityLogs     ActivityLog[]
   notifications    Notification[]
   budgetCategories BudgetCategory[]
+  statusReports    StatusReport[]
+  communications   CommunicationItem[]
+  meetings         Meeting[]
 }
 
 model ProjectMember {
@@ -202,20 +213,21 @@ model Task {
   version          Int      @default(1)
   updatedAt        DateTime @updatedAt
 
-  project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  milestone    Milestone?       @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
-  parent       Task?            @relation("TaskTree", fields: [parentId], references: [id], onDelete: NoAction)
-  children     Task[]           @relation("TaskTree")
-  deliverable  Deliverable?     @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
-  assignees    TaskAssignee[]
-  predecessors TaskDependency[] @relation("successor")
-  successors   TaskDependency[] @relation("predecessor")
-  comments     TaskComment[]
-  attachments  Attachment[]
-  steps        TaskStep[]
-  expenses     Expense[]
-  incidents    Incident[]
-  timeEntries  TimeEntry[]
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone         Milestone?         @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  parent            Task?              @relation("TaskTree", fields: [parentId], references: [id], onDelete: NoAction)
+  children          Task[]             @relation("TaskTree")
+  deliverable       Deliverable?       @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  assignees         TaskAssignee[]
+  predecessors      TaskDependency[]   @relation("successor")
+  successors        TaskDependency[]   @relation("predecessor")
+  comments          TaskComment[]
+  attachments       Attachment[]
+  steps             TaskStep[]
+  expenses          Expense[]
+  incidents         Incident[]
+  timeEntries       TimeEntry[]
+  meetingAgreements MeetingAgreement[]
 
   @@index([projectId])
   @@index([parentId])
@@ -251,7 +263,9 @@ model TaskAssignee {
 model TaskDependency {
   predecessorId String
   successorId   String
-  /** FS, SS, FF o SF. */
+  /**
+   * FS, SS, FF o SF.
+   */
   type          String   @default("FS")
   lagDays       Int      @default(0)
   createdAt     DateTime @default(now())
@@ -302,21 +316,26 @@ model Attachment {
 }
 
 model Stakeholder {
-  id           String   @id @default(cuid())
-  projectId    String
-  name         String
-  organization String   @default("")
-  position     String   @default("")
-  contact      String   @default("")
-  influence    String   @default("MEDIUM")
-  interest     String   @default("MEDIUM")
-  strategy     String   @default("")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String   @id @default(cuid())
+  projectId         String
+  name              String
+  organization      String   @default("")
+  position          String   @default("")
+  contact           String   @default("")
+  influence         String   @default("MEDIUM")
+  interest          String   @default("MEDIUM")
+  strategy          String   @default("")
+  /// Involucramiento: UNAWARE, RESISTANT, NEUTRAL, SUPPORTIVE, LEADING; null si no se evaluó.
+  currentEngagement String?
+  desiredEngagement String?
+  expectations      String   @default("")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
   raciCells          RaciCell[]
   deliverableReviews DeliverableReview[]
+  meetingAttendances MeetingAttendee[]
 
   @@index([projectId])
 }
@@ -492,12 +511,13 @@ model Incident {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reportedBy User       @relation("incidentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
-  owner      User?      @relation("incidentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  task       Task?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  risk       Risk?      @relation(fields: [riskId], references: [id], onDelete: SetNull)
-  decisions  Decision[]
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportedBy        User               @relation("incidentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  owner             User?              @relation("incidentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  task              Task?              @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  risk              Risk?              @relation(fields: [riskId], references: [id], onDelete: SetNull)
+  decisions         Decision[]
+  meetingAgreements MeetingAgreement[]
 
   @@unique([projectId, number])
   @@index([ownerId])
@@ -519,9 +539,10 @@ model Decision {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  changeRequest ChangeRequest? @relation(fields: [changeRequestId], references: [id], onDelete: SetNull)
-  incident      Incident?      @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  changeRequest     ChangeRequest?     @relation(fields: [changeRequestId], references: [id], onDelete: SetNull)
+  incident          Incident?          @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  meetingAgreements MeetingAgreement[]
 
   @@unique([projectId, number])
 }
@@ -700,4 +721,99 @@ model TimeEntry {
 
   @@index([taskId])
   @@index([userId])
+}
+
+/// Informe de estado congelado al emitirlo (F11). `report` es el JSON completo, con montos.
+model StatusReport {
+  id          String   @id @default(cuid())
+  projectId   String
+  number      Int
+  periodStart String
+  periodEnd   String
+  report      String
+  comment     String   @default("")
+  nextSteps   String   @default("")
+  issuedAt    DateTime @default(now())
+  issuedById  String
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issuedBy User    @relation(fields: [issuedById], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, number])
+}
+
+/// Fila del plan de comunicaciones (F10).
+model CommunicationItem {
+  id        String   @id @default(cuid())
+  projectId String
+  topic     String
+  audience  String   @default("")
+  frequency String   @default("AS_NEEDED")
+  channel   String   @default("")
+  ownerId   String?
+  notes     String   @default("")
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+}
+
+/// Acta de reunión (F10).
+model Meeting {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  date        String
+  notes       String   @default("")
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy  User               @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  attendees  MeetingAttendee[]
+  agreements MeetingAgreement[]
+
+  @@index([projectId])
+}
+
+/// Asistente: un usuario o un interesado, nunca ambos.
+model MeetingAttendee {
+  id            String  @id @default(cuid())
+  meetingId     String
+  userId        String?
+  stakeholderId String?
+
+  meeting     Meeting      @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stakeholder Stakeholder? @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@unique([meetingId, stakeholderId])
+  @@index([userId])
+}
+
+/// Acuerdo de una reunión; puede convertirse en tarea, decisión o incidente.
+model MeetingAgreement {
+  id         String  @id @default(cuid())
+  meetingId  String
+  text       String
+  ownerId    String?
+  dueDate    String?
+  position   Int     @default(0)
+  taskId     String?
+  decisionId String?
+  incidentId String?
+
+  meeting  Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  owner    User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  task     Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  decision Decision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
+  incident Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([meetingId])
 }

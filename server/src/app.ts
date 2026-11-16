@@ -60,6 +60,7 @@ export function createDeps(opts: BuildAppOptions): Deps {
     files: opts.files,
     now,
     today: () => localToday(now(), opts.timeZone),
+    dateOf: (date) => localToday(date, opts.timeZone),
     clientIp: opts.clientIp ?? (() => '127.0.0.1'),
     secureCookies: opts.secureCookies ?? false,
     setupToken: opts.setupToken || undefined,

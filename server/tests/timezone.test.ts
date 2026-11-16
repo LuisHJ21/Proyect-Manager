@@ -22,4 +22,9 @@ describe('fecha del servidor según la zona horaria', () => {
   it('en UTC ese mismo instante ya es el día siguiente y la tarea está vencida', async () => {
     expect(await overdueAt('UTC')).toBe(1);
   });
+
+  it('una marca de tiempo se pasa a fecha con la misma zona', async () => {
+    ctx = await createTestApp({ timeZone: 'America/Lima' });
+    expect(ctx.deps.dateOf(new Date('2026-11-17T03:00:00Z'))).toBe('2026-11-16');
+  });
 });

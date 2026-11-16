@@ -1,7 +1,8 @@
-import { addDays, CLOSED_PROJECT_STATUS } from '@pm/shared';
+import { ACTIVE_PROJECT_STATUS, addDays, CLOSED_PROJECT_STATUS } from '@pm/shared';
 import { LoginLimiter } from '../auth/loginLimiter';
 import type { Deps } from '../http';
 import { saveEvmSnapshot } from '../routes/performance';
+import { saveForecasts } from '../routes/milestoneTrend';
 import { notify } from '../notifications';
 import { utc } from '../sqlTime';
 import { leafWhere } from '../domain/wbs';
@@ -20,6 +21,7 @@ export async function runDailyJobs(deps: Deps): Promise<{
   loginAttempts: number;
   pendingUploads: number;
   snapshots: number;
+  forecasts: number;
   dueSoon: number;
   overdue: number;
   oldNotifications: number;
@@ -57,7 +59,12 @@ export async function runDailyJobs(deps: Deps): Promise<{
   let snapshots = 0;
   for (const project of projects) if (await saveEvmSnapshot(prisma, project.id, today)) snapshots += 1;
 
-  const result = { sessions, loginAttempts, pendingUploads, snapshots, dueSoon, overdue, oldNotifications };
+  // Pronóstico diario de los hitos de proyectos activos (tendencia de hitos).
+  const active = await prisma.project.findMany({ where: { status: { in: [...ACTIVE_PROJECT_STATUS] } }, select: { id: true } });
+  let forecasts = 0;
+  for (const project of active) forecasts += await saveForecasts(prisma, project.id, today);
+
+  const result = { sessions, loginAttempts, pendingUploads, snapshots, forecasts, dueSoon, overdue, oldNotifications };
   if (storageError) {
     throw new Error(`La tarea diaria terminó con errores al borrar los archivos de anexos pendientes: ${JSON.stringify(result)}`, { cause: storageError });
   }

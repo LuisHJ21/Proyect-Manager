@@ -265,7 +265,8 @@ export function TaskDetailPage() {
         </div>
 
         <aside aria-label="Propiedades de la tarea" className="flex min-w-0 flex-col gap-6">
-          {canUpdate && (
+          {/* El estado y el avance de una tarea con subtareas salen de ellas. */}
+          {canUpdate && !task.isSummary && (
             <Panel>
               <ProgressForm task={task} />
             </Panel>

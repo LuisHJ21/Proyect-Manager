@@ -238,4 +238,38 @@ describe('EDT: jerarquía de tareas', () => {
       expect(detail.work).toEqual([{ id: h1.id, title: 'H1', wbsCode: '1.1', progress: 100 }]);
     });
   });
+
+  describe('hallazgos de la revisión final', () => {
+    it('al recibir su primera subtarea, la padre pierde sus fechas, avance y estado propios', async () => {
+      await ctx.prisma.project.update({ where: { id: project.id }, data: { startDate: '2026-01-01', endDate: '2026-12-31' } });
+      const t = await ctx.makeTask(project.id, { title: 'Fase', startDate: '2026-03-01', dueDate: '2026-03-31', progress: 40, status: 'IN_PROGRESS' });
+      const child = await create('Hija', t.id);
+      expect(await ctx.prisma.task.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({ startDate: null, dueDate: null, progress: 0, status: 'TODO' });
+      // Las fechas guardadas ya no impiden mover el inicio del proyecto.
+      expect((await ctx.as(pm).patch(`/api/projects/${project.id}`, { startDate: '2026-03-15' })).statusCode).toBe(200);
+      // Si la última subtarea se va, la ex padre no recupera valores viejos.
+      expect((await ctx.as(pm).delete(`/api/tasks/${child.id}`)).statusCode).toBe(200);
+      const back = (await ctx.as(pm).get(`/api/tasks/${t.id}`)).json();
+      expect(back).toMatchObject({ isSummary: false, startDate: null, dueDate: null, progress: 0 });
+    });
+
+    it('también al mover una tarea bajo una hoja con fechas', async () => {
+      const t = await ctx.makeTask(project.id, { title: 'Fase', startDate: '2026-03-01', dueDate: '2026-03-31' });
+      const loose = await create('Suelta');
+      expect((await patch(loose.id, { parentId: t.id })).statusCode).toBe(200);
+      expect(await ctx.prisma.task.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({ startDate: null, dueDate: null });
+    });
+
+    it('un hito ligado a una padre está listo cuando sus hojas están hechas', async () => {
+      const milestone = await ctx.prisma.milestone.create({ data: { projectId: project.id, name: 'Lanzamiento', dueDate: '2026-12-01' } });
+      const phase = await create('Fase');
+      const sub = await create('Sub', phase.id);
+      const leaf = await create('Hoja', sub.id);
+      await ctx.prisma.task.update({ where: { id: phase.id }, data: { milestoneId: milestone.id } });
+      const ready = async () => (await ctx.as(pm).get(`/api/projects/${project.id}/milestones`)).json()[0].readyToReach;
+      expect(await ready()).toBe(false);
+      await ctx.prisma.task.update({ where: { id: leaf.id }, data: { status: 'DONE', progress: 100 } });
+      expect(await ready()).toBe(true);
+    });
+  });
 });

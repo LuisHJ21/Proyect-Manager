@@ -20,6 +20,15 @@ import { isWithinProject, outsideProjectMessage } from '../domain/projectDates';
 import { registerProjectCrud } from './projectCrud';
 import { assertNotSummary } from './taskTree';
 
+type LinkedTask = { status: string; children?: LinkedTask[] };
+/** Tarea ligada a un hito con sus descendientes; la EDT tiene como mucho 4 niveles. */
+const milestoneTaskSelect = {
+  status: true,
+  children: { select: { status: true, children: { select: { status: true, children: { select: { status: true } } } } } },
+} as const;
+const leavesOf = (task: LinkedTask): { status: string }[] =>
+  task.children && task.children.length > 0 ? task.children.flatMap(leavesOf) : [{ status: task.status }];
+
 export function registerRoutes(app: App) {
   registerProjectCrud(app, {
     path: 'objectives',
@@ -35,8 +44,12 @@ export function registerRoutes(app: App) {
     createSchema: createMilestoneSchema,
     updateSchema: updateMilestoneSchema,
     section: 'planning',
-    include: { tasks: { select: { status: true } }, deliverables: { select: { status: true } } },
-    toDto: ({ tasks, deliverables, ...milestone }) => ({ ...milestone, readyToReach: isReadyToReach({ status: milestone.status, tasks, deliverables }) }),
+    include: { tasks: { select: milestoneTaskSelect }, deliverables: { select: { status: true } } },
+    // Una tarea ligada con subtareas cuenta por sus hojas: su estado guardado no se actualiza.
+    toDto: ({ tasks, deliverables, ...milestone }) => ({
+      ...milestone,
+      readyToReach: isReadyToReach({ status: milestone.status, tasks: tasks.flatMap(leavesOf), deliverables }),
+    }),
     // Como en las tareas: solo se comprueba la fecha nueva, así un hito que ya estaba fuera se puede renombrar.
     validate: async (milestone, project, _prisma, current) => {
       if (current && milestone.dueDate === current.dueDate) return;

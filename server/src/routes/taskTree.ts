@@ -117,3 +117,13 @@ export async function assertDeliverable(db: Db, projectId: string, deliverableId
   const found = await db.deliverable.findFirst({ where: { id: deliverableId, projectId }, select: { id: true } });
   if (!found) throw fieldError('deliverableId', 'Elige un entregable de este proyecto');
 }
+
+/**
+ * Al recibir una subtarea, la padre deja de tener valores propios: fechas, avance y estado salen de
+ * sus hojas. Se borran los guardados para que no bloqueen cambios ni vuelvan si se queda sin hijas.
+ * Sube la versión porque cambia lo que muestra su formulario.
+ */
+export async function becomeSummary(db: Db, parentId: string | null | undefined): Promise<void> {
+  if (!parentId) return;
+  await db.task.update({ where: { id: parentId }, data: { startDate: null, dueDate: null, progress: 0, status: 'TODO', version: { increment: 1 } } });
+}

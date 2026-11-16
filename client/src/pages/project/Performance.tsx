@@ -96,7 +96,8 @@ export function PerformancePage() {
   const data = performance.data;
 
   if (!data.baseline || !data.metrics) {
-    const costed = tasks.data?.filter((t) => (t.plannedCostCents ?? 0) > 0).length;
+    // La línea base guarda solo tareas sin subtareas; una padre lleva el costo sumado de sus hijas.
+    const costed = tasks.data?.filter((t) => !t.isSummary && (t.plannedCostCents ?? 0) > 0).length;
     return (
       <Card title="Desempeño">
         <p className="max-w-prose text-sm text-ink-nav">

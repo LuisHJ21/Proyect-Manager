@@ -20,7 +20,7 @@ import { AppError, editConflict, fieldError, forbidden, notFound } from '../erro
 import { incidentAccess } from '../domain/incidents';
 import { notify } from '../notifications';
 import { taskInclude, toTaskDto } from './taskDto';
-import { assertDeliverable, assertNotSummary, assertParent, inWbsOrder, isSummaryTask, loadTree, loadTrees, moveTask, nextPosition, SUMMARY_FIELD_MESSAGE } from './taskTree';
+import { assertDeliverable, assertNotSummary, assertParent, becomeSummary, inWbsOrder, isSummaryTask, loadTree, loadTrees, moveTask, nextPosition, SUMMARY_FIELD_MESSAGE } from './taskTree';
 import { leafWhere } from '../domain/wbs';
 
 type TaskParams = { Params: { id: string } };
@@ -112,10 +112,14 @@ export function taskRoutes(app: App) {
     const userIds = await assertAssignable(c.var.deps.prisma, project.id, assigneeIds, 'assigneeIds');
     await assertParent(prisma, { projectId: project.id }, input.parentId);
     await assertDeliverable(prisma, project.id, input.deliverableId);
-    const position = await nextPosition(prisma, project.id, input.parentId ?? null);
-    const task = await prisma.task.create({
-      data: { ...input, position, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
-      include: taskInclude,
+    const task = await prisma.$transaction(async (tx) => {
+      const position = await nextPosition(tx, project.id, input.parentId ?? null);
+      const created = await tx.task.create({
+        data: { ...input, position, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
+        include: taskInclude,
+      });
+      await becomeSummary(tx, input.parentId);
+      return created;
     });
     await notifyNewAssignees(c, task, [], userIds);
     return c.json(toTaskDto(task, true, await loadTree(prisma, project.id)), 201);
@@ -208,6 +212,7 @@ export function taskRoutes(app: App) {
       const position = parentChanged ? { position: await nextPosition(tx, task.projectId, input.parentId ?? null) } : {};
       const { count } = await tx.task.updateMany({ where: { id: task.id, version }, data: { ...input, ...position, version: { increment: 1 } } });
       if (count === 0) throw editConflict();
+      if (parentChanged) await becomeSummary(tx, input.parentId);
       if (userIds) await replaceAssignees(tx, task.id, userIds);
     });
     if (userIds) await notifyNewAssignees(c, { ...task, title: input.title ?? task.title }, before, userIds);

@@ -131,3 +131,28 @@ describe('gastos con EDT', () => {
     expect(optionNames(select)).not.toContain('Diseño');
   });
 });
+
+describe('hallazgos de la revisión final en la interfaz', () => {
+  it('una padre no ofrece el formulario de estado y avance', async () => {
+    mockApi(routes(detail(P, { children: [{ id: 'a', title: 'Maquetas', wbsCode: '1.1' }] })));
+    renderApp('/proyectos/p1/tareas/p');
+    await screen.findByRole('region', { name: 'Subtareas' });
+    expect(screen.queryByRole('button', { name: 'Guardar avance' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('complementary', { name: 'Propiedades de la tarea' })).queryByLabelText('Estado')).not.toBeInTheDocument();
+  });
+
+  it('la invitación a fijar la línea base no cuenta padres', async () => {
+    mockApi({
+      ...signedInAs(pmUser),
+      'GET /api/projects': [],
+      'GET /api/me/tasks': [],
+      'GET /api/projects/p1': project,
+      'GET /api/projects/p1/tasks': [{ ...P, plannedCostCents: 400 }, { ...A, plannedCostCents: 100 }, { ...B, plannedCostCents: 300 }],
+      'GET /api/projects/p1/performance': { baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, outsideBaselineCostCents: 0, series: [] },
+      'GET /api/projects/p1/change-requests': [],
+    });
+    renderApp('/proyectos/p1/desempeno');
+    expect(await screen.findByText('2 tareas con costo planeado.')).toBeInTheDocument();
+  });
+});
+

@@ -16,7 +16,7 @@ export type TaskWarning = 'predecessor_not_done' | 'starts_before_predecessor_du
 
 /** El costo planeado solo se envía al Project Manager, y como número: un BigInt no se puede convertir a JSON. */
 export function toTaskDto(task: TaskWithRelations, includeCost: boolean, tree: TaskTree) {
-  const { assignees, predecessors, steps, _count, plannedCostCents, ...fields } = task;
+  const { assignees, predecessors, steps, _count, plannedCostCents, estimatedHours, ...fields } = task;
   const waitingOn = predecessors
     .filter((p) => p.predecessor.status !== 'DONE')
     .map((p) => ({ id: p.predecessor.id, title: p.predecessor.title }));
@@ -38,6 +38,7 @@ export function toTaskDto(task: TaskWithRelations, includeCost: boolean, tree: T
 
   return {
     ...fields,
+    estimatedHours: summary ? summary.estimatedHours : estimatedHours === null ? null : Number(estimatedHours),
     ...(summary ? { startDate: summary.startDate, dueDate: summary.dueDate, progress: summary.progress, status: summary.status } : {}),
     ...(includeCost ? { plannedCostCents: cost } : {}),
     wbsCode: node?.code ?? '',

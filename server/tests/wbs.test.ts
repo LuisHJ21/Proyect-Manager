@@ -19,7 +19,7 @@ describe('EDT: jerarquía de tareas', () => {
   /** Códigos EDT calculados con lo guardado, por título. */
   const codes = async () => {
     const rows = await ctx.prisma.task.findMany({ where: { projectId: project.id } });
-    const nodes = buildWbs(rows.map((r) => ({ ...r, plannedCostCents: Number(r.plannedCostCents) })));
+    const nodes = buildWbs(rows.map((r) => ({ ...r, plannedCostCents: Number(r.plannedCostCents), estimatedHours: null })));
     return Object.fromEntries(rows.map((r) => [r.title, nodes.get(r.id)!.code]));
   };
   const move = (id: string, direction: 'up' | 'down', user = pm) => ctx.as(user).post(`/api/tasks/${id}/move`, { direction });

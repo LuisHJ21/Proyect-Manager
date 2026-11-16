@@ -29,6 +29,7 @@ import { lessonRoutes } from './routes/lessons';
 import { memberRoutes } from './routes/members';
 import { notificationRoutes } from './routes/notifications';
 import { budgetRoutes } from './routes/budget';
+import { timeEntryRoutes } from './routes/timeEntries';
 import { performanceRoutes } from './routes/performance';
 import { projectRoutes } from './routes/projects';
 import { raciRoutes } from './routes/raci';
@@ -100,6 +101,7 @@ export function buildApp(opts: BuildAppOptions): App {
   lessonRoutes(app);
   taskRoutes(app);
   taskStepRoutes(app);
+  timeEntryRoutes(app);
   dependencyRoutes(app);
   attachmentRoutes(app);
   if (opts.files instanceof DiskFileStore) localUploadRoutes(app, opts.files);

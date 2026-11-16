@@ -7,13 +7,19 @@ import { AppError, fieldError, notFound } from '../errors';
 type MemberParams = { id: string; userId: string };
 
 export function memberRoutes(app: App) {
-  const toDto = (m: { userId: string; projectRole: string; user: { name: string; email: string; role: string; active: boolean } }) => ({
+  /** La capacidad la ve todo el equipo; la tarifa, solo el PM. */
+  const toDto = (
+    m: { userId: string; projectRole: string; hourlyRateCents: bigint; weeklyCapacityHours: number; user: { name: string; email: string; role: string; active: boolean } },
+    isPm = true,
+  ) => ({
     userId: m.userId,
     name: m.user.name,
     email: m.user.email,
     role: m.user.role,
     active: m.user.active,
     projectRole: m.projectRole,
+    weeklyCapacityHours: m.weeklyCapacityHours,
+    ...(isPm ? { hourlyRateCents: Number(m.hourlyRateCents) } : {}),
   });
 
   const findMember = async (prisma: PrismaClient, projectId: string, userId: string) => {
@@ -24,13 +30,13 @@ export function memberRoutes(app: App) {
 
   app.get('/api/projects/:id/members', async (c) => {
     const { prisma } = c.var.deps;
-    const { project } = await getProjectAccess(c, c.req.param('id'));
+    const { project, isPm } = await getProjectAccess(c, c.req.param('id'));
     const members = await prisma.projectMember.findMany({
       where: { projectId: project.id },
       include: { user: true },
       orderBy: { user: { name: 'asc' } },
     });
-    return c.json(members.map(toDto));
+    return c.json(members.map((m) => toDto(m, isPm)));
   });
 
   app.post('/api/projects/:id/members', async (c) => {

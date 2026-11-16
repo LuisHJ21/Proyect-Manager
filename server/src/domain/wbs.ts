@@ -17,6 +17,7 @@ export type WbsTask = {
   plannedCostCents: number;
   startDate: string | null;
   dueDate: string | null;
+  estimatedHours?: number | null;
 };
 
 export type WbsNode = { code: string; depth: number; childIds: string[]; leafIds: string[]; ancestorIds: string[] };
@@ -71,7 +72,14 @@ function summaryStatus(statuses: string[]): TaskStatus {
 }
 
 /** Resumen de una tarea padre a partir de sus hojas descendientes. */
-export function summarize(leaves: WbsTask[]): { startDate: string | null; dueDate: string | null; plannedCostCents: number; progress: number; status: TaskStatus } {
+export function summarize(leaves: WbsTask[]): {
+  startDate: string | null;
+  dueDate: string | null;
+  plannedCostCents: number;
+  progress: number;
+  status: TaskStatus;
+  estimatedHours: number | null;
+} {
   const starts = leaves.map((l) => l.startDate).filter((d): d is string => d !== null).sort();
   const dues = leaves.map((l) => l.dueDate).filter((d): d is string => d !== null).sort();
   return {
@@ -80,5 +88,7 @@ export function summarize(leaves: WbsTask[]): { startDate: string | null; dueDat
     plannedCostCents: leaves.reduce((sum, l) => sum + l.plannedCostCents, 0),
     progress: weightedProgress(leaves),
     status: summaryStatus(leaves.map((l) => l.status)),
+    // Sin horas estimadas en ninguna hoja, la padre tampoco tiene.
+    estimatedHours: leaves.some((l) => l.estimatedHours != null) ? leaves.reduce((sum, l) => sum + (l.estimatedHours ?? 0), 0) : null,
   };
 }

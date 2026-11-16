@@ -136,7 +136,11 @@ export const addMemberSchema = z.object({
   userId: required('Selecciona un usuario'),
   projectRole: shortText().default(''),
 });
-export const updateMemberSchema = z.object({ projectRole: shortText() });
+export const updateMemberSchema = z.object({
+  projectRole: shortText().optional(),
+  hourlyRateCents: budgetAmount.optional(),
+  weeklyCapacityHours: z.number({ message: 'Usa un número de horas' }).int('Usa un número entero de horas').min(0, 'Usa de 0 a 168 horas').max(168, 'Usa de 0 a 168 horas').optional(),
+});
 
 export const CHARTER_TEXT_FIELDS = [
   'justification',
@@ -265,6 +269,7 @@ const taskCommonFields = {
   parentId: z.string().min(1, 'Elige una tarea de este proyecto').nullable().optional(),
   deliverableId: z.string().min(1, 'Elige un entregable de este proyecto').nullable().optional(),
   plannedCostCents: budgetAmount.optional(),
+  estimatedHours: z.number({ message: 'Usa un número de horas' }).min(0, 'Usa de 0 a 9999 horas').max(9999, 'Usa de 0 a 9999 horas').multipleOf(0.01, 'Usa como mucho dos decimales').nullable().optional(),
 };
 export const TASK_DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la fecha límite';
 export const createTaskSchema = z
@@ -319,6 +324,13 @@ export const updateStepSchema = z.object({
   done: z.boolean().optional(),
 });
 export const commentSchema = z.object({ body: noteText('Escribe un comentario') });
+const hoursField = z
+  .number({ message: 'Usa un número de horas' })
+  .min(0.25, 'Registra de 0,25 a 24 horas')
+  .max(24, 'Registra de 0,25 a 24 horas')
+  .multipleOf(0.25, 'Usa cuartos de hora: 0,25, 0,5, 0,75…');
+export const timeEntrySchema = z.object({ date: calendarDateSchema, hours: hoursField, note: noteText().default('') });
+export const updateTimeEntrySchema = z.object({ date: calendarDateSchema.optional(), hours: hoursField.optional(), note: noteText().optional() });
 export const dependencySchema = z.object({ predecessorId: required('Selecciona una tarea') });
 
 export const baselineSchema = z.object({

@@ -15,12 +15,13 @@ export const wbsSelect = {
   plannedCostCents: true,
   startDate: true,
   dueDate: true,
+  estimatedHours: true,
 } as const;
 
 /** EDT completa de un proyecto, con las filas listas para resumir. */
 export async function loadTree(db: Db, projectId: string): Promise<TaskTree> {
   const rows = await db.task.findMany({ where: { projectId }, select: wbsSelect });
-  const tasks = rows.map((r) => ({ ...r, plannedCostCents: Number(r.plannedCostCents) }));
+  const tasks = rows.map((r) => ({ ...r, plannedCostCents: Number(r.plannedCostCents), estimatedHours: r.estimatedHours === null ? null : Number(r.estimatedHours) }));
   return { nodes: buildWbs(tasks), byId: new Map(tasks.map((t) => [t.id, t])) };
 }
 
@@ -125,5 +126,5 @@ export async function assertDeliverable(db: Db, projectId: string, deliverableId
  */
 export async function becomeSummary(db: Db, parentId: string | null | undefined): Promise<void> {
   if (!parentId) return;
-  await db.task.update({ where: { id: parentId }, data: { startDate: null, dueDate: null, progress: 0, status: 'TODO', version: { increment: 1 } } });
+  await db.task.update({ where: { id: parentId }, data: { startDate: null, dueDate: null, progress: 0, status: 'TODO', estimatedHours: null, version: { increment: 1 } } });
 }

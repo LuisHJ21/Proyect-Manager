@@ -40,6 +40,10 @@ const ROUTE_SECTION: Record<string, Section> = {
   'DELETE /api/tasks/:id/dependencies/:predecessorId': 'tasks',
 
   'POST /api/tasks/:id/comments': 'comments',
+  'GET /api/tasks/:id/time-entries': 'comments',
+  'POST /api/tasks/:id/time-entries': 'comments',
+  'PATCH /api/tasks/:id/time-entries/:entryId': 'comments',
+  'DELETE /api/tasks/:id/time-entries/:entryId': 'comments',
 
   'GET /api/projects/:id/attachments': 'attachments',
   'POST /api/projects/:id/attachments': 'attachments',
@@ -122,6 +126,9 @@ const ROUTE_SECTION: Record<string, Section> = {
 const FINE_GRAINED = new Set([
   'PATCH /api/tasks/:id/progress',
   'POST /api/tasks/:id/comments',
+  'POST /api/tasks/:id/time-entries',
+  'PATCH /api/tasks/:id/time-entries/:entryId',
+  'DELETE /api/tasks/:id/time-entries/:entryId',
   'PATCH /api/tasks/:id/steps/:stepId',
   'POST /api/tasks/:id/attachments',
   'POST /api/projects/:id/incidents',

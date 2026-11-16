@@ -189,6 +189,7 @@ export function taskRoutes(app: App) {
         ['plannedCostCents', (input.plannedCostCents ?? 0) > 0],
         ['startDate', Boolean(input.startDate)],
         ['dueDate', Boolean(input.dueDate)],
+        ['estimatedHours', (input.estimatedHours ?? 0) > 0],
       ];
       const field = own.find(([, present]) => present)?.[0];
       if (field) throw fieldError(field, SUMMARY_FIELD_MESSAGE);

@@ -9,6 +9,7 @@ import { fieldError } from '../errors';
 import { sanitizeFields } from '../richText';
 import { removeAfterDelete } from '../storage/fileStore';
 import { loadProjectSummaries } from './projectStats';
+import { leafWhere } from '../domain/wbs';
 
 export function projectRoutes(app: App) {
 
@@ -22,7 +23,7 @@ export function projectRoutes(app: App) {
       orderBy: { name: 'asc' },
     });
     const tasks = await prisma.task.findMany({
-      where: { projectId: { in: projects.map((p) => p.id) } },
+      where: { projectId: { in: projects.map((p) => p.id) }, ...leafWhere },
       select: { projectId: true, progress: true, plannedCostCents: true, startDate: true, dueDate: true },
     });
     const progressOf = (projectId: string) =>

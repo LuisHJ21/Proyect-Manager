@@ -5,6 +5,7 @@ import { requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { computeEvm, plannedValueAt, type EvmInput } from '../domain/evm';
 import { AppError, fieldError } from '../errors';
+import { leafWhere } from '../domain/wbs';
 
 const MAX_SERIES_POINTS = 730;
 
@@ -19,7 +20,7 @@ export async function loadEvmInput(prisma: PrismaClient, projectId: string): Pro
   if (!baseline) return null;
   const [project, tasks, expenses] = await Promise.all([
     prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { plannedBudgetCents: true } }),
-    prisma.task.findMany({ where: { projectId }, select: { id: true, title: true, progress: true, dueDate: true, plannedCostCents: true } }),
+    prisma.task.findMany({ where: { projectId, ...leafWhere }, select: { id: true, title: true, progress: true, dueDate: true, plannedCostCents: true } }),
     prisma.expense.findMany({ where: { projectId }, select: { amountCents: true, date: true, taskId: true } }),
   ]);
   return {
@@ -84,7 +85,7 @@ export async function createBaseline(
   userId: string,
   input: { reason: string; changeRequestId: string | null },
 ) {
-  const tasks = await tx.task.findMany({ where: { projectId: project.id, plannedCostCents: { gt: 0 } }, orderBy: { createdAt: 'asc' } });
+  const tasks = await tx.task.findMany({ where: { projectId: project.id, plannedCostCents: { gt: 0 }, ...leafWhere }, orderBy: { createdAt: 'asc' } });
   if (tasks.length === 0) throw new AppError(400, 'baseline_empty', 'Pon un costo planeado al menos a una tarea antes de fijar la línea base');
   const missing = tasks.filter((t) => !t.startDate || !t.dueDate);
   if (missing.length > 0) {

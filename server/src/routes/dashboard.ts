@@ -3,6 +3,7 @@ import { readBody, type App, type Ctx } from '../http';
 import { requirePm } from '../auth/guards';
 import { buildDashboard } from '../domain/dashboard';
 import { loadEvmIndexes } from './evmLoader';
+import { leafWhere } from '../domain/wbs';
 
 export function dashboardRoutes(app: App) {
 
@@ -16,7 +17,7 @@ export function dashboardRoutes(app: App) {
     const where = { projectId: { in: projects.map((p) => p.id) } };
     const [tasks, risks, expenses, milestones, incidents, deliverables, changes] = await Promise.all([
       prisma.task.findMany({
-        where,
+        where: { ...where, ...leafWhere },
         include: { assignees: { include: { user: { select: { id: true, name: true, role: true, active: true } } } } },
       }),
       prisma.risk.findMany({ where }),

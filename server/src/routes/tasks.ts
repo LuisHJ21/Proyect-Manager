@@ -21,6 +21,7 @@ import { incidentAccess } from '../domain/incidents';
 import { notify } from '../notifications';
 import { taskInclude, toTaskDto } from './taskDto';
 import { assertDeliverable, assertNotSummary, assertParent, inWbsOrder, isSummaryTask, loadTree, loadTrees, moveTask, nextPosition, SUMMARY_FIELD_MESSAGE } from './taskTree';
+import { leafWhere } from '../domain/wbs';
 
 type TaskParams = { Params: { id: string } };
 
@@ -126,7 +127,7 @@ export function taskRoutes(app: App) {
     // El observador no ejecuta tareas: su lista siempre está vacía.
     if (user.role === 'OBSERVER') return c.json([]);
     const tasks = await prisma.task.findMany({
-      where: { assignees: { some: { userId: user.id } }, project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } },
+      where: { ...leafWhere, assignees: { some: { userId: user.id } }, project: { status: { in: [...ACTIVE_PROJECT_STATUS] } } },
       include: { ...taskInclude, project: { select: { name: true } } },
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
     });

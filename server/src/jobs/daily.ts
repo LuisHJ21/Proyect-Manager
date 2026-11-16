@@ -4,6 +4,7 @@ import type { Deps } from '../http';
 import { saveEvmSnapshot } from '../routes/performance';
 import { notify } from '../notifications';
 import { utc } from '../sqlTime';
+import { leafWhere } from '../domain/wbs';
 
 /** Un anexo pendiente se descarta si no se confirmó en este tiempo. */
 const PENDING_UPLOAD_MS = 24 * 3_600_000;
@@ -72,7 +73,7 @@ async function notifyDueTasks(deps: Deps): Promise<{ dueSoon: number; overdue: n
   const tomorrow = addDays(today, 1);
   const yesterday = addDays(today, -1);
   const tasks = await deps.prisma.task.findMany({
-    where: { dueDate: { in: [tomorrow, yesterday] }, status: { not: 'DONE' }, project: { status: { notIn: [...CLOSED_PROJECT_STATUS] } } },
+    where: { ...leafWhere, dueDate: { in: [tomorrow, yesterday] }, status: { not: 'DONE' }, project: { status: { notIn: [...CLOSED_PROJECT_STATUS] } } },
     select: { id: true, projectId: true, title: true, dueDate: true, assignees: { select: { userId: true } } },
   });
   const counts = { dueSoon: 0, overdue: 0 };

@@ -7,6 +7,7 @@ import { buildClosureReport, closurePendings, type ClosureInput, type ClosureRep
 import { AppError, fieldError } from '../errors';
 import { sanitizeRichText } from '../richText';
 import { loadEvmInput } from './performance';
+import { leafWhere } from '../domain/wbs';
 
 const person = { select: { id: true, name: true } } as const;
 
@@ -15,7 +16,7 @@ export async function loadClosureInput(prisma: PrismaClient, projectId: string):
   const status = { select: { status: true } } as const;
   const [project, tasks, deliverables, incidents, risks, objectives, charter, expenses, changes, evm] = await Promise.all([
     prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { startDate: true, endDate: true, plannedBudgetCents: true, currency: true } }),
-    prisma.task.findMany({ where: { projectId }, select: { status: true, startDate: true } }),
+    prisma.task.findMany({ where: { projectId, ...leafWhere }, select: { status: true, startDate: true } }),
     prisma.deliverable.findMany({ where: { projectId }, ...status }),
     prisma.incident.findMany({ where: { projectId }, ...status }),
     prisma.risk.findMany({ where: { projectId }, ...status }),

@@ -1,6 +1,7 @@
 import { ACTIVE_PROJECT_STATUS, calendarRangeSchema } from '@pm/shared';
 import { readBody, readQuery, type App, type Ctx } from '../http';
 import { requireUser } from '../auth/guards';
+import { leafWhere } from '../domain/wbs';
 
 export function calendarRoutes(app: App) {
 
@@ -22,7 +23,7 @@ export function calendarRoutes(app: App) {
 
     const [tasks, milestones, undated] = await Promise.all([
       prisma.task.findMany({
-        where: { ...taskScope, dueDate: { gte: from, lte: to } },
+        where: { ...taskScope, ...leafWhere, dueDate: { gte: from, lte: to } },
         include: { ...projectName, assignees: { include: { user: { select: { id: true, name: true } } } } },
         orderBy: { dueDate: 'asc' },
       }),
@@ -35,7 +36,7 @@ export function calendarRoutes(app: App) {
         orderBy: { dueDate: 'asc' },
       }),
       prisma.task.findMany({
-        where: { ...taskScope, dueDate: null, status: { not: 'DONE' } },
+        where: { ...taskScope, ...leafWhere, dueDate: null, status: { not: 'DONE' } },
         include: projectName,
         orderBy: { createdAt: 'asc' },
       }),

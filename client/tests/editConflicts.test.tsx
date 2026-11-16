@@ -43,6 +43,8 @@ describe('choque al editar una tarea', () => {
     warnings: [],
     comments: [],
     steps: [],
+    ancestors: [],
+    children: [],
     ...over,
   });
   const routes = (getTask: unknown, patch: unknown) => ({

@@ -88,7 +88,7 @@ describe('costo planeado', () => {
   it('el colaborador no ve los costos de la tarea', async () => {
     mockApi(base(collaborator, task()));
     renderApp('/proyectos/p1/tareas/t1');
-    expect(await screen.findByRole('heading', { name: 'Diseño' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '1 Diseño' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Costos de la tarea' })).not.toBeInTheDocument();
     expect(screen.queryByText('Costo planeado')).not.toBeInTheDocument();
   });

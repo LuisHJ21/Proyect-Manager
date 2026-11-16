@@ -173,7 +173,21 @@ export function TaskDetailPage() {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <Panel>
-            <h2 className="text-2xl font-semibold text-ink">{task.title}</h2>
+            {task.ancestors.length > 0 && (
+              <nav aria-label="Ruta en la EDT" className="mb-1 flex flex-wrap items-center gap-1 text-sm text-ink-soft">
+                {task.ancestors.map((a, index) => (
+                  <span key={a.id} className="flex items-center gap-1">
+                    {index > 0 && <span aria-hidden="true">›</span>}
+                    <Link className="text-link hover:underline" to={`/proyectos/${project.id}/tareas/${a.id}`}>
+                      {a.wbsCode} {a.title}
+                    </Link>
+                  </span>
+                ))}
+              </nav>
+            )}
+            <h2 className="text-2xl font-semibold text-ink">
+              {task.wbsCode} {task.title}
+            </h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge tone={STATUS_TONE[task.status]}>{LABELS.taskStatus[task.status]}</Badge>
               <span className="text-sm text-ink-soft">{task.progress} %</span>
@@ -201,7 +215,22 @@ export function TaskDetailPage() {
               <FormMessage message={deleteError} />
             </div>
           </Panel>
-          <StepList task={task} canManage={isPm} canCheck={canUpdate} />
+          {task.isSummary ? (
+            <section aria-label="Subtareas" className="rounded-xl border border-line bg-surface p-5">
+              <h2 className="mb-3 text-lg font-semibold text-ink">Subtareas</h2>
+              <ul className="space-y-1.5 text-sm">
+                {task.children.map((child) => (
+                  <li key={child.id}>
+                    <Link className="text-link hover:underline" to={`/proyectos/${project.id}/tareas/${child.id}`}>
+                      {child.wbsCode} {child.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : (
+            <StepList task={task} canManage={isPm} canCheck={canUpdate} />
+          )}
           {canRead('incidents') && (
           <section aria-label="Incidentes de la tarea" className="rounded-xl border border-line bg-surface p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -266,9 +295,11 @@ export function TaskDetailPage() {
             </dl>
           </Panel>
           {isPmUser && <TaskCosts projectId={project.id} currency={project.currency ?? 'USD'} task={task} />}
-          <Panel>
-            <DependencyPicker task={task} canEdit={isPm} />
-          </Panel>
+          {!task.isSummary && (
+            <Panel>
+              <DependencyPicker task={task} canEdit={isPm} />
+            </Panel>
+          )}
           <Panel title="Anexos">
             <AttachmentList scope={{ taskId: task.id }} canUpload={canUpdate} isPm={isPm} currentUserId={user?.id} readOnly={readOnly} />
           </Panel>

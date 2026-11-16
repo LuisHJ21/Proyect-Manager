@@ -29,7 +29,8 @@ export function DependencyPicker({ task, canEdit }: { task: Task; canEdit: boole
     onError: (e) => setError(errorMessage(e)),
   });
 
-  const candidates = tasks.data?.filter((t) => t.id !== task.id && !task.predecessorIds.includes(t.id)) ?? [];
+  // Una tarea con subtareas no tiene dependencias propias: solo se ofrecen hojas.
+  const candidates = tasks.data?.filter((t) => t.id !== task.id && !t.isSummary && !task.predecessorIds.includes(t.id)) ?? [];
 
   return (
     <div>

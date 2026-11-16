@@ -273,7 +273,8 @@ export function BudgetPage() {
             type: 'select',
             nullable: true,
             emptyLabel: 'Sin tarea',
-            options: tasks.data?.map((t) => ({ value: t.id, label: t.title })) ?? [],
+            // Un gasto se liga a una tarea sin subtareas.
+            options: tasks.data?.filter((t) => !t.isSummary).map((t) => ({ value: t.id, label: t.title })) ?? [],
           },
         ]}
       />

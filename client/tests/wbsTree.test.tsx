@@ -1,38 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import type { Task } from '../src/api/types';
 import { collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers';
+import { wbsTask } from './wbsFixtures';
 
 const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'AGILE', startDate: null, endDate: null };
-export const wbsTask = (over: Partial<Task> = {}): Task => ({
-  id: 't1',
-  version: 1,
-  projectId: 'p1',
-  milestoneId: null,
-  title: 'Diseño',
-  description: '',
-  status: 'TODO',
-  priority: 'MEDIUM',
-  startDate: null,
-  dueDate: null,
-  progress: 0,
-  assignees: [],
-  predecessorIds: [],
-  successorCount: 0,
-  commentCount: 0,
-  stepsDone: 0,
-  stepsTotal: 0,
-  waitingOn: [],
-  warnings: [],
-  wbsCode: '1',
-  parentId: null,
-  position: 1,
-  deliverableId: null,
-  childCount: 0,
-  isSummary: false,
-  ...over,
-});
 const tree = [
   wbsTask({ id: 'p', title: 'Diseño', wbsCode: '1', childCount: 2, isSummary: true, progress: 45 }),
   wbsTask({ id: 'a', title: 'Maquetas', wbsCode: '1.1', parentId: 'p', progress: 100 }),

@@ -55,7 +55,7 @@ describe('el observador no ve controles de escritura', () => {
   it('en el detalle de tarea: sin comentarios, incidentes, anexos ni pasos marcables', async () => {
     mockApi(routes(observer));
     renderApp('/proyectos/p1/tareas/t1');
-    expect(await screen.findByRole('heading', { name: 'Construcción' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '1 Construcción' })).toBeInTheDocument();
     expect(screen.queryByText('Comentarios')).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Incidentes de la tarea' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reportar incidente' })).not.toBeInTheDocument();

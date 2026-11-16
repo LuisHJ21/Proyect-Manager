@@ -1,0 +1,31 @@
+import type { Task } from '../src/api/types';
+
+/** Tarea con los campos de la EDT, para pruebas. */
+export const wbsTask = (over: Partial<Task> = {}): Task => ({
+  id: 't1',
+  version: 1,
+  projectId: 'p1',
+  milestoneId: null,
+  title: 'Diseño',
+  description: '',
+  status: 'TODO',
+  priority: 'MEDIUM',
+  startDate: null,
+  dueDate: null,
+  progress: 0,
+  assignees: [],
+  predecessorIds: [],
+  successorCount: 0,
+  commentCount: 0,
+  stepsDone: 0,
+  stepsTotal: 0,
+  waitingOn: [],
+  warnings: [],
+  wbsCode: '1',
+  parentId: null,
+  position: 1,
+  deliverableId: null,
+  childCount: 0,
+  isSummary: false,
+  ...over,
+});

@@ -188,7 +188,8 @@ const PM_ONLY_READS = new Set(['GET /api/projects/:id/members/:userId/impact', '
 
 const isProjectRoute = (url: string) => /^\/api\/(projects\/:id|tasks\/:id)(\/|$)/.test(url);
 
-describe('matriz perfil × ruta', () => {
+// Recorre cada ruta con cada perfil: con la suite completa en paralelo pasa de los 30 s por defecto.
+describe('matriz perfil × ruta', { timeout: 90_000 }, () => {
   let ctx: TestCtx;
   let pm: User;
   let ana: User;

@@ -19,6 +19,8 @@ export function describeNotification(n: Notification): string {
       return `${n.actorName} propuso el cambio «${n.title}»`;
     case 'CHANGE_DECIDED':
       return `${n.detail === 'APPROVED' ? 'Aprobaron' : 'Rechazaron'} tu cambio «${n.title}»`;
+    case 'STATUS_REPORT_ISSUED':
+      return `Nuevo informe de estado: ${n.title}`;
   }
 }
 
@@ -26,6 +28,7 @@ export function describeNotification(n: Notification): string {
 export function notificationLink(n: Notification): string {
   if (n.kind === 'INCIDENT_ASSIGNED') return `/proyectos/${n.projectId}/incidentes`;
   if (n.kind === 'CHANGE_PROPOSED' || n.kind === 'CHANGE_DECIDED') return `/proyectos/${n.projectId}/cambios`;
+  if (n.kind === 'STATUS_REPORT_ISSUED') return `/proyectos/${n.projectId}/informes/${n.entityId}`;
   return `/proyectos/${n.projectId}/tareas/${n.entityId}`;
 }
 

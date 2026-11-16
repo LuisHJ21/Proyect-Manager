@@ -21,6 +21,7 @@ const NOUN: Record<ActivityEntity, string> = {
   decision: 'la decisión',
   deliverable: 'el entregable',
   lesson: 'la lección',
+  report: 'el informe de estado',
 };
 
 const VERB: Record<Exclude<ActivityAction, 'updated'>, string> = {

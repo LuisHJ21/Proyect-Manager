@@ -67,6 +67,7 @@ export const ACTIVITY_ENTITY = [
   'decision',
   'deliverable',
   'lesson',
+  'report',
 ] as const;
 export type ActivityEntity = (typeof ACTIVITY_ENTITY)[number];
 export const ACTIVITY_ACTION = ['created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded'] as const;
@@ -176,6 +177,7 @@ export const LABELS = {
     risk: 'Riesgo',
     expense: 'Gasto',
     raci: 'RACI',
+    report: 'Informe de estado',
     change: 'Solicitud de cambio',
     incident: 'Incidente',
     decision: 'Decisión',

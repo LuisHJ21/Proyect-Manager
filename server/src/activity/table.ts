@@ -24,6 +24,7 @@ import {
   loadRaciCell,
   loadRisk,
   loadStakeholder,
+  loadStatusReport,
   loadStep,
   loadTask,
   param,
@@ -161,6 +162,9 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'POST /api/projects/:id/deliverables/:did/criteria': criterion((_c, response) => response?.criteria?.at(-1)?.id ?? null),
   'PATCH /api/projects/:id/deliverables/:did/criteria/:cid': criterion(param('cid')),
   'DELETE /api/projects/:id/deliverables/:did/criteria/:cid': criterion(param('cid')),
+
+  // Emitir un informe lo registra como creado; el informe congelado no se edita ni se borra.
+  'POST /api/projects/:id/status-reports': { entity: 'report', target: responseId, load: loadStatusReport, fields: [] },
 
   ...crudEntries('lessons', 'lessonId', { entity: 'lesson', load: loadLesson, fields: ['type', 'category'] }),
 };

@@ -43,7 +43,7 @@ export async function loadProject(prisma: PrismaClient, id: string): Promise<Sna
   const project = await prisma.project.findUnique({ where: { id }, include: { charter: true } });
   if (!project) return null;
   const { charter, ...rest } = project;
-  const values = scalars(rest, ['lastChangeNumber', 'lastIncidentNumber', 'lastDecisionNumber', 'lastDeliverableNumber']);
+  const values = scalars(rest, ['lastChangeNumber', 'lastIncidentNumber', 'lastDecisionNumber', 'lastDeliverableNumber', 'lastStatusReportNumber']);
   if (charter) {
     for (const [key, value] of Object.entries(scalars(charter, ['id', 'projectId', 'createdAt', 'updatedAt']))) values[`charter.${key}`] = value;
   }
@@ -127,6 +127,11 @@ export async function loadIncidentFromRisk(prisma: PrismaClient, id: string): Pr
 export async function loadDecision(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
   const item = await prisma.decision.findUnique({ where: { id } });
   return item ? { label: `DEC-${item.number} ${item.title}`, values: scalars(item) } : null;
+}
+
+export async function loadStatusReport(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.statusReport.findUnique({ where: { id }, select: { number: true, periodStart: true, periodEnd: true } });
+  return item ? { label: `Informe ${item.number}`, values: { periodStart: item.periodStart, periodEnd: item.periodEnd } } : null;
 }
 
 export async function loadLesson(prisma: PrismaClient, id: string): Promise<Snapshot | null> {

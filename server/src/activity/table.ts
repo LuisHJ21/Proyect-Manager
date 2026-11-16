@@ -8,6 +8,7 @@ import {
   loadAttachment,
   loadChange,
   loadComment,
+  loadCommunication,
   loadCriterion,
   loadDecision,
   loadDeliverable,
@@ -129,6 +130,7 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   ...crudEntries('objectives', 'itemId', { entity: 'objective', load: loadObjective, fields: ['status'] }),
   ...crudEntries('milestones', 'itemId', { entity: 'milestone', load: loadMilestone, fields: ['status', 'dueDate'] }),
   ...crudEntries('stakeholders', 'itemId', { entity: 'stakeholder', load: loadStakeholder, fields: [] }),
+  ...crudEntries('communications', 'itemId', { entity: 'communication', load: loadCommunication, fields: ['frequency', 'ownerId'] }),
   ...crudEntries('risks', 'itemId', { entity: 'risk', load: loadRisk, fields: ['status', 'ownerId', 'probability', 'impact'] }),
   ...crudEntries('expenses', 'itemId', { entity: 'expense', load: loadExpense, fields: ['amountCents', 'date', 'category'] }),
 

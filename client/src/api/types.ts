@@ -464,3 +464,13 @@ export type StatusReportSummary = { id: string; number: number; periodStart: str
 export type StatusReport = StatusReportSummary & { comment: string; nextSteps: string; report: StatusReportSnapshot };
 export type StatusReportList = { items: StatusReportSummary[]; due: boolean };
 export type StatusReportDraft = { periodStart: string; periodEnd: string; report: StatusReportSnapshot };
+export type CommunicationItem = {
+  id: string;
+  topic: string;
+  audience: string;
+  frequency: import('@pm/shared').CommunicationFrequency;
+  channel: string;
+  ownerId: string | null;
+  owner: PersonRef | null;
+  notes: string;
+};

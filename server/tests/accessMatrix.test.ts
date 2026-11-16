@@ -103,6 +103,10 @@ const ROUTE_SECTION: Record<string, Section> = {
   'POST /api/projects/:id/stakeholders': 'stakeholders',
   'PATCH /api/projects/:id/stakeholders/:itemId': 'stakeholders',
   'DELETE /api/projects/:id/stakeholders/:itemId': 'stakeholders',
+  'GET /api/projects/:id/communications': 'stakeholders',
+  'POST /api/projects/:id/communications': 'stakeholders',
+  'PATCH /api/projects/:id/communications/:itemId': 'stakeholders',
+  'DELETE /api/projects/:id/communications/:itemId': 'stakeholders',
 
   'GET /api/projects/:id/expenses': 'budget',
   'GET /api/projects/:id/budget-categories': 'budget',

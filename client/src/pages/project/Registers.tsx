@@ -1,8 +1,8 @@
-import { ENGAGEMENT_LEVEL, EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
+import { COMMUNICATION_FREQUENCY, ENGAGEMENT_LEVEL, EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, EDIT_CONFLICT_NOTICE, errorMessage, isEditConflict } from '../../api/client';
-import type { Expense, Indicators, Member, Risk, Stakeholder, Task } from '../../api/types';
+import type { CommunicationItem, Expense, Indicators, Member, Risk, Stakeholder, Task } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { AttachmentList } from '../../components/attachments/AttachmentList';
 import { ErrorState, Loading } from '../../components/ErrorState';
@@ -75,8 +75,49 @@ export function StakeholdersPage() {
           <EngagementMatrix stakeholders={stakeholders.data} />
         </div>
       )}
+      <CommunicationPlan projectId={project.id} readOnly={readOnly} />
       <RaciMatrix projectId={project.id} readOnly={readOnly} />
     </div>
+  );
+}
+
+/** Plan de comunicaciones: qué se comunica, a quién, cada cuánto, por qué canal y quién lo hace. */
+function CommunicationPlan({ projectId, readOnly }: { projectId: string; readOnly: boolean }) {
+  const members = useQuery({ queryKey: membersKey(projectId), queryFn: () => api<Member[]>(`/api/projects/${projectId}/members`) });
+  return (
+    <RegisterTable<CommunicationItem>
+      projectId={projectId}
+      path="communications"
+      title="Plan de comunicaciones"
+      singular="comunicación"
+      canEdit={!readOnly}
+      emptyText="Aún no hay comunicaciones planificadas."
+      itemLabel={(item) => item.topic}
+      defaults={{ topic: '', audience: '', frequency: 'AS_NEEDED', channel: '', ownerId: null, notes: '' }}
+      columns={[
+        { header: 'Qué', cell: (item) => <span className="font-medium text-ink">{item.topic}</span> },
+        { header: 'A quién', cell: (item) => item.audience },
+        { header: 'Frecuencia', cell: (item) => LABELS.communicationFrequency[item.frequency] },
+        { header: 'Canal', cell: (item) => item.channel },
+        { header: 'Responsable', cell: (item) => item.owner?.name ?? '—' },
+      ]}
+      fields={[
+        { name: 'topic', label: 'Qué se comunica', type: 'text' },
+        { name: 'audience', label: 'A quién', type: 'text' },
+        { name: 'frequency', label: 'Frecuencia', type: 'select', options: options(COMMUNICATION_FREQUENCY, LABELS.communicationFrequency) },
+        { name: 'channel', label: 'Canal', type: 'text' },
+        {
+          name: 'ownerId',
+          label: 'Responsable',
+          type: 'select',
+          nullable: true,
+          // Un observador no puede ser responsable.
+          options: (values) =>
+            members.data?.filter((m) => m.role !== 'OBSERVER' || m.userId === values.ownerId).map((m) => ({ value: m.userId, label: m.name })) ?? [],
+        },
+        { name: 'notes', label: 'Notas', type: 'textarea' },
+      ]}
+    />
   );
 }
 

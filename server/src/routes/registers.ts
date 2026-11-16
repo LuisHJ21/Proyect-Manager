@@ -1,4 +1,5 @@
 import {
+  createCommunicationItemSchema,
   createExpenseSchema,
   createMilestoneSchema,
   createObjectiveSchema,
@@ -10,6 +11,7 @@ import {
   updateMilestoneSchema,
   updateObjectiveSchema,
   updateRiskSchema,
+  updateCommunicationItemSchema,
   updateStakeholderSchema,
 } from '@pm/shared';
 import type { App } from '../http';
@@ -62,6 +64,16 @@ export function registerRoutes(app: App) {
     createSchema: createStakeholderSchema,
     updateSchema: updateStakeholderSchema,
     section: 'stakeholders',
+  });
+  // Plan de comunicaciones: qué, a quién, cada cuánto, por qué canal y quién. Solo del PM, como los interesados.
+  registerProjectCrud(app, {
+    path: 'communications',
+    delegate: (prisma) => prisma.communicationItem,
+    createSchema: createCommunicationItemSchema,
+    updateSchema: updateCommunicationItemSchema,
+    section: 'stakeholders',
+    include: { owner: { select: { id: true, name: true } } },
+    validate: async (item, project, prisma) => assertOwnerCanOwn(prisma, project.id, item.ownerId),
   });
   registerProjectCrud(app, {
     path: 'risks',

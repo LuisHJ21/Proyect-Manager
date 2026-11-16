@@ -22,6 +22,7 @@ const NOUN: Record<ActivityEntity, string> = {
   deliverable: 'el entregable',
   lesson: 'la lección',
   report: 'el informe de estado',
+  communication: 'la fila del plan de comunicaciones',
 };
 
 const VERB: Record<Exclude<ActivityAction, 'updated'>, string> = {

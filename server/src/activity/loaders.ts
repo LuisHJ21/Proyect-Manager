@@ -134,6 +134,11 @@ export async function loadStatusReport(prisma: PrismaClient, id: string): Promis
   return item ? { label: `Informe ${item.number}`, values: { periodStart: item.periodStart, periodEnd: item.periodEnd } } : null;
 }
 
+export async function loadCommunication(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.communicationItem.findUnique({ where: { id } });
+  return item ? { label: item.topic, values: scalars(item) } : null;
+}
+
 export async function loadLesson(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
   const item = await prisma.lesson.findUnique({ where: { id } });
   return item ? { label: plainLabel(item.situation), values: scalars(item, ['authorId']) } : null;

@@ -26,6 +26,7 @@ const NOUN: Record<ActivityEntity, string> = {
   meeting: 'el acta de la reunión',
   requirement: 'el requisito',
   quality: 'la métrica de calidad',
+  assumption: 'el supuesto',
 };
 
 const VERB: Record<Exclude<ActivityAction, 'updated'>, string> = {

@@ -154,6 +154,11 @@ export async function loadQualityMetric(prisma: PrismaClient, id: string): Promi
   return item ? { label: item.name, values: { target: Number(item.target), direction: item.direction, measurements: item._count.measurements } } : null;
 }
 
+export async function loadAssumption(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.assumption.findUnique({ where: { id } });
+  return item ? { label: `SUP-${item.number} ${plainLabel(item.description)}`, values: scalars(item) } : null;
+}
+
 export async function loadLesson(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
   const item = await prisma.lesson.findUnique({ where: { id } });
   return item ? { label: plainLabel(item.situation), values: scalars(item, ['authorId']) } : null;

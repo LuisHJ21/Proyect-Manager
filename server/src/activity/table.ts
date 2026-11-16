@@ -5,6 +5,7 @@ import { routeParam } from '../routeContext';
 import {
   bodyOf,
   joinKey,
+  loadAssumption,
   loadAttachment,
   loadChange,
   loadComment,
@@ -173,6 +174,9 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   // Medir o borrar una medición queda como edición de la métrica.
   'POST /api/projects/:id/quality-metrics/:metricId/measurements': { entity: 'quality', action: 'updated', target: param('metricId'), load: loadQualityMetric, fields: ['measurements'] },
   'DELETE /api/projects/:id/quality-metrics/:metricId/measurements/:measurementId': { entity: 'quality', action: 'updated', target: param('metricId'), load: loadQualityMetric, fields: ['measurements'] },
+  ...crudEntries('assumptions', 'assumptionId', { entity: 'assumption', load: loadAssumption, fields: ['status', 'ownerId', 'validateBy'] }),
+  // Convertir queda como edición del supuesto (gana su vínculo al riesgo o incidente).
+  'POST /api/projects/:id/assumptions/:assumptionId/convert': { entity: 'assumption', action: 'updated', target: param('assumptionId'), load: loadAssumption, fields: ['riskId', 'incidentId'] },
   ...crudEntries('meetings', 'meetingId', { entity: 'meeting', load: loadMeeting, fields: ['date'] }),
   // Convertir un acuerdo queda como edición del acta.
   'POST /api/projects/:id/meetings/:meetingId/agreements/:agreementId/convert': { entity: 'meeting', action: 'updated', target: param('meetingId'), load: loadMeeting, fields: [] },

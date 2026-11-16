@@ -53,7 +53,7 @@ describe('guardia de solo lectura', () => {
     }
     expect(failures).toEqual([]);
     expect(routes.map((r) => `${r.method} ${r.url}`)).toEqual(
-      expect.arrayContaining(['POST /api/attachments/:id/complete', 'PUT /api/local-uploads/:storedName', 'POST /api/projects/:id/change-requests/:crId/apply', 'POST /api/tasks/:id/move', 'PUT /api/projects/:id/budget-categories', 'POST /api/tasks/:id/time-entries', 'PATCH /api/tasks/:id/time-entries/:entryId', 'DELETE /api/tasks/:id/time-entries/:entryId', 'PATCH /api/tasks/:id/dependencies/:predecessorId', 'POST /api/tasks/:id/reschedule', 'POST /api/projects/:id/status-reports', 'POST /api/projects/:id/meetings/:meetingId/agreements/:agreementId/convert', 'POST /api/projects/:id/requirements', 'POST /api/projects/:id/quality-metrics/:metricId/measurements']),
+      expect.arrayContaining(['POST /api/attachments/:id/complete', 'PUT /api/local-uploads/:storedName', 'POST /api/projects/:id/change-requests/:crId/apply', 'POST /api/tasks/:id/move', 'PUT /api/projects/:id/budget-categories', 'POST /api/tasks/:id/time-entries', 'PATCH /api/tasks/:id/time-entries/:entryId', 'DELETE /api/tasks/:id/time-entries/:entryId', 'PATCH /api/tasks/:id/dependencies/:predecessorId', 'POST /api/tasks/:id/reschedule', 'POST /api/projects/:id/status-reports', 'POST /api/projects/:id/meetings/:meetingId/agreements/:agreementId/convert', 'POST /api/projects/:id/requirements', 'POST /api/projects/:id/quality-metrics/:metricId/measurements', 'POST /api/projects/:id/assumptions/:assumptionId/convert']),
     );
   });
 

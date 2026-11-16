@@ -16,6 +16,8 @@ const ROUTE_SECTION: Record<string, Section> = {
   'GET /api/projects/:id/charter': 'planning',
   'PUT /api/projects/:id/charter': 'planning',
   'POST /api/projects/:id/charter/approve': 'planning',
+  'GET /api/projects/:id/charter/versions': 'planning',
+  'GET /api/projects/:id/charter/versions/:number': 'planning',
   'GET /api/projects/:id/objectives': 'planning',
   'POST /api/projects/:id/objectives': 'planning',
   'PATCH /api/projects/:id/objectives/:itemId': 'planning',

@@ -11,6 +11,7 @@ import { useToast } from '../../components/Toast';
 import { Button, Card, EmptyState, inputClass } from '../../components/ui';
 import { useAccess } from '../../auth/useAccess';
 import { useProject } from './ProjectLayout';
+import { csvFilename, downloadCsv, toCsv } from '../../lib/csv';
 
 type Dialog = { kind: 'new' } | { kind: 'edit' | 'delete'; item: Lesson };
 
@@ -34,7 +35,41 @@ export function LessonsPage() {
   const visible = list.data?.filter((l) => (!type || l.type === type) && (!category || l.category === category)) ?? [];
 
   return (
-    <Card title="Lecciones aprendidas" actions={canWrite('lessons') ? <Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>Añadir lección</Button> : undefined}>
+    <Card
+      title="Lecciones aprendidas"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          {list.data && list.data.length > 0 && (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                downloadCsv(
+                  csvFilename(project.name, 'lecciones'),
+                  toCsv<Lesson>(
+                    [
+                      { header: 'Tipo', value: (l) => LABELS.lessonType[l.type] },
+                      { header: 'Categoría', value: (l) => LABELS.lessonCategory[l.category] },
+                      { header: 'Situación', value: (l) => l.situation },
+                      { header: 'Recomendación', value: (l) => l.recommendation },
+                      { header: 'Autor', value: (l) => l.author.name },
+                      { header: 'Fecha', value: (l) => l.createdAt.slice(0, 10) },
+                    ],
+                    list.data!,
+                  ),
+                )
+              }
+            >
+              Exportar CSV
+            </Button>
+          )}
+          {canWrite('lessons') && (
+            <Button variant="secondary" onClick={() => setDialog({ kind: 'new' })}>
+              Añadir lección
+            </Button>
+          )}
+        </div>
+      }
+    >
       <div className="mb-4 flex flex-wrap gap-4">
         <label className="text-sm text-ink-nav">
           <span className="mb-1 block font-medium">Tipo</span>

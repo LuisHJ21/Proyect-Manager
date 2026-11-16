@@ -20,6 +20,7 @@ import { EngagementMatrix } from '../../components/stakeholders/EngagementMatrix
 import { PowerInterestGrid } from '../../components/stakeholders/PowerInterestGrid';
 import { RiskMatrix } from '../../components/risks/RiskMatrix';
 import { shortDate } from '../../lib/display';
+import { csvFilename, csvMoney, csvText } from '../../lib/csv';
 import { useProject } from './ProjectLayout';
 
 const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
@@ -208,6 +209,23 @@ export function RisksPage() {
   return (
     <div className="space-y-6">
     <RegisterTable<Risk>
+      csv={{
+        filename: () => csvFilename(project.name, 'riesgos'),
+        columns: [
+          { header: 'Riesgo', value: (r) => csvText(r.description) },
+          { header: 'Tipo', value: (r) => LABELS.riskType[r.type] },
+          { header: 'Probabilidad', value: (r) => r.probability },
+          { header: 'Impacto', value: (r) => r.impact },
+          { header: 'Puntaje', value: (r) => r.score },
+          { header: 'Puntaje residual', value: (r) => r.residualScore ?? '' },
+          { header: 'Respuesta', value: (r) => LABELS.riskResponse[r.response as keyof typeof LABELS.riskResponse] },
+          { header: 'Responsable', value: (r) => memberName(r.ownerId) },
+          { header: 'Estado', value: (r) => LABELS.riskStatus[r.status] },
+          { header: 'Disparador', value: (r) => r.trigger ?? '' },
+          { header: 'Próxima revisión', value: (r) => r.nextReviewDate ?? '' },
+          { header: 'Costo de contingencia', value: (r) => csvMoney(r.contingencyCostCents), onlyIfPresent: 'contingencyCostCents' },
+        ],
+      }}
       projectId={project.id}
       path="risks"
       title="Registro de riesgos"
@@ -348,6 +366,15 @@ export function BudgetPage() {
       <BudgetTotals projectId={project.id} currency={currency} />
       <BudgetCategoriesSection projectId={project.id} currency={currency} canEdit={!readOnly} />
       <RegisterTable<Expense>
+        csv={{
+          filename: () => csvFilename(project.name, 'gastos'),
+          columns: [
+            { header: 'Fecha', value: (e) => e.date },
+            { header: 'Descripción', value: (e) => e.description },
+            { header: 'Categoría', value: (e) => LABELS.expenseCategory[e.category] },
+            { header: 'Monto', value: (e) => csvMoney(e.amountCents) },
+          ],
+        }}
         projectId={project.id}
         path="expenses"
         title="Gastos"

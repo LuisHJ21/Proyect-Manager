@@ -1,4 +1,4 @@
-import { localToday } from '@pm/shared';
+import { LABELS, localToday } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -17,6 +17,7 @@ import { Button, EmptyState, Skeleton } from '../../components/ui';
 import { applyQuickFilter, type QuickFilter } from '../../lib/taskFilters';
 import { useProject } from './ProjectLayout';
 import { useSchedule } from '../../components/tasks/Reschedule';
+import { csvFilename, csvMoney, downloadCsv, toCsv } from '../../lib/csv';
 
 const VIEWS = [
   { id: 'tablero', label: 'Tablero' },
@@ -91,6 +92,33 @@ export function TasksPage() {
               {option.label}
             </button>
           ))}
+        {tasks.data && tasks.data.length > 0 && (
+          <Button
+            variant="ghost"
+            onClick={() =>
+              downloadCsv(
+                csvFilename(project.name, 'tareas'),
+                toCsv<Task>(
+                  [
+                    { header: 'EDT', value: (t) => t.wbsCode },
+                    { header: 'Tarea', value: (t) => t.title },
+                    { header: 'Estado', value: (t) => LABELS.taskStatus[t.status] },
+                    { header: 'Prioridad', value: (t) => LABELS.priority[t.priority] },
+                    { header: 'Inicio', value: (t) => t.startDate ?? '' },
+                    { header: 'Fin', value: (t) => t.dueDate ?? '' },
+                    { header: 'Avance %', value: (t) => t.progress },
+                    { header: 'Responsables', value: (t) => t.assignees.map((a) => a.name).join(', ') },
+                    { header: 'Horas estimadas', value: (t) => t.estimatedHours ?? '' },
+                    { header: 'Costo planeado', value: (t) => csvMoney(t.plannedCostCents), onlyIfPresent: 'plannedCostCents' },
+                  ],
+                  tasks.data!,
+                ),
+              )
+            }
+          >
+            Exportar CSV
+          </Button>
+        )}
         {showFilters && !tasks.isPending && (
           <span className="ml-auto text-[13px] text-ink-soft">
             {visible.length} {visible.length === 1 ? 'tarea' : 'tareas'}

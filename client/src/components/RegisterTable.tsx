@@ -8,6 +8,7 @@ import { INVALID_MONEY_MESSAGE, MoneyInput } from './MoneyInput';
 import { RichTextEditor } from './richText/RichTextEditor';
 import { useToast } from './Toast';
 import { Button, Card, EmptyState, inputClass } from './ui';
+import { downloadCsv, toCsv, type CsvColumn } from '../lib/csv';
 
 export type Option = { value: string | number; label: string };
 export type Values = Record<string, any>;
@@ -59,6 +60,8 @@ type Props<T extends { id: string }> = {
   onChanged?: () => void;
   /** Si existe, cada fila tiene un botón Ver que abre este detalle en una ventana. */
   detail?: { title: (item: T) => string; render: (item: T) => ReactNode };
+  /** Botón «Exportar CSV» con las filas que la página ya tiene. */
+  csv?: { filename: () => string; columns: CsvColumn<T>[] };
 };
 
 export const registerKey = (projectId: string, path: string) => ['project', projectId, path];
@@ -162,7 +165,7 @@ function RegisterForm({
 
 /** Lista con alta, edición y baja para los registros de un proyecto. */
 export function RegisterTable<T extends { id: string }>(props: Props<T>) {
-  const { projectId, path, title, singular, canEdit, columns, fields, defaults, emptyText, normalize, itemLabel, onChanged, detail } = props;
+  const { projectId, path, title, singular, canEdit, columns, fields, defaults, emptyText, normalize, itemLabel, onChanged, detail, csv } = props;
   const queryClient = useQueryClient();
   const toast = useToast();
   const key = registerKey(projectId, path);
@@ -215,9 +218,21 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
   };
 
   const newButton = canEdit ? <Button variant="secondary" onClick={() => setEditing('new')}>{`Añadir ${singular}`}</Button> : undefined;
+  const csvButton =
+    csv && list.data && list.data.length > 0 ? (
+      <Button variant="ghost" onClick={() => downloadCsv(csv.filename(), toCsv(csv.columns, list.data!))}>
+        Exportar CSV
+      </Button>
+    ) : undefined;
+  const actions = newButton || csvButton ? (
+    <div className="flex flex-wrap gap-2">
+      {csvButton}
+      {newButton}
+    </div>
+  ) : undefined;
 
   return (
-    <Card title={title} actions={newButton}>
+    <Card title={title} actions={actions}>
       {list.isPending ? (
         <Loading />
       ) : list.isError ? (

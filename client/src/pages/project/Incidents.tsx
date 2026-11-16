@@ -10,6 +10,7 @@ import { PRIORITY_TONE } from '../../components/tasks/TaskCard';
 import { Badge, Button, Card, EmptyState, inputClass } from '../../components/ui';
 import { shortDate } from '../../lib/display';
 import { useProject } from './ProjectLayout';
+import { csvFilename, downloadCsv, toCsv } from '../../lib/csv';
 
 /** Registro de incidentes del proyecto. El colaborador ve los que reportó o tiene asignados. */
 export function IncidentsPage() {
@@ -32,7 +33,44 @@ export function IncidentsPage() {
   const viewing = list.data?.find((i) => i.id === viewingId) ?? null;
 
   return (
-    <Card title="Incidentes" actions={readOnly ? undefined : <Button variant="secondary" onClick={() => setReporting(true)}>Reportar incidente</Button>}>
+    <Card
+      title="Incidentes"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          {list.data && list.data.length > 0 && (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                downloadCsv(
+                  csvFilename(project.name, 'incidentes'),
+                  toCsv<Incident>(
+                    [
+                      { header: 'Número', value: (i) => `INC-${i.number}` },
+                      { header: 'Incidente', value: (i) => i.title },
+                      { header: 'Tipo', value: (i) => LABELS.incidentKind[i.kind ?? 'INCIDENT'] },
+                      { header: 'Prioridad', value: (i) => LABELS.priority[i.priority] },
+                      { header: 'Estado', value: (i) => LABELS.incidentStatus[i.status] },
+                      { header: 'Responsable', value: (i) => i.owner?.name ?? '' },
+                      { header: 'Reportado por', value: (i) => i.reportedBy.name },
+                      { header: 'Fecha límite', value: (i) => i.dueDate ?? '' },
+                      { header: 'Entregable', value: (i) => (i.deliverable ? `ENT-${i.deliverable.number} ${i.deliverable.name}` : '') },
+                    ],
+                    list.data!,
+                  ),
+                )
+              }
+            >
+              Exportar CSV
+            </Button>
+          )}
+          {!readOnly && (
+            <Button variant="secondary" onClick={() => setReporting(true)}>
+              Reportar incidente
+            </Button>
+          )}
+        </div>
+      }
+    >
       <div className="mb-4 flex flex-wrap items-end gap-4">
         <label className="text-sm text-ink-nav">
           <span className="mb-1 block font-medium">Estado</span>

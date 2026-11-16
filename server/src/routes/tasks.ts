@@ -20,7 +20,7 @@ import { AppError, editConflict, fieldError, forbidden, notFound } from '../erro
 import { incidentAccess } from '../domain/incidents';
 import { notify } from '../notifications';
 import { taskInclude, toTaskDto } from './taskDto';
-import { assertParent, moveTask, nextPosition } from './taskTree';
+import { assertNotSummary, assertParent, isSummaryTask, moveTask, nextPosition, SUMMARY_FIELD_MESSAGE } from './taskTree';
 
 type TaskParams = { Params: { id: string } };
 
@@ -166,6 +166,17 @@ export function taskRoutes(app: App) {
     const { prisma } = c.var.deps;
     const task = await requireTaskPm(c, c.req.param('id'));
     const { status: _status, progress: _progress, assigneeIds, version, ...input } = updateTaskSchema.parse(await readBody(c));
+    if (await isSummaryTask(prisma, task.id)) {
+      // Una padre no tiene trabajo propio: estos campos salen de sus subtareas.
+      const own: [string, boolean][] = [
+        ['assigneeIds', (assigneeIds?.length ?? 0) > 0],
+        ['plannedCostCents', (input.plannedCostCents ?? 0) > 0],
+        ['startDate', Boolean(input.startDate)],
+        ['dueDate', Boolean(input.dueDate)],
+      ];
+      const field = own.find(([, present]) => present)?.[0];
+      if (field) throw fieldError(field, SUMMARY_FIELD_MESSAGE);
+    }
     const startDate = input.startDate === undefined ? task.startDate : input.startDate;
     const dueDate = input.dueDate === undefined ? task.dueDate : input.dueDate;
     if (!isDateOrderValid(startDate, dueDate)) throw fieldError('startDate', TASK_DATE_ORDER_MESSAGE);
@@ -216,6 +227,7 @@ export function taskRoutes(app: App) {
     const { prisma } = c.var.deps;
     const task = await requireTaskPm(c, c.req.param('id'));
     const input = assigneesSchema.parse(await readBody(c));
+    if (input.userIds.length > 0 && (await isSummaryTask(prisma, task.id))) throw fieldError('userIds', SUMMARY_FIELD_MESSAGE);
     const userIds = await assertAssignable(c.var.deps.prisma, task.projectId, input.userIds, 'userIds', task.id);
     const before = await assigneeIdsOf(prisma, task.id);
     await prisma.$transaction(async (tx) => {
@@ -230,6 +242,7 @@ export function taskRoutes(app: App) {
     const { prisma } = c.var.deps;
     const { task, isPm, isAssignee } = await getTaskAccess(c, c.req.param('id'));
     if (!isPm && !isAssignee) throw forbidden('Solo puedes actualizar las tareas que tienes asignadas');
+    await assertNotSummary(prisma, task.id);
     const input = taskProgressSchema.parse(await readBody(c));
     const data = input.status === 'DONE' ? { ...input, progress: 100 } : input;
 

@@ -18,6 +18,7 @@ import { assertOwnerCanOwn } from '../domain/owners';
 import { isReadyToReach } from '../domain/milestones';
 import { isWithinProject, outsideProjectMessage } from '../domain/projectDates';
 import { registerProjectCrud } from './projectCrud';
+import { assertNotSummary } from './taskTree';
 
 export function registerRoutes(app: App) {
   registerProjectCrud(app, {
@@ -78,6 +79,7 @@ export function registerRoutes(app: App) {
       if (!expense.taskId) return;
       const task = await prisma.task.findFirst({ where: { id: expense.taskId, projectId: project.id }, select: { id: true } });
       if (!task) throw fieldError('taskId', 'La tarea no pertenece al proyecto');
+      await assertNotSummary(prisma, task.id);
     },
   });
 }

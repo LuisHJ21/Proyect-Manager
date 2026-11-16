@@ -4,6 +4,7 @@ import { readBody, type App, type Ctx } from '../http';
 import { stepProgress } from '../domain/taskSteps';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { getTaskAccess } from './tasks';
+import { assertNotSummary } from './taskTree';
 
 type TaskParams = { Params: { id: string } };
 type StepParams = { Params: { id: string; stepId: string } };
@@ -50,6 +51,7 @@ export function taskStepRoutes(app: App) {
     const { prisma } = c.var.deps;
     const { task, isPm } = await getTaskAccess(c, c.req.param('id'));
     if (!isPm) throw forbidden();
+    await assertNotSummary(prisma, task.id);
     const input = stepSchema.parse(await readBody(c));
     await assertAssigned(c.var.deps.prisma, task.id, input.assigneeId);
     const step = await prisma.$transaction(async (tx) => {

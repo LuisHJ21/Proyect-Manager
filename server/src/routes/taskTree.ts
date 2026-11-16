@@ -85,3 +85,15 @@ export async function moveTask(db: Db, taskId: string, direction: 'up' | 'down')
   [ids[index], ids[target]] = [ids[target]!, ids[index]!];
   for (const [position, id] of ids.entries()) await db.task.update({ where: { id }, data: { position: position + 1 } });
 }
+
+export const SUMMARY_FIELD_MESSAGE = 'Se calcula con sus subtareas';
+
+/** Una tarea es padre (resumen) si tiene al menos una subtarea. */
+export async function isSummaryTask(db: Db, taskId: string): Promise<boolean> {
+  return (await db.task.count({ where: { parentId: taskId } })) > 0;
+}
+
+/** Rechaza actualizar el trabajo de una tarea padre: avance, pasos, dependencias y gastos van en sus subtareas. */
+export async function assertNotSummary(db: Db, taskId: string): Promise<void> {
+  if (await isSummaryTask(db, taskId)) throw new AppError(409, 'task_is_summary', 'Una tarea con subtareas se actualiza a través de ellas');
+}

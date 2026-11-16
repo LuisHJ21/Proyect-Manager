@@ -133,4 +133,54 @@ describe('EDT: jerarquía de tareas', () => {
     const a = await create('A');
     expect((await ctx.as(pm).post(`/api/tasks/${a.id}/move`, { direction: 'left' })).statusCode).toBe(400);
   });
+
+  describe('una padre no tiene trabajo propio', () => {
+    let parent: Task;
+    let child: Task;
+    beforeEach(async () => {
+      parent = await create('Padre');
+      child = await create('Hija', parent.id);
+    });
+    const SUMMARY = 'Una tarea con subtareas se actualiza a través de ellas';
+
+    it('rechaza responsables, costo y fechas en el formulario', async () => {
+      for (const [field, body] of [
+        ['assigneeIds', { assigneeIds: [ana.id] }],
+        ['plannedCostCents', { plannedCostCents: 100 }],
+        ['startDate', { startDate: '2026-12-01' }],
+        ['dueDate', { dueDate: '2026-12-02' }],
+      ] as const) {
+        const res = await patch(parent.id, body);
+        expect(res.statusCode).toBe(400);
+        expect(res.json().error.fields[field]).toBe('Se calcula con sus subtareas');
+      }
+      expect((await patch(parent.id, { title: 'Fase 1', priority: 'HIGH', milestoneId: null, deliverableId: null })).statusCode).toBe(200);
+    });
+
+    it('PUT de responsables también se rechaza', async () => {
+      const res = await ctx.as(pm).put(`/api/tasks/${parent.id}/assignees`, { userIds: [ana.id] });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.fields.userIds).toBe('Se calcula con sus subtareas');
+    });
+
+    it('avance, pasos, dependencias y gastos se rechazan con 409', async () => {
+      const other = await create('Otra');
+      const responses = [
+        await ctx.as(pm).patch(`/api/tasks/${parent.id}/progress`, { progress: 50 }),
+        await ctx.as(pm).post(`/api/tasks/${parent.id}/steps`, { title: 'Paso' }),
+        await ctx.as(pm).post(`/api/tasks/${parent.id}/dependencies`, { predecessorId: other.id }),
+        await ctx.as(pm).post(`/api/tasks/${other.id}/dependencies`, { predecessorId: parent.id }),
+        await ctx.as(pm).post(`/api/projects/${project.id}/expenses`, { description: 'G', amountCents: 100, date: '2026-01-01', category: 'OTHER', taskId: parent.id }),
+      ];
+      for (const res of responses) {
+        expect(res.statusCode).toBe(409);
+        expect(res.json().error).toMatchObject({ code: 'task_is_summary', message: SUMMARY });
+      }
+      expect((await ctx.as(pm).post(`/api/tasks/${child.id}/steps`, { title: 'Paso' })).statusCode).toBe(201);
+    });
+
+    it('se puede comentar en una padre', async () => {
+      expect((await ctx.as(pm).post(`/api/tasks/${parent.id}/comments`, { body: 'Bien' })).statusCode).toBe(201);
+    });
+  });
 });

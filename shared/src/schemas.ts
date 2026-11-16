@@ -276,6 +276,7 @@ export const updateTaskSchema = z.object({
   progress: z.undefined({ message: useProgressRoute }),
 });
 export const assigneesSchema = z.object({ userIds: z.array(z.string()) });
+export const moveTaskSchema = z.object({ direction: z.enum(['up', 'down'], { message: 'Usa up o down' }) });
 export const taskProgressSchema = z.object({
   status: z.enum(TASK_STATUS).optional(),
   progress: z

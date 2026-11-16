@@ -8,6 +8,7 @@ import {
   TASK_DATE_ORDER_MESSAGE,
   taskProgressSchema,
   updateTaskSchema,
+  moveTaskSchema,
 } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { removeAfterDelete } from '../storage/fileStore';
@@ -19,6 +20,7 @@ import { AppError, editConflict, fieldError, forbidden, notFound } from '../erro
 import { incidentAccess } from '../domain/incidents';
 import { notify } from '../notifications';
 import { taskInclude, toTaskDto } from './taskDto';
+import { assertParent, moveTask, nextPosition } from './taskTree';
 
 type TaskParams = { Params: { id: string } };
 
@@ -104,8 +106,10 @@ export function taskRoutes(app: App) {
     assertDatesWithinProject(project, input);
     await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
     const userIds = await assertAssignable(c.var.deps.prisma, project.id, assigneeIds, 'assigneeIds');
+    await assertParent(prisma, { projectId: project.id }, input.parentId);
+    const position = await nextPosition(prisma, project.id, input.parentId ?? null);
     const task = await prisma.task.create({
-      data: { ...input, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
+      data: { ...input, position, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
       include: taskInclude,
     });
     await notifyNewAssignees(c, task, [], userIds);
@@ -173,8 +177,12 @@ export function taskRoutes(app: App) {
     await assertMilestone(c.var.deps.prisma, task.projectId, input.milestoneId);
     const userIds = assigneeIds && (await assertAssignable(c.var.deps.prisma, task.projectId, assigneeIds, 'assigneeIds', task.id));
     const before = userIds ? await assigneeIdsOf(prisma, task.id) : [];
+    const parentChanged = input.parentId !== undefined && input.parentId !== task.parentId;
+    if (parentChanged) await assertParent(prisma, task, input.parentId);
     await prisma.$transaction(async (tx) => {
-      const { count } = await tx.task.updateMany({ where: { id: task.id, version }, data: { ...input, version: { increment: 1 } } });
+      // Al cambiar de padre, la tarea queda al final de sus nuevas hermanas.
+      const position = parentChanged ? { position: await nextPosition(tx, task.projectId, input.parentId ?? null) } : {};
+      const { count } = await tx.task.updateMany({ where: { id: task.id, version }, data: { ...input, ...position, version: { increment: 1 } } });
       if (count === 0) throw editConflict();
       if (userIds) await replaceAssignees(tx, task.id, userIds);
     });
@@ -185,10 +193,23 @@ export function taskRoutes(app: App) {
   app.delete('/api/tasks/:id', async (c) => {
     const { prisma } = c.var.deps;
     const task = await requireTaskPm(c, c.req.param('id'));
+    if ((await prisma.task.count({ where: { parentId: task.id } })) > 0) {
+      throw new AppError(409, 'task_has_children', 'Mueve o borra primero sus subtareas');
+    }
     const attachments = await prisma.attachment.findMany({ where: { taskId: task.id }, select: { storedName: true } });
     await prisma.task.delete({ where: { id: task.id } });
     await removeAfterDelete(c.var.deps.files, attachments.map((a) => a.storedName));
     return c.json({ ok: true });
+  });
+
+  /** Sube o baja la tarea entre sus hermanas y devuelve la lista del proyecto. */
+  app.post('/api/tasks/:id/move', async (c) => {
+    const { prisma } = c.var.deps;
+    const task = await requireTaskPm(c, c.req.param('id'));
+    const { direction } = moveTaskSchema.parse(await readBody(c));
+    await prisma.$transaction((tx) => moveTask(tx, task.id, direction));
+    const tasks = await prisma.task.findMany({ where: { projectId: task.projectId }, include: taskInclude, orderBy: { createdAt: 'asc' } });
+    return c.json(tasks.map((t) => toTaskDto(t, true)));
   });
 
   app.put('/api/tasks/:id/assignees', async (c) => {

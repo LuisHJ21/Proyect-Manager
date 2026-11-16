@@ -53,7 +53,7 @@ describe('guardia de solo lectura', () => {
     }
     expect(failures).toEqual([]);
     expect(routes.map((r) => `${r.method} ${r.url}`)).toEqual(
-      expect.arrayContaining(['POST /api/attachments/:id/complete', 'PUT /api/local-uploads/:storedName', 'POST /api/projects/:id/change-requests/:crId/apply']),
+      expect.arrayContaining(['POST /api/attachments/:id/complete', 'PUT /api/local-uploads/:storedName', 'POST /api/projects/:id/change-requests/:crId/apply', 'POST /api/tasks/:id/move']),
     );
   });
 

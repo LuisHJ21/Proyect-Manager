@@ -177,6 +177,9 @@ model Task {
   id               String   @id @default(cuid())
   projectId        String
   milestoneId      String?
+  parentId         String?
+  position         Int      @default(0)
+  deliverableId    String?
   title            String
   description      String   @default("")
   status           String   @default("TODO")
@@ -191,6 +194,9 @@ model Task {
 
   project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   milestone    Milestone?       @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  parent       Task?            @relation("TaskTree", fields: [parentId], references: [id], onDelete: NoAction)
+  children     Task[]           @relation("TaskTree")
+  deliverable  Deliverable?     @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   assignees    TaskAssignee[]
   predecessors TaskDependency[] @relation("successor")
   successors   TaskDependency[] @relation("predecessor")
@@ -201,6 +207,7 @@ model Task {
   incidents    Incident[]
 
   @@index([projectId])
+  @@index([parentId])
 }
 
 model TaskStep {
@@ -521,6 +528,7 @@ model Deliverable {
   project   Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
   milestone Milestone?             @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
   criteria  DeliverableCriterion[]
+  tasks     Task[]
   reviews   DeliverableReview[]
 
   @@unique([projectId, number])

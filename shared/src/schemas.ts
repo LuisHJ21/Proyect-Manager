@@ -250,6 +250,8 @@ const taskCommonFields = {
   startDate: optionalDateSchema,
   dueDate: optionalDateSchema,
   milestoneId: z.string().nullable().optional(),
+  parentId: z.string().min(1, 'Elige una tarea de este proyecto').nullable().optional(),
+  deliverableId: z.string().min(1, 'Elige un entregable de este proyecto').nullable().optional(),
   plannedCostCents: budgetAmount.optional(),
 };
 export const TASK_DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la fecha límite';

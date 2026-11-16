@@ -24,3 +24,12 @@ describe('CSV', () => {
     expect(csvFilename('Portal Público', 'riesgos')).toMatch(/^portal-publico-riesgos-\d{4}-\d{2}-\d{2}\.csv$/);
   });
 });
+
+describe('CSV sin fórmulas', () => {
+  it('un texto que empieza con = + - @ no se interpreta como fórmula', () => {
+    const rows = [{ name: '=HYPERLINK("http://x","Ver")', note: '+1', cost: -5000 }, { name: '@SUMA', note: '-baja', cost: null }];
+    const lines = toCsv(columns, rows).slice(1).split('\r\n');
+    expect(lines[1]).toBe(`"'=HYPERLINK(""http://x"",""Ver"")";-50,00;'+1`);
+    expect(lines[2]).toBe("'@SUMA;;'-baja");
+  });
+});

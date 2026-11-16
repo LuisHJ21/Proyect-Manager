@@ -78,3 +78,11 @@ describe('matriz e historial de riesgos', () => {
     expect(screen.queryByText('Costo de contingencia')).not.toBeInTheDocument();
   });
 });
+
+describe('umbral de riesgo alto en la tabla', () => {
+  it('la tabla marca «Alto» con el puntaje del proyecto', async () => {
+    mockApi({ ...routes(pmUser, [risk({ probability: 3, impact: 3, score: 9 })]), 'GET /api/projects/p1': { ...project, highRiskScore: 9 } });
+    renderApp('/proyectos/p1/riesgos');
+    expect(await screen.findByText('9 · Alto')).toBeInTheDocument();
+  });
+});

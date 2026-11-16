@@ -288,7 +288,7 @@ export function RisksPage() {
         {
           header: 'Puntaje',
           cell: (item) =>
-            item.score >= HIGH_RISK_SCORE && item.status !== 'CLOSED' ? <Badge tone="danger">{item.score} · Alto</Badge> : <span>{item.score}</span>,
+            item.score >= (project.highRiskScore ?? HIGH_RISK_SCORE) && item.status !== 'CLOSED' ? <Badge tone="danger">{item.score} · Alto</Badge> : <span>{item.score}</span>,
         },
         { header: 'Respuesta', cell: (item) => LABELS.riskResponse[item.response as keyof typeof LABELS.riskResponse] },
         { header: 'Responsable', cell: (item) => memberName(item.ownerId) },

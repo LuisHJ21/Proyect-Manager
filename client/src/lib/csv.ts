@@ -12,9 +12,15 @@ const SEPARATOR = ';';
 /** Excel en español abre bien un CSV con punto y coma y BOM UTF-8. */
 const BOM = '﻿';
 
+/** Un texto que empieza con = + - @ (o tabulador o retorno) se abriría como fórmula en una hoja de cálculo. */
+const FORMULA_START = /^[=+\-@\t\r]/;
+const NUMBER = /^-?\d+(,\d+)?$/;
+
 function cell(value: CsvValue): string {
   if (value === null || value === undefined) return '';
-  const text = String(value);
+  const raw = String(value);
+  // Los números (y montos «-50,00») se dejan tal cual; el resto se antepone con un apóstrofo.
+  const text = typeof value === 'string' && FORMULA_START.test(raw) && !NUMBER.test(raw) ? `'${raw}` : raw;
   return /[;"\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

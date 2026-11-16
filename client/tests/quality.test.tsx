@@ -117,3 +117,50 @@ describe('calidad', () => {
     await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/projects/p1/incidents')?.body).toMatchObject({ title: 'Botón roto', kind: 'DEFECT', deliverableId: 'd2' }));
   });
 });
+
+describe('detalle del incidente', () => {
+  it('muestra el tipo y el entregable ligado', async () => {
+    const nc = {
+      id: 'i1', number: 1, title: 'No conformidad: Portal publicado', description: '', priority: 'HIGH', dueDate: null, status: 'OPEN', resolution: '',
+      resolvedAt: null, closedAt: null, createdAt: '2026-11-16T10:00:00.000Z', overdue: false, reportedBy: { id: 'pm', name: 'Paula' }, owner: null,
+      task: null, risk: null, kind: 'NONCONFORMITY', deliverable: { id: 'd2', number: 2, name: 'Portal publicado' }, can: { edit: true, changeStatus: true, close: true },
+    };
+    mockApi({ ...signedInAs(pmUser), 'GET /api/projects/p1': project, 'GET /api/projects/p1/members': [], 'GET /api/projects/p1/tasks': [], 'GET /api/projects/p1/incidents': [nc] });
+    renderApp('/proyectos/p1/incidentes');
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Ver INC-1' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'INC-1 · No conformidad: Portal publicado' }));
+    expect(dialog.getByText('Tipo')).toBeInTheDocument();
+    expect(dialog.getByText('ENT-2 · Portal publicado')).toBeInTheDocument();
+    expect(dialog.getAllByText('No conformidad').length).toBeGreaterThan(0);
+  });
+});
+
+describe('historial de mediciones', () => {
+  it('el colaborador ve el historial sin poder borrar', async () => {
+    mockApi(deliverableRoutes(collaborator, [metric({ measurements: [{ id: 'm1', date: '2026-11-15', value: 85, note: 'Sprint 3' }, { id: 'm0', date: '2026-11-08', value: 70, note: '' }] })]));
+    renderApp('/proyectos/p1/entregables');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Historial de Cobertura' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Historial de Cobertura' }));
+    expect(dialog.getByText(/Sprint 3/)).toBeInTheDocument();
+    expect(dialog.getAllByRole('listitem')).toHaveLength(2);
+    expect(dialog.queryByRole('button', { name: /Eliminar/ })).not.toBeInTheDocument();
+  });
+
+  it('el PM borra una medición y una métrica', async () => {
+    const api = mockApi({
+      ...deliverableRoutes(pmUser, [metric()]),
+      'DELETE /api/projects/p1/quality-metrics/q1/measurements/m1': metric({ latest: null, met: null, measurements: [] }),
+      'DELETE /api/projects/p1/quality-metrics/q1': { ok: true },
+    });
+    renderApp('/proyectos/p1/entregables');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Historial de Cobertura' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Historial de Cobertura' }));
+    await user.click(dialog.getByRole('button', { name: /Eliminar medición del 15/ }));
+    await waitFor(() => expect(api.calls.some((c) => c.key === 'DELETE /api/projects/p1/quality-metrics/q1/measurements/m1')).toBe(true));
+    await user.click(dialog.getByRole('button', { name: 'Eliminar métrica' }));
+    await user.click(within(screen.getByRole('dialog', { name: 'Eliminar métrica' })).getByRole('button', { name: 'Eliminar' }));
+    await waitFor(() => expect(api.calls.some((c) => c.key === 'DELETE /api/projects/p1/quality-metrics/q1')).toBe(true));
+  });
+});

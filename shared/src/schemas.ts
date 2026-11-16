@@ -582,7 +582,9 @@ export const updateRequirementSchema = z.object({
 });
 
 /** Métricas de calidad (F13). */
-const metricNumber = z.number({ message: 'Usa un número' }).finite('Usa un número');
+/** Cabe en DECIMAL(14,4): menos de diez mil millones en valor absoluto. */
+const METRIC_LIMIT_MESSAGE = 'Usa un número menor a 10 000 000 000';
+const metricNumber = z.number({ message: 'Usa un número' }).finite('Usa un número').gt(-1e10, METRIC_LIMIT_MESSAGE).lt(1e10, METRIC_LIMIT_MESSAGE);
 export const createQualityMetricSchema = z.object({
   name: shortText('Escribe el nombre de la métrica'),
   unit: shortText().default(''),

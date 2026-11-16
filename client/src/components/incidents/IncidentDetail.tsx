@@ -132,6 +132,8 @@ export function IncidentDetail({ projectId, incident, isPm, readOnly = false, on
         rows={[
           { label: 'Estado', value: <Badge tone={STATUS_TONE[status]}>{LABELS.incidentStatus[status]}</Badge> },
           { label: 'Prioridad', value: <Badge tone={PRIORITY_TONE[incident.priority]}>{LABELS.priority[incident.priority]}</Badge> },
+          { label: 'Tipo', value: LABELS.incidentKind[incident.kind ?? 'INCIDENT'] },
+          { label: 'Entregable', value: incident.deliverable ? `ENT-${incident.deliverable.number} · ${incident.deliverable.name}` : '—' },
           { label: 'Responsable', value: incident.owner?.name ?? 'Sin responsable' },
           {
             label: 'Fecha límite',

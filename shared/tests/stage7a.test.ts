@@ -47,3 +47,13 @@ describe('etapa 7A: permisos y esquemas', () => {
     expect(LABELS.metricDirection.LOWER_BETTER).toBe('Menor es mejor');
   });
 });
+
+describe('límites de las métricas', () => {
+  it('una meta o un valor de diez mil millones o más se rechaza con un mensaje en español', () => {
+    const target = createQualityMetricSchema.safeParse({ name: 'X', target: 1e10 });
+    expect(target.success).toBe(false);
+    expect(JSON.stringify(target.error)).toContain('Usa un número menor a 10 000 000 000');
+    expect(measurementSchema.safeParse({ date: '2026-11-16', value: -1e12 }).success).toBe(false);
+    expect(measurementSchema.safeParse({ date: '2026-11-16', value: 9_999_999_999.5 }).success).toBe(true);
+  });
+});

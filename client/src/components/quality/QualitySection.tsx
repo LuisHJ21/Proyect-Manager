@@ -1,15 +1,17 @@
 import { LABELS, localToday, METRIC_DIRECTION, type MetricDirection } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { api } from '../../api/client';
+import { api, errorMessage } from '../../api/client';
 import type { DeliverableRow, QualityMetric } from '../../api/types';
-import { Modal } from '../ConfirmDialog';
+import { ConfirmDialog, Modal } from '../ConfirmDialog';
+import { useToast } from '../Toast';
 import { deliverableCode, deliverablesKey } from '../deliverables/DeliverableForm';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { Badge, Button, Card, EmptyState, inputClass } from '../ui';
 import { shortDate } from '../../lib/display';
 
 export const qualityKey = (projectId: string) => ['project', projectId, 'quality-metrics'];
+const metrics0 = (data: QualityMetric[] | undefined) => data ?? [];
 
 /** «87,5» o «87.5» → 87.5; texto inválido → NaN (el servidor responde «Usa un número»). */
 export const parseDecimal = (text: string) => {
@@ -154,11 +156,72 @@ function MeasureForm({ projectId, metric, onClose }: { projectId: string; metric
   );
 }
 
+/** Historial de mediciones, para todos los que leen la calidad. El PM puede borrar mediciones y la métrica. */
+function HistoryDialog({ projectId, metric, canEdit, onClose }: { projectId: string; metric: QualityMetric; canEdit: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const run = async (url: string, after?: () => void) => {
+    setBusy(true);
+    try {
+      await api(url, { method: 'DELETE' });
+      void queryClient.invalidateQueries({ queryKey: qualityKey(projectId) });
+      after?.();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const base = `/api/projects/${projectId}/quality-metrics/${metric.id}`;
+  return (
+    <Modal title={`Historial de ${metric.name}`} onClose={onClose}>
+      <p className="mb-3 text-sm text-ink-nav">{`Meta: ${metric.direction === 'LOWER_BETTER' ? '≤' : '≥'} ${withUnit(metric.target, metric.unit)}`}</p>
+      {metric.measurements.length === 0 ? (
+        <p className="text-sm text-ink-soft">Aún no hay mediciones.</p>
+      ) : (
+        <ul className="divide-y divide-line text-sm">
+          {metric.measurements.map((m) => (
+            <li key={m.id} className="flex items-center justify-between gap-2 py-1.5">
+              <span className="text-ink">{`${shortDate(m.date)} · ${withUnit(m.value, metric.unit)}${m.note ? ` · ${m.note}` : ''}`}</span>
+              {canEdit && (
+                <Button variant="ghost" disabled={busy} aria-label={`Eliminar medición del ${shortDate(m.date)}`} onClick={() => void run(`${base}/measurements/${m.id}`)}>
+                  Eliminar
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-6 flex justify-between gap-2">
+        {canEdit ? (
+          <Button variant="ghost" onClick={() => setConfirming(true)}>
+            Eliminar métrica
+          </Button>
+        ) : (
+          <span />
+        )}
+        <Button variant="secondary" onClick={onClose}>
+          Cerrar
+        </Button>
+      </div>
+      {confirming && (
+        <ConfirmDialog title="Eliminar métrica" danger confirmLabel="Eliminar" confirmDisabled={busy} onConfirm={() => void run(base, onClose)} onCancel={() => setConfirming(false)}>
+          <p>{`Se borran «${metric.name}» y todas sus mediciones.`}</p>
+        </ConfirmDialog>
+      )}
+    </Modal>
+  );
+}
+
 /** Métricas de calidad del proyecto: meta, último valor y si cumple. Mide y edita el PM. */
 export function QualitySection({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
   const query = useQuery({ queryKey: qualityKey(projectId), queryFn: () => api<QualityMetric[]>(`/api/projects/${projectId}/quality-metrics`) });
   const [adding, setAdding] = useState(false);
   const [measuring, setMeasuring] = useState<QualityMetric | null>(null);
+  const [historyId, setHistoryId] = useState<string | null>(null);
+  const history = metrics0(query.data).find((m) => m.id === historyId) ?? null;
   const metrics = query.data ?? [];
   return (
     <div role="region" aria-label="Calidad">
@@ -191,7 +254,10 @@ export function QualitySection({ projectId, canEdit }: { projectId: string; canE
                     <td className="py-2 pr-4">
                       {m.met === null ? <Badge>Sin medir</Badge> : m.met ? <Badge tone="success">Cumple</Badge> : <Badge tone="danger">No cumple</Badge>}
                     </td>
-                    <td className="py-1 text-right">
+                    <td className="py-1 text-right whitespace-nowrap">
+                      <Button variant="ghost" aria-label={`Historial de ${m.name}`} onClick={() => setHistoryId(m.id)}>
+                        Historial
+                      </Button>
                       {canEdit && (
                         <Button variant="ghost" aria-label={`Medir ${m.name}`} onClick={() => setMeasuring(m)}>
                           Medir
@@ -207,6 +273,7 @@ export function QualitySection({ projectId, canEdit }: { projectId: string; canE
       </Card>
       {adding && <MetricForm projectId={projectId} onClose={() => setAdding(false)} />}
       {measuring && <MeasureForm projectId={projectId} metric={measuring} onClose={() => setMeasuring(null)} />}
+      {history && <HistoryDialog projectId={projectId} metric={history} canEdit={canEdit} onClose={() => setHistoryId(null)} />}
     </div>
   );
 }

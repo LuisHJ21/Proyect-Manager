@@ -6,6 +6,8 @@ import { AttachmentList } from '../src/components/attachments/AttachmentList';
 import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs, wrap } from './helpers';
 
 const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
+  ancestors: [],
+  children: [],
   id: 't1',
   version: 1,
   projectId: 'p1',
@@ -23,6 +25,12 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   commentCount: 0,
   stepsDone: 0,
   stepsTotal: 0,
+  wbsCode: '1',
+  parentId: null,
+  position: 1,
+  deliverableId: null,
+  childCount: 0,
+  isSummary: false,
   waitingOn: [],
   warnings: [],
   comments: [],

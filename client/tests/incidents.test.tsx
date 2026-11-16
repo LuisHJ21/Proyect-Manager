@@ -160,6 +160,8 @@ describe('pestaña Incidentes', () => {
 
 describe('reportar desde una tarea', () => {
   const task: TaskDetail = {
+    ancestors: [],
+    children: [],
     id: 't1',
     version: 1,
     projectId: 'p1',
@@ -177,6 +179,12 @@ describe('reportar desde una tarea', () => {
     commentCount: 0,
     stepsDone: 0,
     stepsTotal: 0,
+    wbsCode: '1',
+    parentId: null,
+    position: 1,
+    deliverableId: null,
+    childCount: 0,
+    isSummary: false,
     waitingOn: [],
     warnings: [],
     comments: [],

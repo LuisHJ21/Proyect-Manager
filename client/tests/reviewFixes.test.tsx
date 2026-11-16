@@ -109,6 +109,12 @@ describe('formulario de tarea', () => {
     commentCount: 0,
     stepsDone: 0,
     stepsTotal: 0,
+    wbsCode: '1',
+    parentId: null,
+    position: 1,
+    deliverableId: null,
+    childCount: 0,
+    isSummary: false,
     waitingOn: [],
     warnings: [],
   } as Task;

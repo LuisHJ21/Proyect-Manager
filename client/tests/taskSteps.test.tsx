@@ -6,6 +6,8 @@ import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from '
 
 const carlos = { id: 'c1', name: 'Carlos' };
 const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
+  ancestors: [],
+  children: [],
   id: 't1',
   version: 1,
   projectId: 'p1',
@@ -23,6 +25,12 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   commentCount: 0,
   stepsDone: 1,
   stepsTotal: 2,
+  wbsCode: '1',
+  parentId: null,
+  position: 1,
+  deliverableId: null,
+  childCount: 0,
+  isSummary: false,
   waitingOn: [],
   warnings: [],
   comments: [],

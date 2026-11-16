@@ -7,6 +7,8 @@ import { collaborator, mockApi, pmUser, renderApp, signedInAs } from './helpers'
 
 const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'AGILE', startDate: null, endDate: null, plannedBudgetCents: 0, currency: 'USD' };
 const task = (over: Partial<TaskDetail> = {}): TaskDetail => ({
+  ancestors: [],
+  children: [],
   id: 't1',
   version: 1,
   projectId: 'p1',
@@ -24,6 +26,12 @@ const task = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   commentCount: 0,
   stepsDone: 0,
   stepsTotal: 0,
+  wbsCode: '1',
+  parentId: null,
+  position: 1,
+  deliverableId: null,
+  childCount: 0,
+  isSummary: false,
   waitingOn: [],
   warnings: [],
   comments: [],

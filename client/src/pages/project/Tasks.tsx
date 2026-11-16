@@ -1,11 +1,12 @@
 import { localToday } from '@pm/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorMessage, isBlockingError } from '../../api/client';
 import type { Milestone, Task } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { ErrorState } from '../../components/ErrorState';
+import { useToast } from '../../components/Toast';
 import { registerKey } from '../../components/RegisterTable';
 import { KanbanBoard, useMoveTask } from '../../components/tasks/KanbanBoard';
 import { taskPath } from '../../components/tasks/TaskCard';
@@ -42,6 +43,13 @@ export function TasksPage() {
     enabled: view === 'cronograma',
   });
   const moveTask = useMoveTask(project.id);
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const reorder = useMutation({
+    mutationFn: ({ task, direction }: { task: Task; direction: 'up' | 'down' }) => api<Task[]>(`/api/tasks/${task.id}/move`, { method: 'POST', body: { direction } }),
+    onSuccess: (list) => queryClient.setQueryData(tasksKey(project.id), list),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
   const canMove = (task: Task) => !readOnly && (isPm || task.assignees.some((a) => a.id === user?.id));
 
   const filters: { id: QuickFilter; label: string }[] = [
@@ -104,7 +112,13 @@ export function TasksPage() {
       ) : view === 'cronograma' ? (
         <Timeline tasks={visible} milestones={milestones.data ?? []} onOpen={(task) => navigate(taskPath(task))} />
       ) : (
-        <TaskList tasks={visible} emptyText={isPm ? 'Aún no hay tareas. Crea la primera con «Nueva tarea».' : 'Aún no hay tareas en este proyecto.'} />
+        <TaskList
+          tasks={tasks.data ?? []}
+          matches={filter === 'all' ? undefined : new Set(visible.map((t) => t.id))}
+          canMove={isPm && !readOnly}
+          onMove={(task, direction) => reorder.mutate({ task, direction })}
+          emptyText={isPm ? 'Aún no hay tareas. Crea la primera con «Nueva tarea».' : 'Aún no hay tareas en este proyecto.'}
+        />
       )}
     </>
   );

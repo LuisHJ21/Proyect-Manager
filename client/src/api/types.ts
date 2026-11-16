@@ -131,14 +131,23 @@ export type Task = {
   stepsTotal: number;
   waitingOn: { id: string; title: string }[];
   warnings: TaskWarning[];
+  /** Código EDT calculado por el servidor: 1, 1.2, 1.2.3. */
+  wbsCode: string;
+  parentId: string | null;
+  position: number;
+  deliverableId: string | null;
+  childCount: number;
+  /** Tiene subtareas: fechas, avance, estado y costo salen de ellas. */
+  isSummary: boolean;
   projectName?: string;
   /** Solo llega al Project Manager. */
   plannedCostCents?: number;
 };
+export type TaskRef = { id: string; title: string; wbsCode: string };
 export type Comment = { id: string; body: string; createdAt: string; author: PersonRef };
 export type TaskStep = { id: string; title: string; done: boolean; assignee: PersonRef | null };
 /** `comments` no llega al observador. */
-export type TaskDetail = Task & { comments?: Comment[]; steps: TaskStep[]; incidents?: IncidentRef[] };
+export type TaskDetail = Task & { comments?: Comment[]; steps: TaskStep[]; incidents?: IncidentRef[]; ancestors: TaskRef[]; children: TaskRef[] };
 
 export type Attachment = {
   id: string;

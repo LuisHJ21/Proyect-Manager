@@ -26,6 +26,8 @@ export type EvmMetrics = {
   bacCents: number;
   cpi: number | null;
   spi: number | null;
+  /** Índice de desempeño para terminar dentro del BAC: (BAC − EV) / (BAC − AC); null si ya se gastó el BAC. */
+  tcpi: number | null;
   cvCents: number;
   svCents: number;
   eacCents: number;
@@ -114,6 +116,7 @@ export function computeEvm(
       bacCents,
       cpi,
       spi,
+      tcpi: bacCents - acCents <= 0 ? null : ratio(bacCents - evCents, bacCents - acCents),
       cvCents: evCents - acCents,
       svCents: evCents - pvCents,
       eacCents,

@@ -30,6 +30,14 @@ describe('plannedValueAt', () => {
 });
 
 describe('computeEvm', () => {
+  it('TCPI: lo que falta ganar entre lo que queda por gastar', () => {
+    // BAC 100000, EV 40000, AC 50000 → (100000 − 40000) / (100000 − 50000) = 1,2.
+    const { metrics } = computeEvm(input({ expenses: [{ amountCents: 50000, date: '2026-11-03', taskId: 't1' }] }), '2026-11-05');
+    expect(metrics.tcpi).toBe(1.2);
+    const spent = computeEvm(input({ expenses: [{ amountCents: 100000, date: '2026-11-03', taskId: 't1' }] }), '2026-11-05');
+    expect(spent.metrics.tcpi).toBeNull();
+  });
+
   it('EV usa el costo base y el avance actual', () => {
     const { metrics } = computeEvm(input({ tasks: [{ id: 't1', title: 'Diseño', progress: 40, dueDate: '2026-11-10', plannedCostCents: 999 }] }), '2026-11-05');
     expect(metrics.evCents).toBe(40000);
@@ -51,6 +59,7 @@ describe('computeEvm', () => {
       bacCents: 100000,
       cpi: 0.8,
       spi: 0.8,
+      tcpi: 1.2,
       cvCents: -10000,
       svCents: -10000,
       eacCents: 125000,

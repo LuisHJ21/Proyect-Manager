@@ -103,11 +103,14 @@ const threshold = (min: number, max: number) => z.number({ message: `Usa un núm
 
 const CLOSE_VIA_TAB = 'Para cerrar el proyecto usa la pestaña Cierre';
 const openProjectStatus = z.enum(PROJECT_STATUS).refine((s) => !(CLOSED_PROJECT_STATUS as readonly string[]).includes(s), CLOSE_VIA_TAB);
+export const PAUSE_VIA_ACTIONS = 'Usa Pausar o Reanudar proyecto';
+/** Un proyecto nuevo no nace en pausa: la pausa guarda fecha y motivo (etapa 8). */
+const newProjectStatus = openProjectStatus.refine((s) => s !== 'PAUSED', PAUSE_VIA_ACTIONS);
 
 const projectFields = {
   name: shortText('Escribe el nombre del proyecto'),
   description: longText().default(''),
-  status: openProjectStatus.default('PLANNING'),
+  status: newProjectStatus.default('PLANNING'),
   approach: z.enum(APPROACH).default('PREDICTIVE'),
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
@@ -120,6 +123,7 @@ const projectFields = {
   healthBudgetPercent: threshold(50, 100).default(90),
   healthIndexMin: threshold(50, 100).default(90),
   highRiskScore: threshold(1, 25).default(15),
+  shareLessons: z.boolean().default(true),
 };
 export const DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la de fin';
 export const isDateOrderValid = (start?: string | null, end?: string | null) => !start || !end || start <= end;
@@ -144,6 +148,7 @@ export const updateProjectSchema = z.object({
   healthBudgetPercent: threshold(50, 100).optional(),
   healthIndexMin: threshold(50, 100).optional(),
   highRiskScore: threshold(1, 25).optional(),
+  shareLessons: z.boolean().optional(),
 });
 
 /** Presupuesto planeado por categoría de gasto; cada categoría va una sola vez. */
@@ -655,3 +660,17 @@ export const updateAssumptionSchema = z.object({
   version: versionField,
 });
 export const convertAssumptionSchema = z.object({ kind: z.enum(ASSUMPTION_TARGET) });
+
+/** Etapa 8: pausa por prioridad y reanudación con corrimiento del cronograma. */
+export const pauseProjectSchema = z.object({
+  reason: limited(500, 'Máximo 500 caracteres')('Indica el motivo de la pausa').trim(),
+  priorityProjectId: z.string().min(1).optional(),
+});
+const RESUME_DAYS = 'Usa un número de días entre 0 y 365';
+const resumeDays = z.number({ message: RESUME_DAYS }).int(RESUME_DAYS).min(0, RESUME_DAYS).max(365, RESUME_DAYS);
+export const resumeProjectSchema = z.object({
+  days: resumeDays,
+  createBaseline: z.boolean({ message: 'Indica si se crea una línea base' }),
+});
+/** Vista previa: `?days=` opcional; sin él se usan los días propuestos. */
+export const resumeDaysQuery = z.object({ days: z.coerce.number({ message: RESUME_DAYS }).pipe(resumeDays).optional() });

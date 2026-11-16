@@ -75,7 +75,7 @@ export const ACTIVITY_ENTITY = [
   'assumption',
 ] as const;
 export type ActivityEntity = (typeof ACTIVITY_ENTITY)[number];
-export const ACTIVITY_ACTION = ['created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded'] as const;
+export const ACTIVITY_ACTION = ['created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded', 'paused', 'resumed'] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTION)[number];
 
 /** Tipos de aviso dentro de la aplicación (F2). */

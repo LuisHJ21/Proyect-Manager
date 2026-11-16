@@ -12,7 +12,7 @@ describe('tipos de la bitácora', () => {
 
   it('acciones de la especificación', () => {
     expect([...ACTIVITY_ACTION]).toEqual([
-      'created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded',
+      'created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded', 'paused', 'resumed',
     ]);
   });
 

@@ -50,6 +50,9 @@ model User {
   qualityMeasurements QualityMeasurement[]
   riskAssessments     RiskAssessment[]
   ownedAssumptions    Assumption[]         @relation("assumptionOwner")
+  pausedProjects      ProjectPause[]       @relation("projectPauser")
+  resumedProjects     ProjectPause[]       @relation("projectResumer")
+  charterVersions     CharterVersion[]
 }
 
 model Session {
@@ -98,6 +101,9 @@ model Project {
   healthBudgetPercent     Int       @default(90)
   healthIndexMin          Int       @default(90)
   highRiskScore           Int       @default(15)
+  /// C13: si es falso, sus lecciones no aparecen en la biblioteca para quien no es miembro.
+  shareLessons            Boolean   @default(true)
+  lastCharterVersion      Int       @default(0)
   /// Cada cuánto se emite el informe de estado: NONE, WEEKLY, BIWEEKLY, MONTHLY.
   statusReportFrequency   String    @default("NONE")
   closedAt                DateTime?
@@ -131,6 +137,9 @@ model Project {
   requirements     Requirement[]
   qualityMetrics   QualityMetric[]
   assumptions      Assumption[]
+  pauses           ProjectPause[]     @relation("pausedProject")
+  prioritizedOver  ProjectPause[]     @relation("priorityProject")
+  charterVersions  CharterVersion[]
 }
 
 model ProjectMember {
@@ -984,4 +993,42 @@ model MilestoneForecast {
   milestone Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
   @@unique([milestoneId, date])
+}
+
+/// Pausa de un proyecto por prioridad (etapa 8). pausedOn es nulo si el proyecto ya estaba pausado antes de esta etapa.
+model ProjectPause {
+  id                String   @id @default(cuid())
+  projectId         String
+  pausedOn          String?
+  reason            String   @default("")
+  priorityProjectId String?
+  previousStatus    String
+  pausedById        String?
+  resumedOn         String?
+  resumedById       String?
+  shiftDays         Int?
+  createdAt         DateTime @default(now())
+
+  project         Project  @relation("pausedProject", fields: [projectId], references: [id], onDelete: Cascade)
+  priorityProject Project? @relation("priorityProject", fields: [priorityProjectId], references: [id], onDelete: SetNull)
+  pausedBy        User?    @relation("projectPauser", fields: [pausedById], references: [id], onDelete: SetNull)
+  resumedBy       User?    @relation("projectResumer", fields: [resumedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+}
+
+/// Contenido congelado del acta en cada aprobación (F18).
+model CharterVersion {
+  id           String   @id @default(cuid())
+  projectId    String
+  number       Int
+  content      Json
+  approvedById String?
+  approvedAt   DateTime
+  createdAt    DateTime @default(now())
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  approvedBy User?   @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, number])
 }

@@ -40,6 +40,8 @@ const VERB: Record<Exclude<ActivityAction, 'updated'>, string> = {
   reviewed: 'revisó',
   commented: 'comentó en',
   uploaded: 'subió',
+  paused: 'pausó',
+  resumed: 'reanudó',
 };
 
 /** «aprobó el acta de el proyecto» → «del proyecto». */

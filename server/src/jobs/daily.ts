@@ -53,14 +53,15 @@ export async function runDailyJobs(deps: Deps): Promise<{
 
   const today = deps.today();
   const projects = await prisma.project.findMany({
-    where: { status: { notIn: [...CLOSED_PROJECT_STATUS] }, baselines: { some: {} } },
+    where: { status: { notIn: [...CLOSED_PROJECT_STATUS, 'PAUSED'] }, baselines: { some: {} } },
     select: { id: true },
   });
   let snapshots = 0;
   for (const project of projects) if (await saveEvmSnapshot(prisma, project.id, today)) snapshots += 1;
 
   // Pronóstico diario de los hitos de proyectos activos (tendencia de hitos).
-  const active = await prisma.project.findMany({ where: { status: { in: [...ACTIVE_PROJECT_STATUS] } }, select: { id: true } });
+  // Un proyecto en pausa no se mide: la pausa no debe verse como atraso (etapa 8).
+  const active = await prisma.project.findMany({ where: { status: { in: ACTIVE_PROJECT_STATUS.filter((s) => s !== 'PAUSED') } }, select: { id: true } });
   let forecasts = 0;
   for (const project of active) forecasts += await saveForecasts(prisma, project.id, today);
 
@@ -72,7 +73,7 @@ export async function runDailyJobs(deps: Deps): Promise<{
 }
 
 /**
- * Avisa a los responsables de las tareas no hechas que vencen mañana o vencieron ayer, en proyectos abiertos.
+ * Avisa a los responsables de las tareas no hechas que vencen mañana o vencieron ayer, en proyectos abiertos y no pausados.
  * La clave por tarea y fecha impide repetir el aviso si la tarea diaria corre dos veces.
  */
 async function notifyDueTasks(deps: Deps): Promise<{ dueSoon: number; overdue: number }> {
@@ -80,7 +81,7 @@ async function notifyDueTasks(deps: Deps): Promise<{ dueSoon: number; overdue: n
   const tomorrow = addDays(today, 1);
   const yesterday = addDays(today, -1);
   const tasks = await deps.prisma.task.findMany({
-    where: { ...leafWhere, dueDate: { in: [tomorrow, yesterday] }, status: { not: 'DONE' }, project: { status: { notIn: [...CLOSED_PROJECT_STATUS] } } },
+    where: { ...leafWhere, dueDate: { in: [tomorrow, yesterday] }, status: { not: 'DONE' }, project: { status: { notIn: [...CLOSED_PROJECT_STATUS, 'PAUSED'] } } },
     select: { id: true, projectId: true, title: true, dueDate: true, assignees: { select: { userId: true } } },
   });
   const counts = { dueSoon: 0, overdue: 0 };

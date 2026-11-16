@@ -87,6 +87,18 @@ describe('tarea diaria', () => {
     expect(snapshots[0]!.bacCents).toBe(100_000n);
   });
 
+  it('no mide proyectos en pausa: ni foto de valor ganado ni pronóstico de hitos', async () => {
+    const active = await projectWithBaseline('Activo');
+    const paused = await projectWithBaseline('En pausa');
+    for (const p of [active, paused]) await ctx.prisma.milestone.create({ data: { projectId: p.id, name: 'Hito', dueDate: '2026-12-01' } });
+    await ctx.prisma.project.update({ where: { id: paused.id }, data: { status: 'PAUSED' } });
+    const result = await runDailyJobs(ctx.deps);
+    expect(result.snapshots).toBe(1);
+    expect((await ctx.prisma.evmSnapshot.findMany()).map((s) => s.projectId)).toEqual([active.id]);
+    const forecasts = await ctx.prisma.milestoneForecast.findMany({ include: { milestone: true } });
+    expect(forecasts.map((f) => f.milestone.projectId)).toEqual([active.id]);
+  });
+
   it('si Storage falla, guarda igual las fotos y termina con error', async () => {
     const active = await projectWithBaseline('Activo');
     await ctx.prisma.attachment.create({

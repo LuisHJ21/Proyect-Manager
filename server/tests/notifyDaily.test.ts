@@ -53,6 +53,14 @@ describe('tarea diaria: avisos de vencimiento', () => {
     expect(await ctx.prisma.notification.count()).toBe(0);
   });
 
+  it('no avisa en proyectos en pausa', async () => {
+    await ctx.makeTask(project.id, { assignees: [ana], dueDate: addDays(today, 1) });
+    await ctx.makeTask(project.id, { assignees: [ana], dueDate: addDays(today, -1) });
+    await ctx.prisma.project.update({ where: { id: project.id }, data: { status: 'PAUSED' } });
+    expect(await runDailyJobs(ctx.deps)).toMatchObject({ dueSoon: 0, overdue: 0 });
+    expect(await ctx.prisma.notification.count()).toBe(0);
+  });
+
   it('dos corridas el mismo día no duplican, y otra fecha de fin vuelve a avisar', async () => {
     const task = await ctx.makeTask(project.id, { assignees: [ana], dueDate: addDays(today, 1) });
     await runDailyJobs(ctx.deps);

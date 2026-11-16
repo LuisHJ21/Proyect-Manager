@@ -73,13 +73,35 @@ export const ACTIVITY_ACTION = ['created', 'updated', 'deleted', 'approved', 'cl
 export type ActivityAction = (typeof ACTIVITY_ACTION)[number];
 
 /** Tipos de aviso dentro de la aplicación (F2). */
-export const NOTIFICATION_KIND = ['TASK_ASSIGNED', 'TASK_COMMENTED', 'TASK_DUE_SOON', 'TASK_OVERDUE', 'INCIDENT_ASSIGNED', 'CHANGE_PROPOSED', 'CHANGE_DECIDED'] as const;
+export const NOTIFICATION_KIND = ['TASK_ASSIGNED', 'TASK_COMMENTED', 'TASK_DUE_SOON', 'TASK_OVERDUE', 'INCIDENT_ASSIGNED', 'CHANGE_PROPOSED', 'CHANGE_DECIDED', 'STATUS_REPORT_ISSUED'] as const;
 export type NotificationKind = (typeof NOTIFICATION_KIND)[number];
 export type ActivityValue = string | number | boolean | string[] | null;
 /** Sin `from`/`to`: el campo cambió pero no está vigilado. */
 export type ActivityChange = { field: string; from?: ActivityValue; to?: ActivityValue };
 
+/** Etapa 6: informes de estado, involucramiento de interesados y comunicaciones. */
+export const STATUS_REPORT_FREQUENCY = ['NONE', 'WEEKLY', 'BIWEEKLY', 'MONTHLY'] as const;
+export type StatusReportFrequency = (typeof STATUS_REPORT_FREQUENCY)[number];
+export const REPORT_FREQUENCY_DAYS: Record<Exclude<StatusReportFrequency, 'NONE'>, number> = { WEEKLY: 7, BIWEEKLY: 14, MONTHLY: 30 };
+export const ENGAGEMENT_LEVEL = ['UNAWARE', 'RESISTANT', 'NEUTRAL', 'SUPPORTIVE', 'LEADING'] as const;
+export type EngagementLevel = (typeof ENGAGEMENT_LEVEL)[number];
+export const COMMUNICATION_FREQUENCY = ['ONCE', 'DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY', 'PER_MILESTONE', 'AS_NEEDED'] as const;
+export type CommunicationFrequency = (typeof COMMUNICATION_FREQUENCY)[number];
+export const AGREEMENT_TARGET = ['task', 'decision', 'incident'] as const;
+export type AgreementTarget = (typeof AGREEMENT_TARGET)[number];
+
 export const LABELS = {
+  reportFrequency: { NONE: 'Sin frecuencia', WEEKLY: 'Semanal', BIWEEKLY: 'Quincenal', MONTHLY: 'Mensual' },
+  engagement: { UNAWARE: 'Desconocedor', RESISTANT: 'Reticente', NEUTRAL: 'Neutral', SUPPORTIVE: 'De apoyo', LEADING: 'Líder' },
+  communicationFrequency: {
+    ONCE: 'Una vez',
+    DAILY: 'Diaria',
+    WEEKLY: 'Semanal',
+    BIWEEKLY: 'Quincenal',
+    MONTHLY: 'Mensual',
+    PER_MILESTONE: 'Por hito',
+    AS_NEEDED: 'Cuando se necesite',
+  },
   role: { PM: 'Project Manager', COLLABORATOR: 'Colaborador', OBSERVER: 'Observador' },
   projectStatus: {
     PLANNING: 'Planificación',

@@ -20,6 +20,8 @@ const EXPECTED = {
   changes: ['write', 'own', 'none'],
   closure: ['write', 'none', 'none'],
   activity: ['read', 'none', 'none'],
+  reports: ['write', 'none', 'read'],
+  meetings: ['write', 'own', 'none'],
 } as const;
 
 const ROLES: Role[] = ['PM', 'COLLABORATOR', 'OBSERVER'];

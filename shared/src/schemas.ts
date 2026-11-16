@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { diffDays, isValidCalendarDate } from './dates';
 import { MAX_FILE_BYTES } from './fileTypes';
 import {
+  AGREEMENT_TARGET,
+  COMMUNICATION_FREQUENCY,
+  ENGAGEMENT_LEVEL,
+  STATUS_REPORT_FREQUENCY,
   APPROACH,
   CLOSED_PROJECT_STATUS,
   LESSON_CATEGORY,
@@ -103,6 +107,7 @@ const projectFields = {
   contingencyReserveCents: budgetAmount.default(0),
   managementReserveCents: budgetAmount.default(0),
   currency: z.string().trim().toUpperCase().length(3, 'Usa un código de 3 letras, por ejemplo USD').default('USD'),
+  statusReportFrequency: z.enum(STATUS_REPORT_FREQUENCY).default('NONE'),
 };
 export const DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la de fin';
 export const isDateOrderValid = (start?: string | null, end?: string | null) => !start || !end || start <= end;
@@ -122,6 +127,7 @@ export const updateProjectSchema = z.object({
   contingencyReserveCents: budgetAmount.optional(),
   managementReserveCents: budgetAmount.optional(),
   currency: z.string().trim().toUpperCase().length(3, 'Usa un código de 3 letras, por ejemplo USD').optional(),
+  statusReportFrequency: z.enum(STATUS_REPORT_FREQUENCY).optional(),
 });
 
 /** Presupuesto planeado por categoría de gasto; cada categoría va una sola vez. */
@@ -200,6 +206,9 @@ export const createStakeholderSchema = z.object({
   influence: z.enum(LEVEL).default('MEDIUM'),
   interest: z.enum(LEVEL).default('MEDIUM'),
   strategy: longText().default(''),
+  currentEngagement: z.enum(ENGAGEMENT_LEVEL).nullable().default(null),
+  desiredEngagement: z.enum(ENGAGEMENT_LEVEL).nullable().default(null),
+  expectations: noteText().default(''),
 });
 export const updateStakeholderSchema = z.object({
   name: shortText('Escribe el nombre').optional(),
@@ -209,7 +218,57 @@ export const updateStakeholderSchema = z.object({
   influence: z.enum(LEVEL).optional(),
   interest: z.enum(LEVEL).optional(),
   strategy: longText().optional(),
+  currentEngagement: z.enum(ENGAGEMENT_LEVEL).nullable().optional(),
+  desiredEngagement: z.enum(ENGAGEMENT_LEVEL).nullable().optional(),
+  expectations: noteText().optional(),
 });
+
+/** Informe de estado: el PM agrega su comentario y los próximos pasos al emitirlo. */
+export const statusReportSchema = z.object({
+  comment: longText().default(''),
+  nextSteps: longText().default(''),
+});
+
+export const createCommunicationItemSchema = z.object({
+  topic: shortText('Escribe qué se comunica'),
+  audience: shortText().default(''),
+  frequency: z.enum(COMMUNICATION_FREQUENCY).default('AS_NEEDED'),
+  channel: shortText().default(''),
+  ownerId: z.string().nullable().optional(),
+  notes: noteText().default(''),
+});
+export const updateCommunicationItemSchema = z.object({
+  topic: shortText('Escribe qué se comunica').optional(),
+  audience: shortText().optional(),
+  frequency: z.enum(COMMUNICATION_FREQUENCY).optional(),
+  channel: shortText().optional(),
+  ownerId: z.string().nullable().optional(),
+  notes: noteText().optional(),
+});
+
+const agreementSchema = z.object({
+  id: z.string().optional(),
+  text: shortText('Escribe el acuerdo'),
+  ownerId: z.string().nullable().optional(),
+  dueDate: optionalDateSchema,
+});
+export const meetingSchema = z.object({
+  title: shortText('Escribe el título de la reunión'),
+  date: calendarDateSchema,
+  notes: longText().default(''),
+  userIds: z.array(z.string()).default([]),
+  stakeholderIds: z.array(z.string()).default([]),
+  agreements: z.array(agreementSchema).max(100).default([]),
+});
+export const updateMeetingSchema = z.object({
+  title: shortText('Escribe el título de la reunión').optional(),
+  date: calendarDateSchema.optional(),
+  notes: longText().optional(),
+  userIds: z.array(z.string()).optional(),
+  stakeholderIds: z.array(z.string()).optional(),
+  agreements: z.array(agreementSchema).max(100).optional(),
+});
+export const convertAgreementSchema = z.object({ kind: z.enum(AGREEMENT_TARGET) });
 
 const scale = z.number({ message: 'Usa un valor de 1 a 5' }).int('Usa un valor de 1 a 5').min(1, 'Usa un valor de 1 a 5').max(5, 'Usa un valor de 1 a 5');
 const ALL_RESPONSES = [...new Set(Object.values(RISK_RESPONSE).flat())] as [string, ...string[]];

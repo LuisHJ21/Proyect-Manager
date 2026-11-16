@@ -69,7 +69,7 @@ describe('incidentes y decisiones', () => {
 
 describe('propuesta de cambio', () => {
   it('pide título y deja la descripción vacía por defecto', () => {
-    expect(proposeChangeSchema.parse({ title: 'X' })).toEqual({ title: 'X', description: '' });
+    expect(proposeChangeSchema.parse({ title: 'X' })).toEqual({ title: 'X', description: '', requirementIds: [] });
     const result = proposeChangeSchema.safeParse({ title: ' ' });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe('Escribe el título');

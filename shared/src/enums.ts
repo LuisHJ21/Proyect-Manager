@@ -93,7 +93,18 @@ export type CommunicationFrequency = (typeof COMMUNICATION_FREQUENCY)[number];
 export const AGREEMENT_TARGET = ['task', 'decision', 'incident'] as const;
 export type AgreementTarget = (typeof AGREEMENT_TARGET)[number];
 
+/** Etapa 7A: requisitos, calidad y tipos de incidente. */
+export const REQUIREMENT_STATUS = ['PROPOSED', 'APPROVED', 'MET', 'REJECTED'] as const;
+export type RequirementStatus = (typeof REQUIREMENT_STATUS)[number];
+export const INCIDENT_KIND = ['INCIDENT', 'DEFECT', 'NONCONFORMITY'] as const;
+export type IncidentKind = (typeof INCIDENT_KIND)[number];
+export const METRIC_DIRECTION = ['HIGHER_BETTER', 'LOWER_BETTER'] as const;
+export type MetricDirection = (typeof METRIC_DIRECTION)[number];
+
 export const LABELS = {
+  requirementStatus: { PROPOSED: 'Propuesto', APPROVED: 'Aprobado', MET: 'Cumplido', REJECTED: 'Rechazado' },
+  incidentKind: { INCIDENT: 'Incidente', DEFECT: 'Defecto', NONCONFORMITY: 'No conformidad' },
+  metricDirection: { HIGHER_BETTER: 'Mayor es mejor', LOWER_BETTER: 'Menor es mejor' },
   reportFrequency: { NONE: 'Sin frecuencia', WEEKLY: 'Semanal', BIWEEKLY: 'Quincenal', MONTHLY: 'Mensual' },
   engagement: { UNAWARE: 'Desconocedor', RESISTANT: 'Reticente', NEUTRAL: 'Neutral', SUPPORTIVE: 'De apoyo', LEADING: 'Líder' },
   communicationFrequency: {

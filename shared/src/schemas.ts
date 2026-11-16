@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { diffDays, isValidCalendarDate } from './dates';
 import { MAX_FILE_BYTES } from './fileTypes';
 import {
+  INCIDENT_KIND,
+  METRIC_DIRECTION,
+  REQUIREMENT_STATUS,
   AGREEMENT_TARGET,
   COMMUNICATION_FREQUENCY,
   ENGAGEMENT_LEVEL,
@@ -418,6 +421,8 @@ const changeRequestFields = {
     .max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE)
     .nullable()
     .optional(),
+  /** Requisitos afectados (F12). */
+  requirementIds: z.array(z.string()).max(200).default([]),
 };
 export const changeRequestSchema = z.object(changeRequestFields);
 export const updateChangeRequestSchema = z.object({
@@ -427,11 +432,13 @@ export const updateChangeRequestSchema = z.object({
   scopeImpact: longText().optional(),
   scheduleImpactDays: changeRequestFields.scheduleImpactDays,
   costImpactCents: changeRequestFields.costImpactCents,
+  requirementIds: z.array(z.string()).max(200).optional(),
 });
 /** Lo que puede enviar un colaborador al proponer un cambio. */
 export const proposeChangeSchema = z.object({
   title: shortText('Escribe el título'),
   description: longText().default(''),
+  requirementIds: z.array(z.string()).max(200).default([]),
 });
 /** Aplicar un cambio aprobado: los campos que vienen actualizan el proyecto. */
 export const applyChangeSchema = z.object({
@@ -459,6 +466,8 @@ export const pmIncidentFields = {
   priority: z.enum(PRIORITY).optional(),
   dueDate: optionalDateSchema,
   riskId: optionalId,
+  kind: z.enum(INCIDENT_KIND).optional(),
+  deliverableId: optionalId,
 };
 export const createIncidentSchema = reportIncidentSchema.extend(pmIncidentFields);
 export const updateIncidentSchema = z.object({
@@ -508,13 +517,22 @@ const criterionText = required('Escribe el criterio').max(300, 'Máximo 300 cara
 export const criterionSchema = z.object({ text: criterionText });
 export const updateCriterionSchema = z.object({ text: criterionText.optional(), met: z.boolean().optional() });
 export const criteriaOrderSchema = z.object({ ids: z.array(z.string().min(1)).min(1) });
-export const deliverableReviewSchema = z.object({
-  outcome: z.enum(REVIEW_OUTCOME),
-  stakeholderId: optionalId,
-  attachmentId: optionalId,
-  reviewedOn: calendarDateSchema,
-  note: noteText().default(''),
-});
+export const NONCONFORMITY_ONLY_ON_REJECT = 'Solo se registra una no conformidad al rechazar';
+export const deliverableReviewSchema = z
+  .object({
+    outcome: z.enum(REVIEW_OUTCOME),
+    stakeholderId: optionalId,
+    attachmentId: optionalId,
+    reviewedOn: calendarDateSchema,
+    note: noteText().default(''),
+    /** Al rechazar, registra a la vez una no conformidad ligada al entregable. */
+    nonconformity: z.object({ title: shortText('Escribe el título') }).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.nonconformity && value.outcome !== 'REJECTED') {
+      ctx.addIssue({ code: 'custom', path: ['nonconformity'], message: NONCONFORMITY_ONLY_ON_REJECT });
+    }
+  });
 
 export const closeProjectSchema = z.object({
   finalStatus: z.enum(CLOSED_PROJECT_STATUS),
@@ -541,4 +559,46 @@ export const uploadRequestSchema = z.object({
   filename: required('Selecciona un archivo'),
   mimeType: z.string(),
   size: z.number().int().positive('Selecciona un archivo').max(MAX_FILE_BYTES, 'El archivo supera el límite de 25 MB'),
+});
+
+/** Requisitos (F12). */
+const requirementFields = {
+  description: longText('Describe el requisito'),
+  priority: z.enum(PRIORITY).default('MEDIUM'),
+  status: z.enum(REQUIREMENT_STATUS).default('PROPOSED'),
+  stakeholderId: optionalId,
+  acceptance: noteText().default(''),
+  deliverableIds: z.array(z.string()).max(200).default([]),
+};
+export const createRequirementSchema = z.object(requirementFields);
+export const updateRequirementSchema = z.object({
+  description: longText('Describe el requisito').optional(),
+  priority: z.enum(PRIORITY).optional(),
+  status: z.enum(REQUIREMENT_STATUS).optional(),
+  stakeholderId: optionalId,
+  acceptance: noteText().optional(),
+  deliverableIds: z.array(z.string()).max(200).optional(),
+  version: versionField,
+});
+
+/** Métricas de calidad (F13). */
+const metricNumber = z.number({ message: 'Usa un número' }).finite('Usa un número');
+export const createQualityMetricSchema = z.object({
+  name: shortText('Escribe el nombre de la métrica'),
+  unit: shortText().default(''),
+  target: metricNumber,
+  direction: z.enum(METRIC_DIRECTION).default('HIGHER_BETTER'),
+  deliverableId: optionalId,
+});
+export const updateQualityMetricSchema = z.object({
+  name: shortText('Escribe el nombre de la métrica').optional(),
+  unit: shortText().optional(),
+  target: metricNumber.optional(),
+  direction: z.enum(METRIC_DIRECTION).optional(),
+  deliverableId: optionalId,
+});
+export const measurementSchema = z.object({
+  date: calendarDateSchema,
+  value: metricNumber,
+  note: noteText().default(''),
 });

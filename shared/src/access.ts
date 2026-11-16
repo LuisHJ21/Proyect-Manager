@@ -22,6 +22,8 @@ export const SECTIONS = [
   'activity',
   'reports',
   'meetings',
+  'requirements',
+  'quality',
 ] as const;
 export type Section = (typeof SECTIONS)[number];
 
@@ -54,6 +56,8 @@ export const ACCESS: Record<Role, Record<Section, AccessLevel>> = {
     activity: 'none',
     reports: 'none',
     meetings: 'own', // las reuniones a las que asistió, sin interesados
+    requirements: 'read', // sin el interesado de origen
+    quality: 'read',
   },
   OBSERVER: {
     project: 'read',
@@ -76,6 +80,8 @@ export const ACCESS: Record<Role, Record<Section, AccessLevel>> = {
     activity: 'none',
     reports: 'read', // sin montos
     meetings: 'none',
+    requirements: 'read', // sin el interesado de origen
+    quality: 'read',
   },
 };
 

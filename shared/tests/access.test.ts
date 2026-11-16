@@ -22,6 +22,8 @@ const EXPECTED = {
   activity: ['read', 'none', 'none'],
   reports: ['write', 'none', 'read'],
   meetings: ['write', 'own', 'none'],
+  requirements: ['write', 'read', 'read'],
+  quality: ['write', 'read', 'read'],
 } as const;
 
 const ROLES: Role[] = ['PM', 'COLLABORATOR', 'OBSERVER'];

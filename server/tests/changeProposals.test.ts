@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
 const PROPOSAL_KEYS = ['createdAt', 'decidedAt', 'decidedBy', 'decisionNote', 'description', 'id', 'number', 'status', 'title'];
-const HIDDEN = ['scopeImpact', 'scheduleImpactDays', 'costImpactCents', 'requestedBy', 'requestedById', 'updatedAt', 'proposedBy'];
+const HIDDEN = ['scopeImpact', 'scheduleImpactDays', 'costImpactCents', 'requestedBy', 'requestedById', 'updatedAt', 'proposedBy', 'appliedAt', 'appliedById', 'appliedBy'];
 
 describe('propuestas de cambio del equipo', () => {
   let ctx: TestCtx;
@@ -58,6 +58,15 @@ describe('propuestas de cambio del equipo', () => {
     await ctx.as(pm).post(`${base()}/${mine.id}/decision`, { status: 'REJECTED', note: 'Fuera de alcance' });
     const [item] = (await ctx.as(ana).get(base())).json();
     expect(item).toMatchObject({ status: 'REJECTED', decisionNote: 'Fuera de alcance', decidedBy: { id: pm.id, name: 'Paula' } });
+  });
+
+  it('el colaborador ve su propuesta aplicada, sin los datos de la aplicación', async () => {
+    const mine = await propose(ana);
+    await ctx.as(pm).post(`${base()}/${mine.id}/decision`, { status: 'APPROVED', note: 'Ok' });
+    expect((await ctx.as(pm).post(`${base()}/${mine.id}/apply`, { baseline: false })).statusCode).toBe(200);
+    const [item] = (await ctx.as(ana).get(base())).json();
+    expect(item.status).toBe('APPLIED');
+    for (const key of HIDDEN) expect(item).not.toHaveProperty(key);
   });
 
   it('otras claves dan 403 aunque vengan vacías', async () => {

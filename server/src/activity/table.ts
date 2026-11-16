@@ -139,6 +139,8 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
 
   ...crudEntries('change-requests', 'crId', { entity: 'change', load: loadChange, fields: CHANGE_FIELDS }),
   'POST /api/projects/:id/change-requests/:crId/decision': { entity: 'change', action: 'decided', target: param('crId'), load: loadChange, fields: CHANGE_FIELDS },
+  // Aplicar queda como edición de la solicitud: el cambio de estado a «Aplicada» aparece en el detalle.
+  'POST /api/projects/:id/change-requests/:crId/apply': { entity: 'change', action: 'updated', target: param('crId'), load: loadChange, fields: CHANGE_FIELDS },
 
   ...crudEntries('incidents', 'incidentId', { entity: 'incident', load: loadIncident, fields: INCIDENT_FIELDS }),
   'POST /api/projects/:id/risks/:riskId/incident': { entity: 'incident', target: responseId, load: loadIncidentFromRisk, fields: INCIDENT_FIELDS },

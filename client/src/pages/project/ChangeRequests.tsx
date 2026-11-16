@@ -17,7 +17,7 @@ import { useProject } from './ProjectLayout';
 
 export const changeRequestsKey = (projectId: string) => ['project', projectId, 'change-requests'];
 
-export const STATUS_TONE: Record<ChangeStatus, Tone> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' };
+export const STATUS_TONE: Record<ChangeStatus, Tone> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', APPLIED: 'info' };
 export const code = (cr: { number: number }) => `CR-${cr.number}`;
 
 /** Monto con signo opcional: "-1.234,50" → -123450. Vacío → null (sin impacto). Inválido → undefined. */

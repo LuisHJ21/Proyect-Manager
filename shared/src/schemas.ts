@@ -339,6 +339,13 @@ export const proposeChangeSchema = z.object({
   title: shortText('Escribe el título'),
   description: longText().default(''),
 });
+/** Aplicar un cambio aprobado: los campos que vienen actualizan el proyecto. */
+export const applyChangeSchema = z.object({
+  endDate: optionalDateSchema,
+  plannedBudgetCents: budgetAmount.optional(),
+  baseline: z.boolean({ message: 'Indica si se fija una nueva línea base' }),
+  reason: noteText().trim().optional(),
+});
 export const decisionSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
   note: noteText('Escribe la nota de la decisión'),

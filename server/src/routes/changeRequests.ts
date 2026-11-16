@@ -1,24 +1,27 @@
-import { changeRequestSchema, decisionSchema, proposeChangeSchema, updateChangeRequestSchema } from '@pm/shared';
+import { applyChangeSchema, changeRequestSchema, DATE_ORDER_MESSAGE, decisionSchema, isDateOrderValid, proposeChangeSchema, updateChangeRequestSchema } from '@pm/shared';
 import type { ChangeRequest, Prisma, PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
-import { AppError, forbidden, notFound } from '../errors';
+import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { notify } from '../notifications';
+import { createBaseline } from './performance';
+import { assertDatesStayInside } from './projects';
 
 type ItemParams = { id: string; crId: string };
 
 type Person = { id: string; name: string };
-type ChangeRequestRow = ChangeRequest & { decidedBy: Person | null; requestedByUser: Person | null };
+type ChangeRequestRow = ChangeRequest & { decidedBy: Person | null; requestedByUser: Person | null; appliedBy: Person | null };
 
 const decidedByInclude = {
   decidedBy: { select: { id: true, name: true } },
   requestedByUser: { select: { id: true, name: true } },
+  appliedBy: { select: { id: true, name: true } },
 } as const;
 
 /** Vista del PM: todo, más quién la propuso desde el equipo. */
 export function toChangeRequestDto(cr: ChangeRequestRow) {
-  const { projectId: _projectId, decidedById: _decidedById, requestedById: _requestedById, requestedByUser, costImpactCents, ...fields } = cr;
+  const { projectId: _projectId, decidedById: _decidedById, requestedById: _requestedById, appliedById: _appliedById, requestedByUser, costImpactCents, ...fields } = cr;
   return { ...fields, proposedBy: requestedByUser, costImpactCents: costImpactCents === null ? null : Number(costImpactCents) };
 }
 
@@ -139,6 +142,39 @@ export function changeRequestRoutes(app: App) {
       userIds: updated.requestedById ? [updated.requestedById] : [],
       actorId: user.id,
       detail: status,
+    });
+    return c.json(toChangeRequestDto(updated));
+  });
+
+  /** Aplica un cambio aprobado al plazo, al presupuesto y, si se pide, a una nueva línea base. Todo o nada. */
+  app.post(`${base}/:crId/apply`, async (c) => {
+    const { prisma } = c.var.deps;
+    const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'write');
+    const user = requireUser(c);
+    const cr = await prisma.changeRequest.findFirst({ where: { id: c.req.param('crId'), projectId: project.id } });
+    if (!cr) throw notFound('Solicitud de cambio no encontrada');
+    const notApproved = () => new AppError(409, 'change_not_approved', 'Solo se aplica un cambio aprobado');
+    if (cr.status !== 'APPROVED') throw notApproved();
+    const { endDate, plannedBudgetCents, baseline, reason } = applyChangeSchema.parse(await readBody(c));
+
+    const changes: Prisma.ProjectUpdateInput = {};
+    if (endDate !== undefined) {
+      if (!isDateOrderValid(project.startDate, endDate)) throw fieldError('startDate', DATE_ORDER_MESSAGE);
+      await assertDatesStayInside(prisma, project, { startDate: null, endDate: endDate === project.endDate ? null : endDate });
+      changes.endDate = endDate;
+    }
+    if (plannedBudgetCents !== undefined) changes.plannedBudgetCents = plannedBudgetCents;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // La condición sobre el estado hace que, si llegan dos a la vez, solo una aplique.
+      const claimed = await tx.changeRequest.updateMany({
+        where: { id: cr.id, status: 'APPROVED' },
+        data: { status: 'APPLIED', appliedAt: c.var.deps.now(), appliedById: user.id },
+      });
+      if (claimed.count === 0) throw notApproved();
+      const current = Object.keys(changes).length > 0 ? await tx.project.update({ where: { id: project.id }, data: changes }) : project;
+      if (baseline) await createBaseline(tx, current, user.id, { reason: reason || `CR-${cr.number} ${cr.title}`, changeRequestId: cr.id });
+      return tx.changeRequest.findUniqueOrThrow({ where: { id: cr.id }, include: decidedByInclude });
     });
     return c.json(toChangeRequestDto(updated));
   });

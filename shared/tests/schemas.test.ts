@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHANGE_STATUS, INCIDENT_STATUS, LABELS } from '../src/enums';
-import { charterSchema, commentSchema, createIncidentSchema, proposeChangeSchema, decisionRecordSchema, reportIncidentSchema, updateIncidentSchema, baselineSchema, changeRequestSchema, createExpenseSchema, createMilestoneSchema, createTaskSchema, decisionSchema, updateTaskSchema } from '../src/schemas';
+import { applyChangeSchema, charterSchema, commentSchema, createIncidentSchema, proposeChangeSchema, decisionRecordSchema, reportIncidentSchema, updateIncidentSchema, baselineSchema, changeRequestSchema, createExpenseSchema, createMilestoneSchema, createTaskSchema, decisionSchema, updateTaskSchema } from '../src/schemas';
 
 describe('mensajes de validación', () => {
   it('una fecha ausente da un mensaje en español', () => {
@@ -42,8 +42,8 @@ describe('línea base y cambios', () => {
     expect(createExpenseSchema.parse({ description: 'G', amountCents: 1, date: '2026-11-01', category: 'OTHER', taskId: 't1' }).taskId).toBe('t1');
   });
   it('las etiquetas de estado de cambio están en español', () => {
-    expect(LABELS.changeStatus).toEqual({ PENDING: 'Pendiente', APPROVED: 'Aprobada', REJECTED: 'Rechazada' });
-    expect(CHANGE_STATUS).toEqual(['PENDING', 'APPROVED', 'REJECTED']);
+    expect(LABELS.changeStatus).toEqual({ PENDING: 'Pendiente', APPROVED: 'Aprobada', REJECTED: 'Rechazada', APPLIED: 'Aplicada' });
+    expect(CHANGE_STATUS).toEqual(['PENDING', 'APPROVED', 'REJECTED', 'APPLIED']);
   });
 });
 
@@ -107,3 +107,17 @@ describe('límites de longitud', () => {
     expect(issue(commentSchema.safeParse({ body: 'a'.repeat(5001) }))).toBe('Máximo 5 000 caracteres');
   });
 });
+
+describe('aplicar un cambio', () => {
+  it('exige decidir si se fija la línea base', () => {
+    expect(applyChangeSchema.safeParse({}).success).toBe(false);
+    expect(applyChangeSchema.safeParse({ baseline: false }).success).toBe(true);
+    expect(applyChangeSchema.safeParse({ baseline: true, endDate: '2026-07-10', plannedBudgetCents: 105000, reason: 'Motivo' }).success).toBe(true);
+  });
+
+  it('el estado aplicado tiene etiqueta', () => {
+    expect(CHANGE_STATUS).toContain('APPLIED');
+    expect(LABELS.changeStatus.APPLIED).toBe('Aplicada');
+  });
+});
+

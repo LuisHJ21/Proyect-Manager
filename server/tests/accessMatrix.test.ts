@@ -108,6 +108,7 @@ const ROUTE_SECTION: Record<string, Section> = {
   'PATCH /api/projects/:id/change-requests/:crId': 'changes',
   'DELETE /api/projects/:id/change-requests/:crId': 'changes',
   'POST /api/projects/:id/change-requests/:crId/decision': 'changes',
+  'POST /api/projects/:id/change-requests/:crId/apply': 'changes',
 
   'GET /api/projects/:id/closure': 'closure',
   'POST /api/projects/:id/closure': 'closure',

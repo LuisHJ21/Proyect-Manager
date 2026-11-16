@@ -32,6 +32,7 @@ model User {
   baselines          Baseline[]
   decidedChanges     ChangeRequest[]     @relation("ChangeDecider")
   requestedChanges   ChangeRequest[]     @relation("ChangeRequester")
+  appliedChanges     ChangeRequest[]     @relation("ChangeApplier")
   reportedIncidents  Incident[]          @relation("incidentReporter")
   ownedIncidents     Incident[]          @relation("incidentOwner")
   deliverableReviews DeliverableReview[] @relation("deliverableReviewer")
@@ -421,12 +422,15 @@ model ChangeRequest {
   decidedAt          DateTime?
   decidedById        String?
   requestedById      String?
+  appliedAt          DateTime?
+  appliedById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   decidedBy       User?      @relation("ChangeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
   requestedByUser User?      @relation("ChangeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  appliedBy       User?      @relation("ChangeApplier", fields: [appliedById], references: [id], onDelete: SetNull)
   baselines       Baseline[]
   decisions       Decision[]
 

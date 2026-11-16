@@ -1,5 +1,5 @@
 import { addDays, baselineSchema, CLOSED_PROJECT_STATUS, diffDays } from '@pm/shared';
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient, Project } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
 import { requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
@@ -74,6 +74,45 @@ const toBaselineDto = (b: BaselineWithRelations) => ({
   changeRequest: b.changeRequest,
 });
 
+/**
+ * Fija una nueva línea base con las tareas que tienen costo. La usan `POST /baselines` y aplicar un
+ * cambio, dentro de su transacción. Quien llama comprueba que la solicitud citada sea válida.
+ */
+export async function createBaseline(
+  tx: Prisma.TransactionClient,
+  project: Project,
+  userId: string,
+  input: { reason: string; changeRequestId: string | null },
+) {
+  const tasks = await tx.task.findMany({ where: { projectId: project.id, plannedCostCents: { gt: 0 } }, orderBy: { createdAt: 'asc' } });
+  if (tasks.length === 0) throw new AppError(400, 'baseline_empty', 'Pon un costo planeado al menos a una tarea antes de fijar la línea base');
+  const missing = tasks.filter((t) => !t.startDate || !t.dueDate);
+  if (missing.length > 0) {
+    throw new AppError(400, 'baseline_missing_dates', 'Todas las tareas con costo necesitan fecha de inicio y de fin', {
+      details: { tasks: missing.map((t) => ({ id: t.id, title: t.title })) },
+    });
+  }
+  const last = await tx.baseline.aggregate({ where: { projectId: project.id }, _max: { version: true } });
+  const version = (last._max.version ?? 0) + 1;
+  if (version > 1 && !input.reason) throw fieldError('reason', 'Escribe el motivo de la nueva línea base');
+  return tx.baseline.create({
+    data: {
+      projectId: project.id,
+      version,
+      reason: input.reason,
+      bacCents: tasks.reduce((sum, t) => sum + t.plannedCostCents, 0n),
+      startDate: project.startDate,
+      endDate: project.endDate,
+      changeRequestId: input.changeRequestId,
+      createdById: userId,
+      tasks: {
+        create: tasks.map((t) => ({ taskId: t.id, title: t.title, startDate: t.startDate!, dueDate: t.dueDate!, plannedCostCents: t.plannedCostCents })),
+      },
+    },
+    include: baselineInclude,
+  });
+}
+
 export function performanceRoutes(app: App) {
 
   app.post('/api/projects/:id/baselines', async (c) => {
@@ -82,40 +121,11 @@ export function performanceRoutes(app: App) {
     const user = requireUser(c);
     const { reason, changeRequestId } = baselineSchema.parse(await readBody(c) ?? {});
 
-    const tasks = await prisma.task.findMany({ where: { projectId: project.id, plannedCostCents: { gt: 0 } }, orderBy: { createdAt: 'asc' } });
-    if (tasks.length === 0) throw new AppError(400, 'baseline_empty', 'Pon un costo planeado al menos a una tarea antes de fijar la línea base');
-    const missing = tasks.filter((t) => !t.startDate || !t.dueDate);
-    if (missing.length > 0) {
-      throw new AppError(400, 'baseline_missing_dates', 'Todas las tareas con costo necesitan fecha de inicio y de fin', {
-        details: { tasks: missing.map((t) => ({ id: t.id, title: t.title })) },
-      });
-    }
     if (changeRequestId) {
-      const approved = await prisma.changeRequest.findFirst({ where: { id: changeRequestId, projectId: project.id, status: 'APPROVED' } });
-      if (!approved) throw fieldError('changeRequestId', 'Elige una solicitud de cambio aprobada de este proyecto');
+      const cited = await prisma.changeRequest.findFirst({ where: { id: changeRequestId, projectId: project.id, status: { in: ['APPROVED', 'APPLIED'] } } });
+      if (!cited) throw fieldError('changeRequestId', 'Elige una solicitud de cambio aprobada de este proyecto');
     }
-
-    const created = await prisma.$transaction(async (tx) => {
-      const last = await tx.baseline.aggregate({ where: { projectId: project.id }, _max: { version: true } });
-      const version = (last._max.version ?? 0) + 1;
-      if (version > 1 && !reason) throw fieldError('reason', 'Escribe el motivo de la nueva línea base');
-      return tx.baseline.create({
-        data: {
-          projectId: project.id,
-          version,
-          reason,
-          bacCents: tasks.reduce((sum, t) => sum + t.plannedCostCents, 0n),
-          startDate: project.startDate,
-          endDate: project.endDate,
-          changeRequestId: changeRequestId ?? null,
-          createdById: user.id,
-          tasks: {
-            create: tasks.map((t) => ({ taskId: t.id, title: t.title, startDate: t.startDate!, dueDate: t.dueDate!, plannedCostCents: t.plannedCostCents })),
-          },
-        },
-        include: baselineInclude,
-      });
-    });
+    const created = await prisma.$transaction((tx) => createBaseline(tx, project, user.id, { reason, changeRequestId: changeRequestId ?? null }));
     return c.json(toBaselineDto(created), 201);
   });
 

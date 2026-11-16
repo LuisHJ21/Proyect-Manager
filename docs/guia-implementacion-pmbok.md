@@ -209,10 +209,12 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 **F15. Riesgos completos y registro de supuestos** (Incertidumbre)
 - Riesgos: disparador, fecha de próxima revisión, costo de contingencia, probabilidad e impacto residuales e historial de evaluaciones (`RiskAssessment`). Vista de matriz de probabilidad e impacto 5×5.
 - Supuestos: hoy son texto libre en el acta. Crear `Assumption { descripción, responsable, fecha de validación, estado }`; un supuesto que resulta falso se convierte en riesgo o incidente.
+- Hecho (`docs/superpowers/specs/2026-11-17-etapa-7b-incertidumbre-medicion-design.md`): disparador, próxima revisión con aviso, costo de contingencia (solo PM), residual e historial de evaluaciones; matriz 5×5 inicial o residual; registro de supuestos SUP-N en la pestaña Acta (el texto del acta se conserva) con conversión a riesgo o incidente.
 
 **F16. Medición ampliada** (Medición)
 - TCPI en `computeEvm`, tendencia de hitos (fecha planeada frente a pronosticada) y umbrales de salud configurables por proyecto (hoy son constantes en `server/src/domain/health.ts`).
 - Exportación a CSV de tareas, riesgos, gastos, incidentes y lecciones.
+- Hecho (`docs/superpowers/specs/2026-11-17-etapa-7b-incertidumbre-medicion-design.md`): TCPI en Desempeño; pronóstico diario de hitos con tabla y gráfico de tendencia en el Resumen; umbrales de salud por proyecto en el formulario; CSV generado en el navegador con lo que cada perfil ve.
 
 ### Fase 6. Adaptación
 
@@ -234,7 +236,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 | 4 | C6 ✓, C7 ✓, C8 ✓, C9 ✓, C10 ✓ | Dejar fiables los números que ya se muestran |
 | 5 | F5 ✓, F6 ✓, F7 ✓, F8 ✓ | Planificación completa; F5 es requisito de F6, F7 y F12 |
 | 6 | F11 ✓, F9 ✓, F10 ✓ | Informes y comunicaciones para interesados |
-| 7 | F12 ✓, F13 ✓, F15, F16 | Entrega, calidad e incertidumbre |
+| 7 | F12 ✓, F13 ✓, F15 ✓, F16 ✓ | Entrega, calidad e incertidumbre |
 | 8 | F14, F17, F18 | Según necesidad |
 
 ## 8. Reglas para cada bloque

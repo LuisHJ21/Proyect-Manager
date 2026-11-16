@@ -167,7 +167,7 @@ test('flujo principal', async ({ browser }) => {
   await expect(pm.getByRole('dialog')).toHaveCount(0);
 
   await pm.getByRole('link', { name: 'Desempeño' }).click();
-  const cpiCard = pm.getByRole('region', { name: 'Indicadores de valor ganado' }).locator('[data-card]').filter({ hasText: 'CPI' });
+  const cpiCard = pm.getByRole('region', { name: 'Indicadores de valor ganado' }).locator('[data-card]').filter({ hasText: 'CPI · eficiencia de costo' });
   await expect(cpiCard).toContainText('Sobre el costo');
 
   await pm.getByRole('link', { name: 'Control de cambios' }).click();
@@ -389,6 +389,19 @@ test('flujo principal', async ({ browser }) => {
   const traceability = pm.getByRole('region', { name: 'Matriz de trazabilidad' });
   await expect(traceability.getByText('REQ-1')).toBeVisible();
   await expect(traceability.getByText('ENT-1 · Portal publicado')).toBeVisible();
+
+  // Supuestos: el PM registra uno, lo marca falso y lo convierte en riesgo; el riesgo aparece en la matriz.
+  await pm.goto(`${projectUrl}/acta`);
+  const assumptions = pm.getByRole('region', { name: 'Registro de supuestos' });
+  await assumptions.getByRole('button', { name: 'Añadir supuesto' }).click();
+  const newAssumption = pm.getByRole('dialog', { name: 'Añadir supuesto' });
+  await newAssumption.getByRole('textbox', { name: 'Descripción' }).fill('El proveedor entrega el hosting a tiempo');
+  await newAssumption.getByLabel('Estado').selectOption('FALSE');
+  await newAssumption.getByRole('button', { name: 'Guardar' }).click();
+  await assumptions.getByRole('button', { name: 'Convertir SUP-1 en riesgo' }).click();
+  await expect(assumptions.getByText(/Convertido en riesgo/)).toBeVisible();
+  await pm.goto(`${projectUrl}/riesgos`);
+  await expect(pm.getByRole('region', { name: 'Matriz de riesgos' }).getByText('El proveedor entrega el hosting a tiempo')).toBeVisible();
 
   // El cronograma resalta la ruta crítica.
   await pm.goto(`${projectUrl}/tareas?vista=cronograma`);

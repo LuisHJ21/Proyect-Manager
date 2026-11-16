@@ -153,7 +153,7 @@ describe('choque al editar un entregable', () => {
     version: 5,
     ...over,
   });
-  const full = (over: object = {}) => ({ ...row(), description: '', criteria, reviews: [], ...over });
+  const full = (over: object = {}) => ({ ...row(), description: '', criteria, reviews: [], work: [], ...over });
   const routes = (detail: unknown, patch: unknown) => ({
     ...signedInAs(pmUser),
     'GET /api/projects/p1': project,

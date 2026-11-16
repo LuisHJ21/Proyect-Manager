@@ -16,6 +16,7 @@ const detail = (over: object = {}) => ({
     { id: 'c2', text: 'Manual', met: false, position: 1 },
   ],
   reviews: [review],
+  work: [],
   ...over,
 });
 const deliverableRoutes = (user: object, d: object) => ({

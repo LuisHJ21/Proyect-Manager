@@ -81,7 +81,7 @@ const criteria = [
   { id: 'c1', text: 'Funciona en móvil', met: true, position: 0 },
   { id: 'c2', text: 'Manual', met: false, position: 1 },
 ];
-const full = (over: object = {}) => ({ ...row({ criteriaMet: 1, criteriaTotal: 2 }), description: '<p>Sitio público</p>', criteria, reviews: [], ...over });
+const full = (over: object = {}) => ({ ...row({ criteriaMet: 1, criteriaTotal: 2 }), description: '<p>Sitio público</p>', criteria, reviews: [], work: [], ...over });
 const allMet = criteria.map((c) => ({ ...c, met: true }));
 const detailRoutes = (d: object) => ({
   ...baseRoutes(),
@@ -239,5 +239,21 @@ describe('errores de entregables', () => {
     mockApi(detailRoutes(full({ reviews: [review] })));
     const dialog = await openDetail();
     expect(await within(await dialog.findByRole('region', { name: 'Revisiones' })).findByText('Anexo eliminado (acta.pdf)')).toBeInTheDocument();
+  });
+});
+
+describe('trabajo del entregable', () => {
+  it('lista las tareas ligadas con código y avance', async () => {
+    mockApi(detailRoutes(full({ work: [{ id: 't1', title: 'Pantallas', wbsCode: '1.1', progress: 100 }] })));
+    const dialog = await openDetail();
+    const section = dialog.getByRole('region', { name: 'Trabajo' });
+    expect(within(section).getByRole('link', { name: '1.1 Pantallas' })).toHaveAttribute('href', '/proyectos/p1/tareas/t1');
+    expect(section).toHaveTextContent('100 %');
+  });
+
+  it('sin tareas ligadas lo dice', async () => {
+    mockApi(detailRoutes(full({ work: [] })));
+    const dialog = await openDetail();
+    expect(dialog.getByText('Aún no hay tareas ligadas a este entregable')).toBeInTheDocument();
   });
 });

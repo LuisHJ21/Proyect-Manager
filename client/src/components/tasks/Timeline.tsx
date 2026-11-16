@@ -68,7 +68,17 @@ export function Timeline({ tasks, milestones, onOpen }: { tasks: Task[]; milesto
                 {layout.bars.map((bar) => {
                   const task = byId.get(bar.taskId)!;
                   return (
-                    <rect key={bar.taskId} x={bar.x} y={bar.y} width={bar.width} height={bar.height} rx={4} className={`cursor-pointer ${BAR_COLOR[task.status]}`} onClick={() => onOpen(task)}>
+                    <rect
+                      key={bar.taskId}
+                      x={bar.x}
+                      y={bar.y}
+                      width={bar.width}
+                      height={bar.height}
+                      rx={bar.summary ? 2 : 4}
+                      {...(bar.summary ? { 'data-summary': '' } : {})}
+                      className={`cursor-pointer ${bar.summary ? 'fill-ink-nav' : BAR_COLOR[task.status]}`}
+                      onClick={() => onOpen(task)}
+                    >
                       <title>{`${task.title}: ${task.startDate} a ${task.dueDate}`}</title>
                     </rect>
                   );

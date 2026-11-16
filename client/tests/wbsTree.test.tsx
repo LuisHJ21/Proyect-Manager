@@ -75,4 +75,13 @@ describe('lista de tareas como EDT', () => {
     expect(list[0]).toHaveAttribute('data-context');
     expect(list[1]).not.toHaveAttribute('data-context');
   });
+
+  it('el cronograma dibuja la padre como barra de resumen', async () => {
+    const dated = tree.map((t) => ({ ...t, startDate: '2026-03-01', dueDate: '2026-03-10' }));
+    mockApi(routes(pmUser, { 'GET /api/projects/p1/tasks': dated }));
+    renderApp('/proyectos/p1/tareas?vista=cronograma');
+    await screen.findByRole('button', { name: 'Maquetas' });
+    const summaries = document.querySelectorAll('rect[data-summary]');
+    expect(summaries).toHaveLength(1);
+  });
 });

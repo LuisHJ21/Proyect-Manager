@@ -104,4 +104,14 @@ describe('Kanban', () => {
     expect(screen.getByTestId('drag-a')).toBeInTheDocument();
     expect(screen.queryByTestId('drag-b')).not.toBeInTheDocument();
   });
+
+  it('no muestra tareas padre y cada tarjeta dice su padre', () => {
+    setup([
+      task({ id: 'p', title: 'Diseño', wbsCode: '1', childCount: 1, isSummary: true }),
+      task({ id: 'h', title: 'Pantallas', wbsCode: '1.1', parentId: 'p' }),
+    ]);
+    expect(screen.queryByRole('link', { name: 'Diseño' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pantallas' })).toBeInTheDocument();
+    expect(screen.getByText('1 Diseño')).toBeInTheDocument();
+  });
 });

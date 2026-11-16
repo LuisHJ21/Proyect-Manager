@@ -1,6 +1,7 @@
 import { canAccept, LABELS, type ReviewOutcome } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, ApiError, EDIT_CONFLICT_NOTICE, errorMessage, isEditConflict } from '../../api/client';
 import type { DeliverableDetail, DeliverableReview } from '../../api/types';
 import { shortDate } from '../../lib/display';
@@ -181,6 +182,23 @@ export function DeliverableDetailDialog({ projectId, id, readOnly = false, onClo
           ]}
         />
         <CriteriaList deliverable={d} change={change} busy={busy} readOnly={readOnly} />
+        <section aria-label="Trabajo">
+          <h3 className="mb-2 text-sm font-semibold text-ink">Trabajo</h3>
+          {d.work.length === 0 ? (
+            <p className="text-sm text-ink-soft">Aún no hay tareas ligadas a este entregable</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {d.work.map((t) => (
+                <li key={t.id} className="flex justify-between gap-3">
+                  <Link className="text-link hover:underline" to={`/proyectos/${projectId}/tareas/${t.id}`}>
+                    {t.wbsCode} {t.title}
+                  </Link>
+                  <span className="text-ink-soft">{t.progress} %</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
         {!readOnly && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">

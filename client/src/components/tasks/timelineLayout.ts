@@ -2,11 +2,13 @@ import { diffDays } from '@pm/shared';
 
 export const ROW_HEIGHT = 36;
 const BAR_HEIGHT = 20;
+/** Una tarea padre se dibuja como barra de resumen, más fina. */
+const SUMMARY_BAR_HEIGHT = 10;
 
-export type TimelineTask = { id: string; startDate: string | null; dueDate: string | null; predecessorIds: string[] };
+export type TimelineTask = { id: string; startDate: string | null; dueDate: string | null; predecessorIds: string[]; isSummary?: boolean };
 export type TimelineMilestone = { id: string; dueDate: string };
 
-type Bar = { taskId: string; x: number; y: number; width: number; height: number };
+type Bar = { taskId: string; x: number; y: number; width: number; height: number; summary: boolean };
 
 export function buildTimelineLayout(tasks: TimelineTask[], milestones: TimelineMilestone[], dayWidth: number) {
   const dated = tasks.filter((t) => t.startDate && t.dueDate);
@@ -17,13 +19,17 @@ export function buildTimelineLayout(tasks: TimelineTask[], milestones: TimelineM
   const rangeEnd = dates[dates.length - 1] ?? '';
   const xOf = (date: string) => diffDays(rangeStart, date) * dayWidth;
 
-  const bars: Bar[] = dated.map((task, index) => ({
-    taskId: task.id,
-    x: xOf(task.startDate!),
-    y: index * ROW_HEIGHT + (ROW_HEIGHT - BAR_HEIGHT) / 2,
-    width: (diffDays(task.startDate!, task.dueDate!) + 1) * dayWidth,
-    height: BAR_HEIGHT,
-  }));
+  const bars: Bar[] = dated.map((task, index) => {
+    const height = task.isSummary ? SUMMARY_BAR_HEIGHT : BAR_HEIGHT;
+    return {
+      taskId: task.id,
+      x: xOf(task.startDate!),
+      y: index * ROW_HEIGHT + (ROW_HEIGHT - height) / 2,
+      width: (diffDays(task.startDate!, task.dueDate!) + 1) * dayWidth,
+      height,
+      summary: Boolean(task.isSummary),
+    };
+  });
   const barByTask = new Map(bars.map((bar) => [bar.taskId, bar]));
 
   const arrows = dated.flatMap((task) =>

@@ -33,7 +33,7 @@ export function useMoveTask(projectId: string) {
   );
 }
 
-function Card({ task, draggable }: { task: Task; draggable: boolean }) {
+function Card({ task, draggable, parent }: { task: Task; draggable: boolean; parent?: Task }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, disabled: !draggable });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
   return (
@@ -49,12 +49,12 @@ function Card({ task, draggable }: { task: Task; draggable: boolean }) {
           <GripVertical size={16} aria-hidden="true" />
         </span>
       )}
-      <TaskCardBody task={task} />
+      <TaskCardBody task={task} parent={parent} />
     </li>
   );
 }
 
-function Column({ status, tasks, canMove }: { status: TaskStatus; tasks: Task[]; canMove: (task: Task) => boolean }) {
+function Column({ status, tasks, canMove, parentOf }: { status: TaskStatus; tasks: Task[]; canMove: (task: Task) => boolean; parentOf: (task: Task) => Task | undefined }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   return (
     <section ref={setNodeRef} className={`flex min-h-48 flex-col rounded-xl p-3 transition-colors duration-150 ${isOver ? 'bg-active' : 'bg-raised'}`}>
@@ -67,7 +67,7 @@ function Column({ status, tasks, canMove }: { status: TaskStatus; tasks: Task[];
       </div>
       <ul className="space-y-2">
         {tasks.map((task) => (
-          <Card key={task.id} task={task} draggable={canMove(task)} />
+          <Card key={task.id} task={task} draggable={canMove(task)} parent={parentOf(task)} />
         ))}
       </ul>
     </section>
@@ -82,6 +82,10 @@ type Props = {
 
 export function KanbanBoard({ tasks, canMove, onMove }: Props) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // El tablero muestra solo trabajo: una tarea con subtareas se mueve a través de ellas.
+  const leaves = tasks.filter((t) => !t.isSummary);
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const parentOf = (task: Task) => (task.parentId ? byId.get(task.parentId) : undefined);
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     const task = tasks.find((t) => t.id === active.id);
@@ -92,7 +96,7 @@ export function KanbanBoard({ tasks, canMove, onMove }: Props) {
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       <div className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
         {TASK_STATUS.map((status) => (
-          <Column key={status} status={status} tasks={tasks.filter((t) => t.status === status)} canMove={canMove} />
+          <Column key={status} status={status} tasks={leaves.filter((t) => t.status === status)} canMove={canMove} parentOf={parentOf} />
         ))}
       </div>
     </DndContext>

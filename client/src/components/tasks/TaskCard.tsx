@@ -26,10 +26,11 @@ export function StepCount({ task }: { task: Task }) {
   );
 }
 
-export function TaskCardBody({ task }: { task: Task }) {
+export function TaskCardBody({ task, parent }: { task: Task; parent?: { wbsCode: string; title: string } }) {
   const comments = task.commentCount;
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-2">
+      {parent && <span className="truncate text-xs text-ink-soft">{`${parent.wbsCode} ${parent.title}`}</span>}
       <span>
         <Badge tone={PRIORITY_TONE[task.priority]}>{LABELS.priority[task.priority]}</Badge>
       </span>

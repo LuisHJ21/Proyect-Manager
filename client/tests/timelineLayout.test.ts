@@ -46,4 +46,14 @@ describe('buildTimelineLayout', () => {
     const layout = buildTimelineLayout([], [], DAY);
     expect(layout).toMatchObject({ bars: [], arrows: [], milestones: [], undated: [], rangeStart: '', rangeEnd: '' });
   });
+
+  it('marca las barras de las tareas padre como resumen', () => {
+    const layout = buildTimelineLayout(
+      [{ ...task('p', '2026-12-01', '2026-12-05'), isSummary: true }, task('h', '2026-12-01', '2026-12-05')],
+      [],
+      DAY,
+    );
+    expect(layout.bars.map((b) => [b.taskId, b.summary])).toEqual([['p', true], ['h', false]]);
+    expect(layout.bars[0]!.height).toBeLessThan(layout.bars[1]!.height);
+  });
 });

@@ -306,7 +306,13 @@ export type DeliverableReview = {
   criteria: { text: string; met: boolean }[];
   createdAt: string;
 };
-export type DeliverableDetail = DeliverableRow & { description: string; criteria: DeliverableCriterion[]; reviews: DeliverableReview[] };
+export type DeliverableDetail = DeliverableRow & {
+  description: string;
+  criteria: DeliverableCriterion[];
+  reviews: DeliverableReview[];
+  /** Tareas ligadas al entregable, en orden EDT. */
+  work: { id: string; title: string; wbsCode: string; progress: number }[];
+};
 
 export type ClosureReport = {
   dates: { plannedStart: string | null; plannedEnd: string | null; actualStart: string | null; actualEnd: string; endVarianceDays: number | null };

@@ -23,7 +23,7 @@ describe('GET /api/dashboard', () => {
     expect(body.totals.overdueTasks).toBe(1);
     expect(body.projects[0]).toMatchObject({ name: 'Portal', health: 'ATTENTION', team: [{ id: c.id, name: 'Carlos Vega' }] });
     expect(body.attention[0]).toMatchObject({ kind: 'task', title: 'Vencida', projectId: p.id, projectName: 'Portal' });
-    expect(body.workload).toEqual([{ userId: c.id, name: 'Carlos Vega', openTasks: 1, overdueTasks: 1 }]);
+    expect(body.workload).toEqual([expect.objectContaining({ userId: c.id, name: 'Carlos Vega', openTasks: 1, overdueTasks: 1 })]);
   });
 
   it('los totales funcionan con montos sobre 2.147.483.647 centavos', async () => {
@@ -34,6 +34,28 @@ describe('GET /api/dashboard', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().totals.overBudgetProjects).toBe(1);
     expect(res.json().projects[0].health).toBe('AT_RISK');
+  });
+});
+
+describe('GET /api/dashboard: carga semanal', () => {
+  let ctx: TestCtx;
+  afterEach(() => ctx.close());
+
+  it('compara horas asignadas con la capacidad sumada entre proyectos', async () => {
+    ctx = await createTestApp();
+    ctx.clock.set('2026-11-16T10:00:00');
+    const pm = await ctx.makeUser({ role: 'PM' });
+    const ana = await ctx.makeUser({ role: 'COLLABORATOR', name: 'Ana' });
+    const a = await ctx.makeProject({ name: 'A', members: [ana] });
+    const b = await ctx.makeProject({ name: 'B', members: [ana] });
+    await ctx.prisma.projectMember.update({ where: { projectId_userId: { projectId: b.id, userId: ana.id } }, data: { weeklyCapacityHours: 10 } });
+    const t = await ctx.makeTask(a.id, { title: 'Obra', startDate: '2026-11-16', dueDate: '2026-11-22', assignees: [ana] });
+    await ctx.prisma.task.update({ where: { id: t.id }, data: { estimatedHours: 60 } });
+    const { workload } = (await ctx.as(pm).get('/api/dashboard')).json();
+    const entry = workload.find((w: { userId: string }) => w.userId === ana.id);
+    expect(entry.weeks).toHaveLength(4);
+    expect(entry.weeks[0]).toEqual({ start: '2026-11-16', assignedHours: 60, capacityHours: 50, overloaded: true });
+    expect(entry.weeks[1]).toEqual({ start: '2026-11-23', assignedHours: 0, capacityHours: 50, overloaded: false });
   });
 });
 

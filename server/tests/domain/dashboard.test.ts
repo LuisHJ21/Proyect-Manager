@@ -94,9 +94,9 @@ describe('buildDashboard', () => {
     ];
     const result = buildDashboard({ ...empty, projects: [project('a')], tasks }, TODAY);
     expect(result.workload).toEqual([
-      { userId: 'beto', name: 'Beto', openTasks: 2, overdueTasks: 1 },
-      { userId: 'ana', name: 'Ana', openTasks: 1, overdueTasks: 0 },
-      { userId: 'pm', name: 'Jefa', openTasks: 1, overdueTasks: 0 },
+      expect.objectContaining({ userId: 'beto', name: 'Beto', openTasks: 2, overdueTasks: 1 }),
+      expect.objectContaining({ userId: 'ana', name: 'Ana', openTasks: 1, overdueTasks: 0 }),
+      expect.objectContaining({ userId: 'pm', name: 'Jefa', openTasks: 1, overdueTasks: 0 }),
     ]);
   });
 

@@ -1,6 +1,7 @@
 import { addDays, isDeliverableOverdue, toPlainText, type Health } from '@pm/shared';
 import { isActiveProject, isHighRisk, isOverdue, summarizeProject, type EvmIndexes } from './health';
 import { isIncidentOverdue } from './incidents';
+import { weekStart, weeklyLoad } from './workload';
 
 const MAX_ATTENTION_ITEMS = 8;
 const UPCOMING_MILESTONE_DAYS = 14;
@@ -16,6 +17,7 @@ export type DashboardInput = {
     status: string;
     progress: number;
     plannedCostCents: number;
+    estimatedHours?: number | null;
     startDate: string | null;
     dueDate: string | null;
     assignees: (Person & { role: string; active: boolean })[];
@@ -25,6 +27,8 @@ export type DashboardInput = {
   milestones: { id: string; name: string; dueDate: string; status: string; projectId: string }[];
   incidents?: { id: string; number: number; title: string; projectId: string; priority: string; status: string; dueDate: string | null }[];
   deliverables?: { id: string; number: number; name: string; projectId: string; status: string; dueDate: string | null }[];
+  /** Capacidad semanal de cada persona en cada proyecto activo; se suma entre proyectos. */
+  capacities?: { userId: string; hours: number }[];
   /** Solicitudes aprobadas que aún no se aplicaron. */
   changes?: { id: string; number: number; title: string; projectId: string }[];
 };
@@ -103,6 +107,21 @@ export function buildDashboard(input: DashboardInput, today: string) {
       .map((r) => ({ kind: 'risk' as const, id: r.id, title: toPlainText(r.description), projectId: r.projectId, projectName: projectName(r.projectId), score: r.probability * r.impact })),
   ].slice(0, MAX_ATTENTION_ITEMS);
 
+  // Semana actual y las 3 siguientes: horas asignadas frente a capacidad.
+  const weeks = [0, 7, 14, 21].map((offset) => addDays(weekStart(today), offset));
+  const hours = weeklyLoad(
+    tasks.map((t) => ({ ...t, estimatedHours: t.estimatedHours ?? null, assigneeIds: t.assignees.filter((a) => a.active).map((a) => a.id) })),
+    weeks,
+  );
+  const capacity = new Map<string, number>();
+  for (const c of input.capacities ?? []) capacity.set(c.userId, (capacity.get(c.userId) ?? 0) + c.hours);
+  const weeksOf = (userId: string) =>
+    weeks.map((start, i) => {
+      const assignedHours = Math.round((hours.get(userId)?.[i] ?? 0) * 10) / 10;
+      const capacityHours = capacity.get(userId) ?? 0;
+      return { start, assignedHours, capacityHours, overloaded: assignedHours > capacityHours };
+    });
+
   const load = new Map<string, { userId: string; name: string; openTasks: number; overdueTasks: number }>();
   for (const task of tasks) {
     if (task.status === 'DONE') continue;
@@ -140,7 +159,7 @@ export function buildDashboard(input: DashboardInput, today: string) {
         team: project.team,
       })),
     attention,
-    workload: [...load.values()].sort((a, b) => b.openTasks - a.openTasks || a.name.localeCompare(b.name)),
+    workload: [...load.values()].map((entry) => ({ ...entry, weeks: weeksOf(entry.userId) })).sort((a, b) => b.openTasks - a.openTasks || a.name.localeCompare(b.name)),
     upcomingMilestones: inScope(input.milestones)
       .filter((m) => m.status === 'PENDING' && m.dueDate >= today && m.dueDate <= horizon)
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))

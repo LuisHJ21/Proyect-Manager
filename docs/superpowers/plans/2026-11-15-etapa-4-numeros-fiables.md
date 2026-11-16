@@ -58,20 +58,20 @@ Campos por grupo. Se aplica a la versión de creación y a la de edición de cad
 
 Los máximos que ya existen (entregable, criterio y lección) no cambian.
 
-- [ ] **Step 1: Escribir las pruebas que fallan** en `shared/tests/schemas.test.ts`, bloque `describe('límites de longitud')`:
+- [x] **Step 1: Escribir las pruebas que fallan** en `shared/tests/schemas.test.ts`, bloque `describe('límites de longitud')`:
   - `updateTaskSchema` acepta un `title` de 200 caracteres y rechaza uno de 201 con «Máximo 200 caracteres».
   - `charterSchema` acepta `justification` de 20 000 y rechaza 20 001 con «Máximo 20 000 caracteres».
   - `commentSchema` acepta un `body` de 5 000 y rechaza 5 001 con «Máximo 5 000 caracteres».
-- [ ] **Step 2: Agregar las pruebas de ruta:**
+- [x] **Step 2: Agregar las pruebas de ruta:**
   - `server/tests/tasks.test.ts`: `POST /api/tasks/:id/comments` con un cuerpo de 5 001 caracteres responde 400 en `fields.body`.
   - `server/tests/registers.test.ts`: `POST /api/projects/:id/milestones` con un `name` de 201 caracteres responde 400 en `fields.name`.
-- [ ] **Step 3: Correr y ver que fallan.**
+- [x] **Step 3: Correr y ver que fallan.**
   Run: `npx vitest run tests/schemas.test.ts` desde `shared/`, y las dos pruebas nuevas del servidor.
   Expected: FAIL, porque hoy se aceptan.
-- [ ] **Step 4: Implementar** los tres helpers y aplicarlos a los campos listados.
-- [ ] **Step 5: Correr las suites completas** de `shared` y `server`.
+- [x] **Step 4: Implementar** los tres helpers y aplicarlos a los campos listados.
+- [x] **Step 5: Correr las suites completas** de `shared` y `server`.
   Expected: todo PASS. Si una prueba existente usa un texto más largo que el nuevo límite, se acorta el dato de esa prueba y se anota como ruling.
-- [ ] **Step 6: Commit** `feat: límites de longitud en títulos, textos largos y comentarios`.
+- [x] **Step 6: Commit** `feat: límites de longitud en títulos, textos largos y comentarios`.
 
 ### Task 2: C9 — fechas de los hitos dentro del proyecto
 
@@ -83,7 +83,7 @@ Los máximos que ya existen (entregable, criterio y lección) no cambian.
 - Consumes: `isWithinProject`, `outsideProjectMessage` y `formatRange` de `server/src/domain/projectDates.ts`.
 - Produces: `assertDatesStayInside(prisma, project, changed)` en `projects.ts`. Es el nuevo nombre de `assertTasksStayInside`, y ahora comprueba tareas e hitos. Se exporta para que la Task 6 la use al aplicar un cambio, junto con la comprobación de `isDateOrderValid`.
 
-- [ ] **Step 1: Escribir las pruebas que fallan.**
+- [x] **Step 1: Escribir las pruebas que fallan.**
   - En `registers.test.ts`, con un proyecto de `2026-01-01` a `2026-06-30`:
     - crear un hito con `dueDate: '2026-07-01'` responde 400 en `fields.dueDate` con el mensaje `La fecha debe estar dentro del proyecto (2026-01-01 a 2026-06-30)`;
     - editar un hito existente a `2025-12-31` responde lo mismo;
@@ -91,15 +91,15 @@ Los máximos que ya existen (entregable, criterio y lección) no cambian.
   - En `projects.test.ts`:
     - con un hito pendiente en `2026-06-15`, cambiar `endDate` a `2026-06-10` responde 400 en `fields.endDate` con «1 hito quedaría fuera del proyecto. Ajusta su fecha primero.»;
     - un hito que ya estaba fuera no impide editar, igual que con las tareas.
-- [ ] **Step 2: Correr y ver que fallan.**
+- [x] **Step 2: Correr y ver que fallan.**
   Run: `TEST_DATABASE_URL=… npx vitest run tests/registers.test.ts tests/projects.test.ts`
   Expected: FAIL en las pruebas nuevas.
-- [ ] **Step 3: Implementar.**
+- [x] **Step 3: Implementar.**
   - En el registro de hitos, `validate` comprueba `merged.dueDate` con `isWithinProject` y lanza `fieldError('dueDate', outsideProjectMessage(project))`.
   - `assertDatesStayInside` revisa primero las tareas, con el mensaje de siempre, y luego los hitos, con los mensajes de Global Constraints.
-- [ ] **Step 4: Correr de nuevo.**
+- [x] **Step 4: Correr de nuevo.**
   Expected: PASS, y la suite del servidor completa en verde.
-- [ ] **Step 5: Commit** `fix: la fecha de un hito queda dentro del proyecto`.
+- [x] **Step 5: Commit** `fix: la fecha de un hito queda dentro del proyecto`.
 
 ### Task 3: C9 — sugerencia de «Alcanzado»
 
@@ -112,23 +112,23 @@ Los máximos que ya existen (entregable, criterio y lección) no cambian.
 - Produces: `isReadyToReach(m: { status: string; tasks: { status: string }[]; deliverables: { status: string }[] }): boolean`.
 - El DTO del hito suma `readyToReach: boolean` y no expone `tasks` ni `deliverables`.
 
-- [ ] **Step 1: Escribir las pruebas puras.** `isReadyToReach` da:
+- [x] **Step 1: Escribir las pruebas puras.** `isReadyToReach` da:
   - `false` sin tareas ni entregables;
   - `false` con una tarea `IN_PROGRESS`;
   - `false` con un entregable `REJECTED`;
   - `true` con tareas `DONE` y entregables `ACCEPTED`;
   - `true` con solo tareas `DONE`;
   - `false` si el hito ya está `REACHED`.
-- [ ] **Step 2: Escribir la prueba de ruta.** `GET /api/projects/:id/milestones` devuelve `readyToReach: true` para un hito con su única tarea en `DONE`, y las claves del objeto no incluyen `tasks` ni `deliverables`.
-- [ ] **Step 3: Escribir la prueba de cliente.** Con un hito `readyToReach: true`, el panel muestra «Listo para marcar como alcanzado»; con `false`, no lo muestra.
-- [ ] **Step 4: Correr y ver que fallan.**
-- [ ] **Step 5: Implementar.**
+- [x] **Step 2: Escribir la prueba de ruta.** `GET /api/projects/:id/milestones` devuelve `readyToReach: true` para un hito con su única tarea en `DONE`, y las claves del objeto no incluyen `tasks` ni `deliverables`.
+- [x] **Step 3: Escribir la prueba de cliente.** Con un hito `readyToReach: true`, el panel muestra «Listo para marcar como alcanzado»; con `false`, no lo muestra.
+- [x] **Step 4: Correr y ver que fallan.**
+- [x] **Step 5: Implementar.**
   - `include: { tasks: { select: { status: true } }, deliverables: { select: { status: true } } }`.
   - `toDto` quita las dos relaciones y añade `readyToReach`.
   - En el panel, el aviso va dentro de la celda de Estado, bajo el `Badge`, como texto secundario.
-- [ ] **Step 6: Correr** las suites de servidor y cliente, y `npx tsc -b`.
+- [x] **Step 6: Correr** las suites de servidor y cliente, y `npx tsc -b`.
   Expected: PASS.
-- [ ] **Step 7: Commit** `feat: sugerir marcar un hito como alcanzado`.
+- [x] **Step 7: Commit** `feat: sugerir marcar un hito como alcanzado`.
 
 ### Task 4: C7 — avance ponderado
 
@@ -147,25 +147,25 @@ Regla, copiada de la especificación:
 - sin tareas, 0;
 - el resultado se redondea a entero.
 
-- [ ] **Step 1: Escribir las pruebas puras.**
+- [x] **Step 1: Escribir las pruebas puras.**
   - Costos 100 y 300 con avances 100 y 0 dan `25`.
   - Mismos avances, una tarea de 1 día y otra de 3 días, sin costo, dan `25`.
   - Costos 100 y 0, una tarea de 1 día al 100 % y otra de 3 días al 0 %, dan `25`: se usa duración porque falta un costo.
   - Sin fechas, dos tareas al 100 % y al 0 % dan `50`.
   - Una tarea con `dueDate < startDate` pesa 1.
   - `[]` da `0`.
-- [ ] **Step 2: Escribir las pruebas de ruta.** Proyecto con una tarea de costo 10 000 al 100 % y otra de costo 30 000 al 0 %:
+- [x] **Step 2: Escribir las pruebas de ruta.** Proyecto con una tarea de costo 10 000 al 100 % y otra de costo 30 000 al 0 %:
   - `GET /api/projects/:id/indicators` da `progress: 25`, también para un colaborador miembro;
   - `GET /api/projects` da `progress: 25` para el PM y para el colaborador;
   - `GET /api/dashboard` da `progress: 25` en ese proyecto.
-- [ ] **Step 3: Correr y ver que fallan** (hoy dan 50).
-- [ ] **Step 4: Implementar.**
+- [x] **Step 3: Correr y ver que fallan** (hoy dan 50).
+- [x] **Step 4: Implementar.**
   - `weightedProgress` usa `diffDays` de `@pm/shared`.
   - Los cuatro lugares consultan `plannedCostCents`, `startDate` y `dueDate` de cada tarea.
   - La lista de proyectos deja de usar `groupBy` y calcula con una sola consulta de tareas para todos los proyectos visibles.
-- [ ] **Step 5: Correr** la suite del servidor completa, incluidas `accessMatrix` y las de lo que no ve el colaborador.
+- [x] **Step 5: Correr** la suite del servidor completa, incluidas `accessMatrix` y las de lo que no ve el colaborador.
   Expected: PASS. Si una prueba existente esperaba el promedio simple, se ajusta su valor esperado y se anota como ruling.
-- [ ] **Step 6: Commit** `fix: el avance del proyecto se pondera por costo o duración`.
+- [x] **Step 6: Commit** `fix: el avance del proyecto se pondera por costo o duración`.
 
 ### Task 5: C6 — valor ganado
 
@@ -180,26 +180,26 @@ Regla, copiada de la especificación:
   - La respuesta de `GET /performance` incluye `outsideBaselineCostCents`.
   - En el cliente, `PerformanceMetrics.eacMethod` y `PerformanceData.outsideBaselineCostCents`; los nombres exactos se toman de `client/src/api/types.ts`.
 
-- [ ] **Step 1: Escribir las pruebas puras.**
+- [x] **Step 1: Escribir las pruebas puras.**
   - BAC 1 000, EV 500 y AC 1 000: `eacCents 2000`, `eacMethod 'CPI'`.
   - BAC 1 000, EV 0 y AC 300: `eacCents 1300`, `eacMethod 'ATYPICAL'`, `etcCents 1000` y `vacCents -300`.
   - BAC 1 000 sin gastos: `eacCents 1000`, `eacMethod 'BUDGET'`.
   - Gastos de 100 sin tarea, de 200 en una tarea fuera de la línea base, de 50 en una tarea de la línea base y de 400 en una fecha posterior a hoy dan `outsideBaselineCostCents 300` y `acCents 350`.
-- [ ] **Step 2: Escribir las pruebas de ruta.**
+- [x] **Step 2: Escribir las pruebas de ruta.**
   - `GET /performance` no crea filas en `EvmSnapshot`: `count` antes y después es 0.
   - La serie trae un punto con `date === today` cuyos `evCents` y `acCents` son las métricas de hoy, aunque no haya foto.
-- [ ] **Step 3: Escribir las pruebas de cliente.**
+- [x] **Step 3: Escribir las pruebas de cliente.**
   - Con `eacMethod 'ATYPICAL'` se ve «Estimación: aún no hay avance que permita proyectar el costo».
   - Con `outsideBaselineCostCents > 0` se ve «De este costo real, <monto> no está ligado a tareas de la línea base», con el monto formateado con `money()`.
   - Con 0, esa línea no aparece.
-- [ ] **Step 4: Correr y ver que fallan.**
-- [ ] **Step 5: Implementar.**
+- [x] **Step 4: Correr y ver que fallan.**
+- [x] **Step 5: Implementar.**
   - Quitar `saveEvmSnapshot` del GET.
   - Al armar la serie, el punto de `today` usa `metrics.evCents` y `metrics.acCents`.
   - `saveEvmSnapshot` y la tarea diaria no cambian; `server/tests/daily.test.ts` debe seguir pasando.
-- [ ] **Step 6: Correr** las suites de servidor y cliente, y `npx tsc -b`.
+- [x] **Step 6: Correr** las suites de servidor y cliente, y `npx tsc -b`.
   Expected: PASS.
-- [ ] **Step 7: Commit** `fix: valor ganado sin escrituras al leer, EAC atípico y gasto fuera de línea base`.
+- [x] **Step 7: Commit** `fix: valor ganado sin escrituras al leer, EAC atípico y gasto fuera de línea base`.
 
 ### Task 6: C8 — aplicar un cambio aprobado (servidor)
 
@@ -222,7 +222,7 @@ Regla, copiada de la especificación:
   - `toChangeRequestDto` suma `appliedAt` y `appliedBy: { id, name } | null`, sin `appliedById`.
   - `decisionSchema` sigue aceptando solo `APPROVED` y `REJECTED`.
 
-- [ ] **Step 1: Escribir las pruebas que fallan** en `changeRequests.test.ts`, bloque `describe('aplicar un cambio')`. Proyecto de `2026-01-01` a `2026-06-30` con presupuesto 100 000, una tarea con costo y fechas, y una solicitud aprobada con `scheduleImpactDays 10` y `costImpactCents 5000`:
+- [x] **Step 1: Escribir las pruebas que fallan** en `changeRequests.test.ts`, bloque `describe('aplicar un cambio')`. Proyecto de `2026-01-01` a `2026-06-30` con presupuesto 100 000, una tarea con costo y fechas, y una solicitud aprobada con `scheduleImpactDays 10` y `costImpactCents 5000`:
   - Aplicar `{ endDate: '2026-07-10', plannedBudgetCents: 105000, baseline: false }` responde 200 con `status: 'APPLIED'`, `appliedAt` y `appliedBy` del PM. El proyecto queda con esa fecha y ese presupuesto.
   - Aplicar `{ baseline: true }` crea una línea base nueva con `changeRequestId` de la solicitud y `reason` «CR-1 <título>».
   - Con `baseline: true` y ninguna tarea con costo, responde 400 `baseline_empty`, y la solicitud sigue `APPROVED` con el proyecto sin cambios.
@@ -231,14 +231,14 @@ Regla, copiada de la especificación:
   - `endDate: '2026-03-01'` con la tarea terminando en `2026-05-31` responde 400 en `fields.endDate`, sin cambios.
   - `endDate` antes del inicio responde 400 con `DATE_ORDER_MESSAGE`.
   - Un colaborador recibe 403.
-- [ ] **Step 2: Escribir las demás pruebas.**
+- [x] **Step 2: Escribir las demás pruebas.**
   - `changeProposals.test.ts`: `HIDDEN` suma `appliedAt`, `appliedById` y `appliedBy`. Una propuesta aplicada se ve con `status: 'APPLIED'` en la lista del colaborador.
   - `performance.test.ts`: `POST /baselines` con `changeRequestId` de una solicitud `APPLIED` responde 201; con una `PENDING`, sigue respondiendo 400.
   - `closedGuard.test.ts`: la ruta nueva aparece en la cobertura con su parámetro `:crId`, siguiendo el patrón de `decision`.
   - `schemas.test.ts`: `applyChangeSchema` exige `baseline`.
-- [ ] **Step 3: Correr y ver que fallan.**
-- [ ] **Step 4: Crear la migración** con `ALTER TABLE "ChangeRequest" ADD COLUMN "appliedAt" TIMESTAMP(3), ADD COLUMN "appliedById" TEXT`, más la clave foránea con `ON DELETE SET NULL`. Generarla con `npx prisma migrate dev --create-only --name change_applied` y revisar el SQL.
-- [ ] **Step 5: Implementar la ruta.**
+- [x] **Step 3: Correr y ver que fallan.**
+- [x] **Step 4: Crear la migración** con `ALTER TABLE "ChangeRequest" ADD COLUMN "appliedAt" TIMESTAMP(3), ADD COLUMN "appliedById" TEXT`, más la clave foránea con `ON DELETE SET NULL`. Generarla con `npx prisma migrate dev --create-only --name change_applied` y revisar el SQL.
+- [x] **Step 5: Implementar la ruta.**
   - Leer la solicitud del proyecto; si no está `APPROVED`, 409.
   - Validar fechas: `isDateOrderValid` con el inicio actual y `assertDatesStayInside` con lo que cambia.
   - En una transacción interactiva, en este orden:
@@ -246,9 +246,9 @@ Regla, copiada de la especificación:
     2. Actualizar el proyecto con los campos presentes.
     3. Si `baseline`, llamar a `createBaseline(tx, proyectoActualizado, user.id, { reason: reason || \`CR-${n} ${title}\`, changeRequestId: id })`.
   - `POST /baselines` usa la misma `createBaseline` y acepta solicitudes `APPROVED` o `APPLIED`.
-- [ ] **Step 6: Correr** las suites completas de shared y servidor, incluidas `accessMatrix`, `activityCoverage` y `closedGuard`.
+- [x] **Step 6: Correr** las suites completas de shared y servidor, incluidas `accessMatrix`, `activityCoverage` y `closedGuard`.
   Expected: PASS.
-- [ ] **Step 7: Commit** `feat: aplicar un cambio aprobado al plazo, presupuesto y línea base`.
+- [x] **Step 7: Commit** `feat: aplicar un cambio aprobado al plazo, presupuesto y línea base`.
 
 ### Task 7: C8 — aplicar un cambio (interfaz)
 
@@ -260,7 +260,7 @@ Regla, copiada de la especificación:
 - Consumes: `POST /api/projects/:id/change-requests/:crId/apply` (Task 6).
 - Produces: el componente `ApplyDialog({ projectId, item, project, hasBaseline, onClose })` dentro de `ChangeRequests.tsx`.
 
-- [ ] **Step 1: Escribir las pruebas que fallan.** Proyecto con `endDate '2026-06-30'` y presupuesto 100 000, solicitud aprobada con 10 días y 5 000 de impacto, y el proyecto con línea base:
+- [x] **Step 1: Escribir las pruebas que fallan.** Proyecto con `endDate '2026-06-30'` y presupuesto 100 000, solicitud aprobada con 10 días y 5 000 de impacto, y el proyecto con línea base:
   - La fila aprobada muestra el botón «Aplicar»; una rechazada o aplicada no lo muestra. Una aplicada muestra el estado «Aplicada».
   - La ventana trae la fecha de fin `2026-07-10`, el presupuesto 1 050,00, la casilla «Fijar nueva línea base citando este cambio» marcada y el motivo «CR-1 <título>».
   - Confirmar sin tocar nada envía `{ endDate: '2026-07-10', plannedBudgetCents: 105000, baseline: true, reason: 'CR-1 <título>' }`.
@@ -268,14 +268,14 @@ Regla, copiada de la especificación:
   - Sin impactos y sin línea base, la ventana trae los valores actuales, la casilla desmarcada, y el cuerpo es `{ baseline: false }` más `reason`.
   - Un error de campo de la API (`fields.endDate`) se muestra en la ventana.
   - `BaselinePanel` ofrece para citar también las solicitudes `APPLIED`.
-- [ ] **Step 2: Correr y ver que fallan.**
-- [ ] **Step 3: Implementar.**
+- [x] **Step 2: Correr y ver que fallan.**
+- [x] **Step 3: Implementar.**
   - La fecha propuesta se calcula con `addDays` de `@pm/shared`.
   - Al confirmar se invalidan las consultas de cambios, proyecto, desempeño e indicadores, con las mismas claves que ya usa la página.
   - El monto se edita con el mismo componente de dinero que el formulario del proyecto.
-- [ ] **Step 4: Correr** la suite del cliente y `npx tsc -b`.
+- [x] **Step 4: Correr** la suite del cliente y `npx tsc -b`.
   Expected: PASS.
-- [ ] **Step 5: Commit** `feat: ventana para aplicar un cambio aprobado`.
+- [x] **Step 5: Commit** `feat: ventana para aplicar un cambio aprobado`.
 
 ### Task 8: C8 — cambios por aplicar en el panel
 
@@ -288,26 +288,26 @@ Regla, copiada de la especificación:
   - `DashboardInput.changes?: { id: string; number: number; title: string; projectId: string }[]`, solo las `APPROVED`.
   - Un elemento de atención `{ kind: 'change', id, number, title, projectId, projectName }`, colocado después de los entregables y antes de los riesgos, dentro del mismo tope de 8.
 
-- [ ] **Step 1: Escribir las pruebas que fallan.**
+- [x] **Step 1: Escribir las pruebas que fallan.**
   - `GET /api/dashboard` con una solicitud aprobada en un proyecto activo lista `{ kind: 'change', number: 1, … }`.
   - No lista una aplicada, una pendiente ni una de un proyecto cerrado.
   - En el cliente, el elemento se ve como «CR-1 <título>» con el nombre del proyecto y un enlace a `/proyectos/<id>/cambios`; tomar la ruta exacta de `client/src/router.tsx`.
-- [ ] **Step 2: Correr y ver que fallan.**
-- [ ] **Step 3: Implementar.** La consulta es `prisma.changeRequest.findMany({ where: { ...where, status: 'APPROVED' }, select: { id, number, title, projectId } })`.
-- [ ] **Step 4: Correr** las suites de servidor y cliente, y `npx tsc -b`.
+- [x] **Step 2: Correr y ver que fallan.**
+- [x] **Step 3: Implementar.** La consulta es `prisma.changeRequest.findMany({ where: { ...where, status: 'APPROVED' }, select: { id, number, title, projectId } })`.
+- [x] **Step 4: Correr** las suites de servidor y cliente, y `npx tsc -b`.
   Expected: PASS.
-- [ ] **Step 5: Commit** `feat: el panel avisa de cambios aprobados sin aplicar`.
+- [x] **Step 5: Commit** `feat: el panel avisa de cambios aprobados sin aplicar`.
 
 ### Task 9: Cierre de la etapa
 
 **Files:**
 - Modify: `docs/guia-implementacion-pmbok.md` (fila de la etapa 4 con «C6 ✓, C7 ✓, C8 ✓, C9 ✓, C10 ✓», y una nota «Hecho» con la ruta de la especificación en cada corrección), este plan (casillas marcadas)
 
-- [ ] **Step 1: Suite completa.**
+- [x] **Step 1: Suite completa.**
   Run: `TEST_DATABASE_URL=postgresql://pm:pm@localhost:5433/postgres npm test` desde la raíz.
   Expected: shared, server y client en PASS.
-- [ ] **Step 2: Flujo completo.**
+- [x] **Step 2: Flujo completo.**
   Run: `npm run build`, luego `npm run test:e2e`.
   Expected: 1 passed. Si el flujo esperaba un avance o un texto que cambió con C7 o C6, se ajusta el valor esperado y se anota como ruling.
-- [ ] **Step 3: Actualizar la guía** y marcar las casillas.
-- [ ] **Step 4: Commit** `docs: marca la etapa 4 en la guía y el plan`.
+- [x] **Step 3: Actualizar la guía** y marcar las casillas.
+- [x] **Step 4: Commit** `docs: marca la etapa 4 en la guía y el plan`.

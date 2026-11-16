@@ -355,12 +355,15 @@ test('flujo principal', async ({ browser }) => {
 
   // 7. El PM ve el avance actualizado.
   await pm.goto(`${projectUrl}/resumen`);
-  await expect(pm.getByTestId('indicator-progress')).toHaveText('75 %');
+  // Avance ponderado por costo: Diseño (1.000) al 100 % y Construcción (3.000) al 50 % dan 62,5 %.
+  await expect(pm.getByTestId('indicator-progress')).toHaveText('63 %');
 
   // El panel refleja el proyecto.
   await pm.getByRole('link', { name: 'Inicio' }).click();
   await expect(pm.getByTestId('kpi-activeProjects')).toContainText('1');
-  await expect(pm.getByRole('main').getByRole('link', { name: 'Portal' })).toBeVisible();
+  // Los cambios aprobados sin aplicar también enlazan a Portal desde «Requiere atención».
+  await expect(pm.getByRole('main').getByRole('link', { name: 'Portal', exact: true })).toBeVisible();
+  await expect(pm.getByRole('link', { name: /CR-1 · Agregar blog/ })).toBeVisible();
 
   // Cierre: el PM ve los pendientes y cierra con motivo; el proyecto queda en solo lectura.
   await pm.goto(`${projectUrl}/cierre`);

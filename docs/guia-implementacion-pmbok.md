@@ -88,18 +88,23 @@ Un colaborador puede ser responsable de un riesgo (`Risk.ownerId`) pero no puede
 - La foto diaria de la curva S solo se guarda cuando el PM abre la pestaña Desempeño (`GET /api/projects/:id/performance` escribe en `EvmSnapshot`). Los días sin visita quedan sin dato. Mover la foto a la tarea diaria de M6 para todos los proyectos activos con línea base y dejar el GET sin escrituras.
 - En `server/src/domain/evm.ts`, `eacCents = cpi ? … : bacCents` devuelve EAC = BAC cuando el CPI es 0 (hay gasto y ningún avance), que es el caso más preocupante. Usar `AC + (BAC − EV)` cuando el CPI no sea utilizable y mostrarlo como estimación.
 - El costo real incluye todos los gastos aunque no estén ligados a tareas de la línea base, mientras que el valor ganado solo cuenta tareas en línea base. Mostrar el gasto fuera de línea base por separado.
+- Hecho (`docs/superpowers/specs/2026-11-15-etapa-4-numeros-fiables-design.md`): Desempeño solo lee y el punto de hoy se calcula al momento; con CPI 0 el EAC es AC + (BAC − EV) y se marca como estimación; el gasto fuera de la línea base se muestra aparte y sigue contando en el costo real.
 
 **C7. Avance del proyecto sin ponderar.**
 `averageProgress` (`server/src/domain/indicators.ts`) promedia todas las tareas por igual: una tarea de un día pesa como una de seis meses. Ponderar por costo planeado o, si falta, por duración; cuando exista F6, por esfuerzo estimado.
+- Hecho (`docs/superpowers/specs/2026-11-15-etapa-4-numeros-fiables-design.md`): por costo si todas las tareas lo tienen y si no por duración, en indicadores, salud, panel y lista de proyectos.
 
 **C8. Los cambios aprobados no se aplican.**
 Aprobar una solicitud (`server/src/routes/changeRequests.ts`) solo cambia su estado; el plazo, el presupuesto y la línea base se ajustan de memoria. Añadir el estado "Aplicado": tras aprobar, la interfaz ofrece actualizar fecha de fin y presupuesto con los impactos declarados y fijar nueva línea base citando el cambio. El panel debe listar los cambios aprobados sin aplicar.
+- Hecho (`docs/superpowers/specs/2026-11-15-etapa-4-numeros-fiables-design.md`): estado «Aplicada» y ventana «Aplicar» con fecha de fin y presupuesto propuestos y editables, y línea base opcional que cita el cambio, todo en una transacción. El panel lista los aprobados sin aplicar.
 
 **C9. Hitos.**
 La fecha del hito no se valida contra las fechas del proyecto (las tareas sí, con `isWithinProject`) y su estado es manual. Añadir `validate` en el registro de hitos de `registers.ts` y sugerir "Alcanzado" cuando todas sus tareas y entregables estén terminados.
+- Hecho (`docs/superpowers/specs/2026-11-15-etapa-4-numeros-fiables-design.md`): la fecha del hito queda dentro del proyecto al guardarlo y al cambiar las fechas del proyecto; la lista muestra «Listo para marcar como alcanzado».
 
 **C10. Textos sin límite de longitud.**
 Solo entregables y lecciones tienen máximo. Añadir `.max()` en `shared/src/schemas.ts` a títulos (200), descripciones y campos del acta (20 000) y comentarios (5 000).
+- Hecho (`docs/superpowers/specs/2026-11-15-etapa-4-numeros-fiables-design.md`): también notas, motivos y campos de una línea; los textos ya guardados se conservan.
 
 **C11. Ediciones simultáneas.**
 Prevalece el último guardado. Al abrir más información al equipo aumenta el riesgo de pisar cambios. Enviar `updatedAt` en las ediciones de acta, tareas, riesgos y entregables y responder 409 si cambió.
@@ -217,7 +222,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 | 1 | C12, M0 a M8 (con C4 y C5) | Cambiar de plataforma primero: todo lo demás se construye sobre Postgres y la nube |
 | 2 | C2, C1 + F1 | PM que ejecuta tareas y los tres perfiles de acceso |
 | 3 | F3 ✓, F2 ✓, F4 ✓, C11 ✓ | Control y comunicación al abrir más información |
-| 4 | C6, C7, C8, C9, C10 | Dejar fiables los números que ya se muestran |
+| 4 | C6 ✓, C7 ✓, C8 ✓, C9 ✓, C10 ✓ | Dejar fiables los números que ya se muestran |
 | 5 | F5, F6, F7, F8 | Planificación completa; F5 es requisito de F6, F7 y F12 |
 | 6 | F11, F9, F10 | Informes y comunicaciones para interesados |
 | 7 | F12, F13, F15, F16 | Entrega, calidad e incertidumbre |

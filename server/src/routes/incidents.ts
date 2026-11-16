@@ -30,13 +30,14 @@ export const incidentInclude = {
   owner: { select: { id: true, name: true } },
   task: { select: { id: true, title: true } },
   risk: { select: { id: true, description: true } },
+  deliverable: { select: { id: true, number: true, name: true } },
 } satisfies Prisma.IncidentInclude;
 
 export type IncidentWithRelations = Prisma.IncidentGetPayload<{ include: typeof incidentInclude }>;
 
 /** Forma pública de un incidente para quien consulta: el riesgo de origen solo lo ve el PM. */
 export function toIncidentDto(incident: IncidentWithRelations, viewer: IncidentViewer, today: string) {
-  const { projectId: _p, reportedById: _r, ownerId: _o, taskId: _t, riskId: _k, updatedAt: _u, risk, ...fields } = incident;
+  const { projectId: _p, reportedById: _r, ownerId: _o, taskId: _t, riskId: _k, deliverableId: _d, updatedAt: _u, risk, ...fields } = incident;
   const access = incidentAccess(incident, viewer);
   return {
     ...fields,
@@ -47,13 +48,20 @@ export function toIncidentDto(incident: IncidentWithRelations, viewer: IncidentV
 }
 
 /** Comprueba que el responsable, la tarea y el riesgo sean del proyecto. */
-export async function assertIncidentLinks(prisma: PrismaClient, projectId: string, input: { ownerId?: string | null; taskId?: string | null; riskId?: string | null }) {
+export async function assertIncidentLinks(
+  prisma: PrismaClient,
+  projectId: string,
+  input: { ownerId?: string | null; taskId?: string | null; riskId?: string | null; deliverableId?: string | null },
+) {
   await assertOwnerCanOwn(prisma, projectId, input.ownerId);
   if (input.taskId && !(await prisma.task.findFirst({ where: { id: input.taskId, projectId }, select: { id: true } }))) {
     throw fieldError('taskId', 'La tarea no pertenece al proyecto');
   }
   if (input.riskId && !(await prisma.risk.findFirst({ where: { id: input.riskId, projectId }, select: { id: true } }))) {
     throw fieldError('riskId', 'El riesgo no pertenece al proyecto');
+  }
+  if (input.deliverableId && !(await prisma.deliverable.findFirst({ where: { id: input.deliverableId, projectId }, select: { id: true } }))) {
+    throw fieldError('deliverableId', 'El entregable no pertenece a este proyecto');
   }
 }
 
@@ -95,11 +103,12 @@ export function incidentRoutes(app: App) {
   app.get(base, async (c) => {
     const { prisma } = c.var.deps;
     const { project, viewer } = await viewerOf(c, c.req.param('id'));
-    const query = readQuery(c) as { status?: string; mine?: string };
+    const query = readQuery(c) as { status?: string; mine?: string; kind?: string };
     const mine = { OR: [{ reportedById: viewer.userId }, { ownerId: viewer.userId }] };
     const where: Prisma.IncidentWhereInput = {
       projectId: project.id,
       ...(query.status ? { status: query.status } : {}),
+      ...(query.kind ? { kind: query.kind } : {}),
       ...(!viewer.isPm || query.mine === '1' ? mine : {}),
     };
     const incidents = await prisma.incident.findMany({ where, include: incidentInclude, orderBy: { number: 'desc' } });

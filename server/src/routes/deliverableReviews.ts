@@ -3,7 +3,9 @@ import { readBody, type App, type Ctx } from '../http';
 import { requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { AppError, fieldError } from '../errors';
+import { sanitizeRichText } from '../richText';
 import { findDeliverable, loadDeliverableDetail } from './deliverables';
+import { createIncidentIn } from './incidents';
 
 /** Aceptar o rechazar un entregable en revisión, dejando constancia en su historial. */
 export function deliverableReviewRoutes(app: App) {
@@ -29,8 +31,9 @@ export function deliverableReviewRoutes(app: App) {
     if (input.outcome === 'ACCEPTED' && !canAccept(criteria)) throw fieldError('criteria', 'Marca todos los criterios para poder aceptar');
     if (input.outcome === 'REJECTED' && !input.note.trim()) throw fieldError('note', 'Escribe el motivo del rechazo');
 
-    await prisma.$transaction([
-      prisma.deliverableReview.create({
+    // La revisión, el estado y la no conformidad (si se pide) se guardan juntos o nada.
+    const nonconformity = await prisma.$transaction(async (tx) => {
+      await tx.deliverableReview.create({
         data: {
           deliverableId: deliverable.id,
           outcome: input.outcome,
@@ -44,9 +47,19 @@ export function deliverableReviewRoutes(app: App) {
           reviewedById: user.id,
           createdAt: c.var.deps.now(),
         },
-      }),
-      prisma.deliverable.update({ where: { id: deliverable.id }, data: { status: input.outcome, version: { increment: 1 } } }),
-    ]);
-    return c.json(await loadDeliverableDetail(prisma, deliverable.id, c.var.deps.today()));
+      });
+      await tx.deliverable.update({ where: { id: deliverable.id }, data: { status: input.outcome, version: { increment: 1 } } });
+      if (!input.nonconformity) return null;
+      const incident = await createIncidentIn(tx, project.id, {
+        title: input.nonconformity.title,
+        description: sanitizeRichText(input.note.trim()),
+        kind: 'NONCONFORMITY',
+        deliverableId: deliverable.id,
+        priority: 'HIGH',
+        reportedById: user.id,
+      });
+      return { id: incident.id, number: incident.number };
+    });
+    return c.json({ ...(await loadDeliverableDetail(prisma, deliverable.id, c.var.deps.today())), nonconformity });
   });
 }

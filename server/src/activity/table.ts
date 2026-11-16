@@ -53,7 +53,7 @@ const TASK_FIELDS = ['status', 'startDate', 'dueDate', 'progress', 'plannedCostC
 const STEP_FIELDS = ['done', 'assigneeId'] as const;
 const MEMBER_FIELDS = ['projectRole'] as const;
 const DELIVERABLE_FIELDS = ['status', 'dueDate'] as const;
-const INCIDENT_FIELDS = ['status', 'ownerId', 'priority', 'dueDate'] as const;
+const INCIDENT_FIELDS = ['status', 'ownerId', 'priority', 'dueDate', 'kind'] as const;
 const CHANGE_FIELDS = ['status', 'scheduleImpactDays', 'costImpactCents'] as const;
 
 const project = (extra: Partial<ActivityEntry> = {}): ActivityEntry => ({ entity: 'project', target: param('id'), load: loadProject, fields: PROJECT_FIELDS, ...extra });

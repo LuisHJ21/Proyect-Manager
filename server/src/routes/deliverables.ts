@@ -12,6 +12,7 @@ import {
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, readQuery, type App, type Ctx } from '../http';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
+import { requireUser } from '../auth/guards';
 import { AppError, editConflict, fieldError, forbidden, notFound } from '../errors';
 import { sanitizeRichText } from '../richText';
 import { summarize } from '../domain/wbs';
@@ -77,8 +78,14 @@ export async function findDeliverable(prisma: PrismaClient, projectId: string, d
   return deliverable;
 }
 
-export async function loadDeliverableDetail(prisma: PrismaClient, id: string, today: string, isPm = true) {
+/**
+ * `incidents`: filtro de los incidentes ligados que puede ver quien pide (`{}` todos, `null` ninguno: la clave no se envía).
+ */
+export async function loadDeliverableDetail(prisma: PrismaClient, id: string, today: string, isPm = true, incidents: Prisma.IncidentWhereInput | null = {}) {
   const d = await prisma.deliverable.findUniqueOrThrow({ where: { id }, include: deliverableDetailInclude });
+  const linkedIncidents = incidents
+    ? await prisma.incident.findMany({ where: { deliverableId: id, ...incidents }, select: { id: true, number: true, title: true, kind: true, status: true }, orderBy: { number: 'asc' } })
+    : null;
   // Trabajo ligado, con el avance resumido si la tarea tiene subtareas.
   const [linked, tree] = await Promise.all([
     prisma.task.findMany({ where: { deliverableId: id }, select: { id: true, title: true, progress: true } }),
@@ -89,7 +96,7 @@ export async function loadDeliverableDetail(prisma: PrismaClient, id: string, to
     return node && node.childIds.length > 0 ? summarize(node.leafIds.map((leaf) => tree.byId.get(leaf)!)).progress : own;
   };
   const work = inWbsOrder(linked, tree).map((t) => ({ id: t.id, title: t.title, wbsCode: tree.nodes.get(t.id)?.code ?? '', progress: progressOf(t.id, t.progress) }));
-  return { ...toDeliverableDto(d, today, true, isPm), work };
+  return { ...toDeliverableDto(d, today, true, isPm), work, ...(linkedIncidents ? { incidents: linkedIncidents } : {}) };
 }
 
 const acceptedLocked = () => new AppError(409, 'deliverable_accepted', 'El entregable está aceptado: reábrelo para cambiar sus criterios');
@@ -138,7 +145,11 @@ export function deliverableRoutes(app: App) {
     const { project, can } = await getProjectAccess(c, c.req.param('id'));
     if (!can.read('deliverables')) throw forbidden();
     const deliverable = await findDeliverable(prisma, project.id, c.req.param('did'));
-    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c), can.write('deliverables')));
+    // Incidentes ligados con las reglas de incidentes: el colaborador ve solo los suyos; el observador, ninguno.
+    const level = can.level('incidents');
+    const userId = requireUser(c).id;
+    const incidents = level === 'write' ? {} : level === 'own' ? { OR: [{ reportedById: userId }, { ownerId: userId }] } : null;
+    return c.json(await loadDeliverableDetail(prisma, deliverable.id, today(c), can.write('deliverables'), incidents));
   });
 
   app.post(base, async (c) => {

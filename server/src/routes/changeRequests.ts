@@ -11,30 +11,53 @@ import { assertDatesStayInside } from './projects';
 type ItemParams = { id: string; crId: string };
 
 type Person = { id: string; name: string };
-type ChangeRequestRow = ChangeRequest & { decidedBy: Person | null; requestedByUser: Person | null; appliedBy: Person | null };
+type ChangeRequestRow = ChangeRequest & {
+  decidedBy: Person | null;
+  requestedByUser: Person | null;
+  appliedBy: Person | null;
+  requirements: { requirement: { id: string; number: number } }[];
+};
 
 const decidedByInclude = {
   decidedBy: { select: { id: true, name: true } },
   requestedByUser: { select: { id: true, name: true } },
   appliedBy: { select: { id: true, name: true } },
+  requirements: { include: { requirement: { select: { id: true, number: true } } } },
 } as const;
+
+/** Requisitos citados, por número. */
+const requirementsOf = (cr: ChangeRequestRow) => cr.requirements.map((r) => r.requirement).sort((a, b) => a.number - b.number);
+
+/** Requisitos sin repetir, todos del proyecto. */
+async function assertRequirements(prisma: PrismaClient, projectId: string, ids: string[]) {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return unique;
+  const count = await prisma.requirement.count({ where: { id: { in: unique }, projectId } });
+  if (count !== unique.length) throw fieldError('requirementIds', 'El requisito no pertenece a este proyecto');
+  return unique;
+}
 
 /** Vista del PM: todo, más quién la propuso desde el equipo. */
 export function toChangeRequestDto(cr: ChangeRequestRow) {
-  const { projectId: _projectId, decidedById: _decidedById, requestedById: _requestedById, appliedById: _appliedById, requestedByUser, costImpactCents, ...fields } = cr;
-  return { ...fields, proposedBy: requestedByUser, costImpactCents: costImpactCents === null ? null : Number(costImpactCents) };
+  const { projectId: _projectId, decidedById: _decidedById, requestedById: _requestedById, appliedById: _appliedById, requestedByUser, costImpactCents, requirements: _r, ...fields } = cr;
+  return { ...fields, proposedBy: requestedByUser, costImpactCents: costImpactCents === null ? null : Number(costImpactCents), requirements: requirementsOf(cr) };
 }
 
 /** Vista de quien propuso: el estado y la decisión, sin impactos ni solicitante. */
 function toProposalDto(cr: ChangeRequestRow) {
   const { id, number, title, description, status, decisionNote, decidedAt, decidedBy, createdAt } = cr;
-  return { id, number, title, description, status, decisionNote, decidedAt, decidedBy, createdAt };
+  return { id, number, title, description, status, decisionNote, decidedAt, decidedBy, createdAt, requirements: requirementsOf(cr) };
 }
 
-const PROPOSAL_FIELDS = ['title', 'description'];
+const PROPOSAL_FIELDS = ['title', 'description', 'requirementIds'];
 
 /** Crea la solicitud con el siguiente número del proyecto. */
-function createChangeRequest(prisma: PrismaClient, projectId: string, data: Omit<Prisma.ChangeRequestUncheckedCreateInput, 'projectId' | 'number'>) {
+function createChangeRequest(
+  prisma: PrismaClient,
+  projectId: string,
+  data: Omit<Prisma.ChangeRequestUncheckedCreateInput, 'projectId' | 'number'>,
+  requirementIds: string[],
+) {
   return prisma.$transaction(async (tx) => {
     // El contador del proyecto evita reutilizar el número de una solicitud borrada.
     const { lastChangeNumber } = await tx.project.update({
@@ -42,7 +65,10 @@ function createChangeRequest(prisma: PrismaClient, projectId: string, data: Omit
       data: { lastChangeNumber: { increment: 1 } },
       select: { lastChangeNumber: true },
     });
-    return tx.changeRequest.create({ data: { ...data, number: lastChangeNumber, projectId }, include: decidedByInclude });
+    return tx.changeRequest.create({
+      data: { ...data, number: lastChangeNumber, projectId, requirements: { create: requirementIds.map((requirementId) => ({ requirementId })) } },
+      include: decidedByInclude,
+    });
   });
 }
 
@@ -83,8 +109,9 @@ export function changeRequestRoutes(app: App) {
         throw forbidden('Solo el Project Manager puede fijar impactos o solicitante');
       }
       const user = requireUser(c);
-      const input = proposeChangeSchema.parse(body);
-      const created = await createChangeRequest(prisma, project.id, { ...input, requestedById: user.id, requestedBy: user.name });
+      const { requirementIds, ...input } = proposeChangeSchema.parse(body);
+      const requirements = await assertRequirements(prisma, project.id, requirementIds);
+      const created = await createChangeRequest(prisma, project.id, { ...input, requestedById: user.id, requestedBy: user.name }, requirements);
       await notify(prisma, {
         kind: 'CHANGE_PROPOSED',
         projectId: project.id,
@@ -96,8 +123,9 @@ export function changeRequestRoutes(app: App) {
       });
       return c.json(toProposalDto(created), 201);
     }
-    const { costImpactCents, ...input } = changeRequestSchema.parse(body);
-    const created = await createChangeRequest(prisma, project.id, { ...input, costImpactCents: toBigInt(costImpactCents) });
+    const { costImpactCents, requirementIds, ...input } = changeRequestSchema.parse(body);
+    const requirements = await assertRequirements(prisma, project.id, requirementIds);
+    const created = await createChangeRequest(prisma, project.id, { ...input, costImpactCents: toBigInt(costImpactCents) }, requirements);
     return c.json(toChangeRequestDto(created), 201);
   });
 
@@ -105,10 +133,15 @@ export function changeRequestRoutes(app: App) {
     const { prisma } = c.var.deps;
     const project = await requireProjectAccess(c, c.req.param('id'), 'changes', 'write');
     const cr = await findPending(c.var.deps.prisma, project.id, c.req.param('crId'));
-    const { costImpactCents, ...input } = updateChangeRequestSchema.parse(await readBody(c));
+    const { costImpactCents, requirementIds, ...input } = updateChangeRequestSchema.parse(await readBody(c));
+    const requirements = requirementIds && (await assertRequirements(prisma, project.id, requirementIds));
     const updated = await prisma.changeRequest.update({
       where: { id: cr.id },
-      data: { ...input, costImpactCents: toBigInt(costImpactCents) },
+      data: {
+        ...input,
+        costImpactCents: toBigInt(costImpactCents),
+        ...(requirements ? { requirements: { deleteMany: {}, create: requirements.map((requirementId) => ({ requirementId })) } } : {}),
+      },
       include: decidedByInclude,
     });
     return c.json(toChangeRequestDto(updated));

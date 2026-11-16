@@ -2,7 +2,7 @@ import type { Project, User } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
-const PROPOSAL_KEYS = ['createdAt', 'decidedAt', 'decidedBy', 'decisionNote', 'description', 'id', 'number', 'status', 'title'];
+const PROPOSAL_KEYS = ['createdAt', 'decidedAt', 'decidedBy', 'decisionNote', 'description', 'id', 'number', 'requirements', 'status', 'title'];
 const HIDDEN = ['scopeImpact', 'scheduleImpactDays', 'costImpactCents', 'requestedBy', 'requestedById', 'updatedAt', 'proposedBy', 'appliedAt', 'appliedById', 'appliedBy'];
 
 describe('propuestas de cambio del equipo', () => {

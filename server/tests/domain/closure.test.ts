@@ -93,6 +93,8 @@ describe('informe de cierre', () => {
           tasks: [{ id: 't1', title: 'T', progress: 100, dueDate: '2026-01-10', plannedCostCents: 10000 }],
           expenses: [{ amountCents: 12500, date: '2026-01-09', taskId: 't1' }],
           plannedBudgetCents: 10000,
+          contingencyCents: 0,
+          managementCents: 0,
         },
       },
       '2026-02-01',

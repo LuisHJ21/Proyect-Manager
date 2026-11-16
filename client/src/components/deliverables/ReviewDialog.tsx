@@ -35,6 +35,9 @@ export function ReviewDialog({
   const [reviewedOn, setReviewedOn] = useState(localToday(new Date()));
   const [note, setNote] = useState('');
   const [attachmentId, setAttachmentId] = useState('');
+  // Al rechazar se propone registrar la no conformidad ligada al entregable.
+  const [registerNc, setRegisterNc] = useState(outcome === 'REJECTED');
+  const [ncTitle, setNcTitle] = useState(`No conformidad: ${deliverable.name}`);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
   const label = outcome === 'ACCEPTED' ? 'Aceptar' : 'Rechazar';
@@ -47,7 +50,14 @@ export function ReviewDialog({
     try {
       const updated = await api<DeliverableDetail>(`/api/projects/${projectId}/deliverables/${deliverable.id}/reviews`, {
         method: 'POST',
-        body: { outcome, stakeholderId: stakeholderId || null, attachmentId: attachmentId || null, reviewedOn, note },
+        body: {
+          outcome,
+          stakeholderId: stakeholderId || null,
+          attachmentId: attachmentId || null,
+          reviewedOn,
+          note,
+          ...(outcome === 'REJECTED' && registerNc ? { nonconformity: { title: ncTitle } } : {}),
+        },
       });
       onDone(updated);
     } catch (error) {
@@ -97,6 +107,19 @@ export function ReviewDialog({
             </select>
           </FormField>
         </div>
+        {outcome === 'REJECTED' && (
+          <div className="space-y-2 sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" checked={registerNc} onChange={(e) => setRegisterNc(e.target.checked)} className="h-4 w-4 accent-primary" />
+              Registrar no conformidad
+            </label>
+            {registerNc && (
+              <FormField label="Título de la no conformidad" error={errors.fields['nonconformity.title'] ?? errors.fields.nonconformity}>
+                <input className={inputClass} value={ncTitle} onChange={(e) => setNcTitle(e.target.value)} />
+              </FormField>
+            )}
+          </div>
+        )}
         <div className="flex justify-end gap-2 sm:col-span-2">
           <Button variant="secondary" onClick={onClose}>
             Cancelar

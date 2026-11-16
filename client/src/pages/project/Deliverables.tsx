@@ -1,96 +1,170 @@
-import { DELIVERABLE_STATUS, LABELS } from '@pm/shared';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { api, errorMessage } from '../../api/client';
-import type { DeliverableRow } from '../../api/types';
-import { DELIVERABLE_TONE, DeliverableDetailDialog } from '../../components/deliverables/DeliverableDetail';
-import { deliverableCode, DeliverableForm, deliverablesKey } from '../../components/deliverables/DeliverableForm';
-import { ErrorState, Loading } from '../../components/ErrorState';
-import { Badge, Button, Card, EmptyState, inputClass } from '../../components/ui';
-import { shortDate } from '../../lib/display';
-import { useAccess } from '../../auth/useAccess';
-import { useProject } from './ProjectLayout';
+import { DELIVERABLE_STATUS, LABELS } from "@pm/shared";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { api, errorMessage } from "../../api/client";
+import type { DeliverableRow } from "../../api/types";
+import {
+  DELIVERABLE_TONE,
+  DeliverableDetailDialog,
+} from "../../components/deliverables/DeliverableDetail";
+import {
+  deliverableCode,
+  DeliverableForm,
+  deliverablesKey,
+} from "../../components/deliverables/DeliverableForm";
+import { ErrorState, Loading } from "../../components/ErrorState";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  inputClass,
+} from "../../components/ui";
+import { shortDate } from "../../lib/display";
+import { useAccess } from "../../auth/useAccess";
+import { QualitySection } from "../../components/quality/QualitySection";
+import { useProject } from "./ProjectLayout";
 
 /** Registro de entregables del proyecto, con sus criterios de aceptación. El PM lo gestiona; el resto del equipo lo consulta. */
 export function DeliverablesPage() {
   const { project, readOnly: closed } = useProject();
   const { canWrite } = useAccess();
-  const readOnly = closed || !canWrite('deliverables');
-  const [status, setStatus] = useState('');
+  const readOnly = closed || !canWrite("deliverables");
+  const [status, setStatus] = useState("");
   const [adding, setAdding] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const list = useQuery({
-    queryKey: [...deliverablesKey(project.id), 'list', status],
-    queryFn: () => api<DeliverableRow[]>(`/api/projects/${project.id}/deliverables${status ? `?status=${status}` : ''}`),
+    queryKey: [...deliverablesKey(project.id), "list", status],
+    queryFn: () =>
+      api<DeliverableRow[]>(
+        `/api/projects/${project.id}/deliverables${status ? `?status=${status}` : ""}`,
+      ),
   });
 
   return (
-    <Card title="Entregables" actions={readOnly ? undefined : <Button variant="secondary" onClick={() => setAdding(true)}>Añadir entregable</Button>}>
-      <div className="mb-4">
-        <label className="text-sm text-ink-nav">
-          <span className="mb-1 block font-medium">Estado</span>
-          <select aria-label="Estado" className={inputClass} value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">Todos</option>
-            {DELIVERABLE_STATUS.map((s) => (
-              <option key={s} value={s}>
-                {LABELS.deliverableStatus[s]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {list.isPending ? (
-        <Loading />
-      ) : list.isError ? (
-        <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} />
-      ) : list.data.length === 0 ? (
-        <EmptyState>Aún no hay entregables.</EmptyState>
-      ) : (
-        <div className="relative overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs text-ink-soft uppercase">
-              <tr>
-                {['Número', 'Entregable', 'Hito', 'Fecha comprometida', 'Criterios', 'Estado'].map((h) => (
-                  <th key={h} className="py-2 pr-4 font-medium whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-                <th className="py-2 font-medium">
-                  <span className="sr-only">Acciones</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {list.data.map((d) => (
-                <tr key={d.id}>
-                  <td className="py-2 pr-4 font-medium whitespace-nowrap text-ink">{deliverableCode(d)}</td>
-                  <td className="min-w-40 py-2 pr-4 text-ink [overflow-wrap:break-word]">{d.name}</td>
-                  <td className="py-2 pr-4 text-ink-nav">{d.milestone?.name ?? '—'}</td>
-                  <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">
-                    {d.dueDate ? shortDate(d.dueDate) : '—'}
-                    {d.overdue && (
-                      <span className="ml-2">
-                        <Badge tone="danger">Vencido</Badge>
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">{`${d.criteriaMet}/${d.criteriaTotal}`}</td>
-                  <td className="py-2 pr-4">
-                    <Badge tone={DELIVERABLE_TONE[d.status]}>{LABELS.deliverableStatus[d.status]}</Badge>
-                  </td>
-                  <td className="py-1 text-right">
-                    <Button variant="ghost" aria-label={`Ver ${deliverableCode(d)}`} onClick={() => setViewingId(d.id)}>
-                      Ver
-                    </Button>
-                  </td>
-                </tr>
+    <div className="space-y-6">
+      <Card
+        title="Entregables"
+        actions={
+          readOnly ? undefined : (
+            <Button variant="secondary" onClick={() => setAdding(true)}>
+              Añadir entregable
+            </Button>
+          )
+        }
+      >
+        <div className="mb-4">
+          <label className="text-sm text-ink-nav">
+            <span className="mb-1 block font-medium">Estado</span>
+            <select
+              aria-label="Estado"
+              className={inputClass}
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {DELIVERABLE_STATUS.map((s) => (
+                <option key={s} value={s}>
+                  {LABELS.deliverableStatus[s]}
+                </option>
               ))}
-            </tbody>
-          </table>
+            </select>
+          </label>
         </div>
-      )}
-      {adding && <DeliverableForm projectId={project.id} onClose={() => setAdding(false)} />}
-      {viewingId && <DeliverableDetailDialog projectId={project.id} id={viewingId} readOnly={readOnly} onClose={() => setViewingId(null)} />}
-    </Card>
+        {list.isPending ? (
+          <Loading />
+        ) : list.isError ? (
+          <ErrorState
+            message={errorMessage(list.error)}
+            onRetry={() => list.refetch()}
+          />
+        ) : list.data.length === 0 ? (
+          <EmptyState>Aún no hay entregables.</EmptyState>
+        ) : (
+          <div className="relative overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs text-ink-soft uppercase">
+                <tr>
+                  {[
+                    "Número",
+                    "Entregable",
+                    "Hito",
+                    "Fecha comprometida",
+                    "Criterios",
+                    "Estado",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="py-2 pr-4 font-medium whitespace-nowrap"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                  <th className="py-2 font-medium">
+                    <span className="sr-only">Acciones</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {list.data.map((d) => (
+                  <tr key={d.id}>
+                    <td className="py-2 pr-4 font-medium whitespace-nowrap text-ink">
+                      {deliverableCode(d)}
+                    </td>
+                    <td className="min-w-40 py-2 pr-4 text-ink [overflow-wrap:break-word]">
+                      {d.name}
+                    </td>
+                    <td className="py-2 pr-4 text-ink-nav">
+                      {d.milestone?.name ?? "—"}
+                    </td>
+                    <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">
+                      {d.dueDate ? shortDate(d.dueDate) : "—"}
+                      {d.overdue && (
+                        <span className="ml-2">
+                          <Badge tone="danger">Vencido</Badge>
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">{`${d.criteriaMet}/${d.criteriaTotal}`}</td>
+                    <td className="py-2 pr-4">
+                      <Badge tone={DELIVERABLE_TONE[d.status]}>
+                        {LABELS.deliverableStatus[d.status]}
+                      </Badge>
+                    </td>
+                    <td className="py-1 text-right">
+                      <Button
+                        variant="ghost"
+                        aria-label={`Ver ${deliverableCode(d)}`}
+                        onClick={() => setViewingId(d.id)}
+                      >
+                        Ver
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {adding && (
+          <DeliverableForm
+            projectId={project.id}
+            onClose={() => setAdding(false)}
+          />
+        )}
+        {viewingId && (
+          <DeliverableDetailDialog
+            projectId={project.id}
+            id={viewingId}
+            readOnly={readOnly}
+            onClose={() => setViewingId(null)}
+          />
+        )}
+      </Card>
+      <QualitySection
+        projectId={project.id}
+        canEdit={!closed && canWrite("quality")}
+      />
+    </div>
   );
 }

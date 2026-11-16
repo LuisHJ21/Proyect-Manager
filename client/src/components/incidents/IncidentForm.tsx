@@ -1,8 +1,9 @@
-import { LABELS, PRIORITY, type Priority } from '@pm/shared';
+import { INCIDENT_KIND, LABELS, PRIORITY, type IncidentKind, type Priority } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api } from '../../api/client';
-import type { Incident, Member, Task } from '../../api/types';
+import type { DeliverableRow, Incident, Member, Task } from '../../api/types';
+import { deliverableCode, deliverablesKey } from '../deliverables/DeliverableForm';
 import { Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { membersKey } from '../project/MembersPanel';
@@ -22,6 +23,9 @@ export function IncidentForm({ projectId, isPm, incident, initialTaskId, onClose
   const [ownerId, setOwnerId] = useState(incident?.owner?.id ?? '');
   const [priority, setPriority] = useState<Priority>(incident?.priority ?? 'MEDIUM');
   const [dueDate, setDueDate] = useState(incident?.dueDate ?? '');
+  const [kind, setKind] = useState<IncidentKind>(incident?.kind ?? 'INCIDENT');
+  const [deliverableId, setDeliverableId] = useState(incident?.deliverable?.id ?? '');
+  const deliverables = useQuery({ queryKey: [...deliverablesKey(projectId), 'list', ''], queryFn: () => api<DeliverableRow[]>(`/api/projects/${projectId}/deliverables`), enabled: isPm });
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
@@ -33,7 +37,7 @@ export function IncidentForm({ projectId, isPm, incident, initialTaskId, onClose
       title,
       description,
       taskId: taskId || null,
-      ...(isPm ? { ownerId: ownerId || null, priority, dueDate: dueDate || null } : {}),
+      ...(isPm ? { ownerId: ownerId || null, priority, dueDate: dueDate || null, kind, deliverableId: deliverableId || null } : {}),
     };
     try {
       const url = `/api/projects/${projectId}/incidents`;
@@ -103,6 +107,25 @@ export function IncidentForm({ projectId, isPm, incident, initialTaskId, onClose
             </FormField>
             <FormField label="Fecha límite" error={errors.fields.dueDate}>
               <input type="date" className={inputClass} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </FormField>
+            <FormField label="Tipo" error={errors.fields.kind}>
+              <select className={inputClass} value={kind} onChange={(e) => setKind(e.target.value as IncidentKind)}>
+                {INCIDENT_KIND.map((k) => (
+                  <option key={k} value={k}>
+                    {LABELS.incidentKind[k]}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="Entregable" error={errors.fields.deliverableId}>
+              <select className={inputClass} value={deliverableId} onChange={(e) => setDeliverableId(e.target.value)}>
+                <option value="">Sin entregable</option>
+                {deliverables.data?.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {`${deliverableCode(d)} · ${d.name}`}
+                  </option>
+                ))}
+              </select>
             </FormField>
           </>
         )}

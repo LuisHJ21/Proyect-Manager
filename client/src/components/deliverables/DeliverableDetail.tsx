@@ -199,6 +199,21 @@ export function DeliverableDetailDialog({ projectId, id, readOnly = false, onClo
             </ul>
           )}
         </section>
+        {d.incidents && d.incidents.length > 0 && (
+          <section aria-label="Incidentes ligados">
+            <h3 className="mb-2 text-sm font-semibold text-ink">Incidentes ligados</h3>
+            <ul className="space-y-1 text-sm">
+              {d.incidents.map((i) => (
+                <li key={i.id} className="flex justify-between gap-3">
+                  <Link className="text-link hover:underline" to={`/proyectos/${projectId}/incidentes`}>
+                    {`INC-${i.number} ${i.title}`}
+                  </Link>
+                  <span className="text-ink-soft">{`${LABELS.incidentKind[i.kind]} · ${LABELS.incidentStatus[i.status]}`}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {!readOnly && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">

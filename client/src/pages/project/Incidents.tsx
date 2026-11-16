@@ -1,4 +1,4 @@
-import { INCIDENT_STATUS, LABELS } from '@pm/shared';
+import { INCIDENT_KIND, INCIDENT_STATUS, LABELS } from '@pm/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, errorMessage } from '../../api/client';
@@ -15,16 +15,18 @@ import { useProject } from './ProjectLayout';
 export function IncidentsPage() {
   const { project, isPm, readOnly } = useProject();
   const [status, setStatus] = useState('');
+  const [kind, setKind] = useState('');
   const [mine, setMine] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
 
   const params = new URLSearchParams();
   if (status) params.set('status', status);
+  if (kind) params.set('kind', kind);
   if (isPm && mine) params.set('mine', '1');
   const query = params.toString();
   const list = useQuery({
-    queryKey: [...incidentsKey(project.id), status, isPm && mine],
+    queryKey: [...incidentsKey(project.id), status, kind, isPm && mine],
     queryFn: () => api<Incident[]>(`/api/projects/${project.id}/incidents${query ? `?${query}` : ''}`),
   });
   const viewing = list.data?.find((i) => i.id === viewingId) ?? null;
@@ -39,6 +41,17 @@ export function IncidentsPage() {
             {INCIDENT_STATUS.map((s) => (
               <option key={s} value={s}>
                 {LABELS.incidentStatus[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm text-ink-nav">
+          <span className="mb-1 block font-medium">Tipo</span>
+          <select aria-label="Tipo" className={inputClass} value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="">Todos</option>
+            {INCIDENT_KIND.map((k) => (
+              <option key={k} value={k}>
+                {LABELS.incidentKind[k]}
               </option>
             ))}
           </select>
@@ -61,7 +74,7 @@ export function IncidentsPage() {
           <table className="w-full text-left text-sm">
             <thead className="text-xs text-ink-soft uppercase">
               <tr>
-                {['Número', 'Incidente', 'Prioridad', 'Responsable', 'Fecha límite', 'Estado'].map((h) => (
+                {['Número', 'Incidente', 'Tipo', 'Prioridad', 'Responsable', 'Fecha límite', 'Estado'].map((h) => (
                   <th key={h} className="py-2 pr-4 font-medium whitespace-nowrap">
                     {h}
                   </th>
@@ -76,6 +89,7 @@ export function IncidentsPage() {
                 <tr key={incident.id}>
                   <td className="py-2 pr-4 font-medium whitespace-nowrap text-ink">{code(incident)}</td>
                   <td className="min-w-40 py-2 pr-4 text-ink [overflow-wrap:break-word]">{incident.title}</td>
+                  <td className="py-2 pr-4 whitespace-nowrap text-ink-nav">{LABELS.incidentKind[incident.kind ?? 'INCIDENT']}</td>
                   <td className="py-2 pr-4">
                     <Badge tone={PRIORITY_TONE[incident.priority]}>{LABELS.priority[incident.priority]}</Badge>
                   </td>

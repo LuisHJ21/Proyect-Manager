@@ -303,6 +303,8 @@ export type Incident = {
   owner: PersonRef | null;
   task: { id: string; title: string } | null;
   risk: { id: string; title: string } | null;
+  kind: import('@pm/shared').IncidentKind;
+  deliverable: { id: string; number: number; name: string } | null;
   can: { edit: boolean; changeStatus: boolean; close: boolean };
 };
 
@@ -352,6 +354,10 @@ export type DeliverableDetail = DeliverableRow & {
   reviews: DeliverableReview[];
   /** Tareas ligadas al entregable, en orden EDT. */
   work: { id: string; title: string; wbsCode: string; progress: number }[];
+  /** Incidentes ligados que puede ver quien pide; falta si no ve incidentes. */
+  incidents?: { id: string; number: number; title: string; kind: import('@pm/shared').IncidentKind; status: import('@pm/shared').IncidentStatus }[];
+  /** Solo en la respuesta de una revisión con no conformidad. */
+  nonconformity?: { id: string; number: number } | null;
 };
 
 export type ClosureReport = {
@@ -514,4 +520,15 @@ type TraceDeliverable = { id: string; number: number; name: string; status: impo
 export type Traceability = {
   requirements: { id: string; number: number; description: string; status: import('@pm/shared').RequirementStatus; priority: import('@pm/shared').Priority; deliverables: TraceDeliverable[] }[];
   orphanDeliverables: { id: string; number: number; name: string }[];
+};
+export type QualityMetric = {
+  id: string;
+  name: string;
+  unit: string;
+  target: number;
+  direction: import('@pm/shared').MetricDirection;
+  deliverable: { id: string; number: number; name: string } | null;
+  latest: { date: string; value: number } | null;
+  met: boolean | null;
+  measurements: { id: string; date: string; value: number; note: string }[];
 };

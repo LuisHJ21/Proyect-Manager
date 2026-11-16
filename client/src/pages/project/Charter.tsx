@@ -10,17 +10,11 @@ import { RichTextView } from '../../components/richText/RichTextView';
 import { Badge, Button, Card, inputClass } from '../../components/ui';
 import { useProject } from './ProjectLayout';
 import { AssumptionsRegister } from '../../components/assumptions/AssumptionsRegister';
+import { CharterPrint, CHARTER_FIELDS, versionHeading } from '../../components/charter/CharterPrint';
+import { charterVersionsKey, CharterVersions } from '../../components/charter/CharterVersions';
+import type { CharterVersionContent, CharterVersionSummary } from '../../api/types';
 
-const FIELDS = [
-  { name: 'sponsor', label: 'Patrocinador', rows: 1 },
-  { name: 'justification', label: 'Justificación', rows: 4 },
-  { name: 'scopeIncluded', label: 'Alcance incluido', rows: 4 },
-  { name: 'scopeExcluded', label: 'Alcance excluido', rows: 3 },
-  { name: 'boundaries', label: 'Límites', rows: 3 },
-  { name: 'assumptions', label: 'Supuestos', rows: 3 },
-  { name: 'constraints', label: 'Restricciones', rows: 3 },
-  { name: 'successCriteria', label: 'Criterios de éxito', rows: 4 },
-] as const;
+const FIELDS = CHARTER_FIELDS;
 
 type FieldName = (typeof FIELDS)[number]['name'];
 type Draft = Record<FieldName, string>;
@@ -100,7 +94,10 @@ function CharterForm({ projectId, charter }: { projectId: string; charter: Chart
         result = await api<Charter>(url, { method: 'PUT', body: { ...draft, version } });
         version = result.version;
       }
-      if (action === 'approve') result = await api<Charter>(`${url}/approve`, { method: 'POST', body: { version } });
+      if (action === 'approve') {
+        result = await api<Charter>(`${url}/approve`, { method: 'POST', body: { version } });
+        void queryClient.invalidateQueries({ queryKey: charterVersionsKey(projectId) });
+      }
       queryClient.setQueryData(['project', projectId, 'charter'], result);
       // El servidor devuelve el HTML ya limpio, que puede diferir del del editor (por ejemplo <br /> frente a <br>).
       // El borrador toma lo guardado para que no queden cambios pendientes falsos.
@@ -197,13 +194,39 @@ export function CharterPage() {
     queryKey: ['project', project.id, 'charter'],
     queryFn: () => api<Charter>(`/api/projects/${project.id}/charter`),
   });
+  const versions = useQuery({ queryKey: charterVersionsKey(project.id), queryFn: () => api<CharterVersionSummary[]>(`/api/projects/${project.id}/charter/versions`) });
+  // Lo que se imprime (acta actual o una versión); la impresión se pide tras pintarlo.
+  const [printTarget, setPrintTarget] = useState<{ heading: string; content: CharterVersionContent } | null>(null);
+  const [printRequest, setPrintRequest] = useState(0);
+  useEffect(() => {
+    if (printRequest > 0) window.print();
+  }, [printRequest]);
+  const print = (target: { heading: string; content: CharterVersionContent }) => {
+    setPrintTarget(target);
+    setPrintRequest((n) => n + 1);
+  };
 
   if (charter.isPending) return <Loading />;
   if (isBlockingError(charter)) return <ErrorState message={errorMessage(charter.error)} onRetry={() => charter.refetch()} />;
+  const current = charter.data!;
+  const printCurrent = () =>
+    print({
+      heading: current.status === 'APPROVED' ? versionHeading(versions.data?.[0]?.number ?? null, current.approvedAt, current.approvedBy) : versionHeading(null, null, null),
+      content: toDraft(current),
+    });
   return (
-    <div className="space-y-6">
-      {isPm && !readOnly ? <CharterForm projectId={project.id} charter={charter.data!} /> : <CharterReadOnly charter={charter.data!} />}
-      <AssumptionsRegister projectId={project.id} charterText={charter.data?.assumptions ?? ''} canEdit={isPm && !readOnly} />
-    </div>
+    <>
+      <div className="space-y-6" data-print-hide>
+        <div className="flex justify-end">
+          <Button variant="secondary" onClick={printCurrent}>
+            Imprimir / Guardar PDF
+          </Button>
+        </div>
+        {isPm && !readOnly ? <CharterForm projectId={project.id} charter={current} /> : <CharterReadOnly charter={current} />}
+        <CharterVersions projectId={project.id} onPrint={(v) => print({ heading: versionHeading(v.number, v.approvedAt, v.approvedBy), content: v.content })} />
+        <AssumptionsRegister projectId={project.id} charterText={current.assumptions ?? ''} canEdit={isPm && !readOnly} />
+      </div>
+      {printTarget && <CharterPrint projectName={project.name} heading={printTarget.heading} content={printTarget.content} />}
+    </>
   );
 }

@@ -64,6 +64,14 @@ export type Project = {
   spentCents?: number;
 };
 
+/** Contenido congelado del acta en una aprobación (F18). */
+export type CharterVersionContent = Partial<Record<'sponsor' | 'justification' | 'scopeIncluded' | 'scopeExcluded' | 'boundaries' | 'assumptions' | 'constraints' | 'successCriteria', string>> & {
+  objectives?: { description: string; metric: string; target: string; status: string }[];
+  milestones?: { name: string; dueDate: string; status: string }[];
+};
+export type CharterVersionSummary = { number: number; approvedAt: string; approvedBy: PersonRef | null };
+export type CharterVersionDetail = CharterVersionSummary & { content: CharterVersionContent };
+
 export type PauseImpact = { shared: { userId: string; name: string; hours: { projectId: string; total: number }[] }[] };
 type Dates = { startDate: string | null; dueDate: string | null };
 export type ResumePreview = {

@@ -15,6 +15,8 @@ export type DashboardInput = {
     projectId: string;
     status: string;
     progress: number;
+    plannedCostCents: number;
+    startDate: string | null;
     dueDate: string | null;
     assignees: (Person & { role: string; active: boolean })[];
   }[];

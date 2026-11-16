@@ -17,6 +17,8 @@ const task = (id: string, projectId: string, over: Partial<DashboardInput['tasks
   projectId,
   status: 'TODO',
   progress: 0,
+  plannedCostCents: 0,
+  startDate: null,
   dueDate: null,
   assignees: [],
   ...over,

@@ -1,7 +1,7 @@
-import { addDays } from '@pm/shared';
+import { addDays, diffDays } from '@pm/shared';
 
 export type IndicatorsInput = {
-  tasks: { status: string; progress: number; dueDate: string | null }[];
+  tasks: ({ status: string } & ProgressTask)[];
   milestones: { id: string; name: string; dueDate: string; status: string }[];
   /** Los siguientes datos solo se proporcionan para un Project Manager. */
   plannedBudgetCents?: number;
@@ -12,9 +12,24 @@ export type IndicatorsInput = {
 export const HIGH_RISK_SCORE = 15;
 const UPCOMING_MILESTONE_DAYS = 14;
 
-export function averageProgress(progressValues: number[]): number {
-  if (progressValues.length === 0) return 0;
-  return Math.round(progressValues.reduce((sum, value) => sum + value, 0) / progressValues.length);
+export type ProgressTask = { progress: number; plannedCostCents: number; startDate: string | null; dueDate: string | null };
+
+/** Días de la tarea contando el inicio y el fin; 1 si falta una fecha o están al revés. */
+function durationDays(task: ProgressTask): number {
+  if (!task.startDate || !task.dueDate) return 1;
+  return Math.max(1, diffDays(task.startDate, task.dueDate) + 1);
+}
+
+/**
+ * Avance del proyecto: cada tarea pesa por su costo planeado si todas lo tienen; si no, por su
+ * duración. El peso se elige para todo el proyecto porque costo y duración no se pueden mezclar.
+ */
+export function weightedProgress(tasks: ProgressTask[]): number {
+  if (tasks.length === 0) return 0;
+  const byCost = tasks.every((t) => t.plannedCostCents > 0);
+  const weight = (t: ProgressTask) => (byCost ? t.plannedCostCents : durationDays(t));
+  const total = tasks.reduce((sum, t) => sum + weight(t), 0);
+  return Math.round(tasks.reduce((sum, t) => sum + weight(t) * t.progress, 0) / total);
 }
 
 function computeBudget(plannedCents: number, expenses: { amountCents: number }[]) {
@@ -25,7 +40,7 @@ function computeBudget(plannedCents: number, expenses: { amountCents: number }[]
 export function computeIndicators(input: IndicatorsInput, today: string) {
   const horizon = addDays(today, UPCOMING_MILESTONE_DAYS);
   return {
-    progress: averageProgress(input.tasks.map((t) => t.progress)),
+    progress: weightedProgress(input.tasks),
     overdueTasks: input.tasks.filter((t) => t.dueDate !== null && t.dueDate < today && t.status !== 'DONE').length,
     blockedTasks: input.tasks.filter((t) => t.status === 'BLOCKED').length,
     upcomingMilestones: input.milestones

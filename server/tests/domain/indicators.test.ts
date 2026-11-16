@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { computeIndicators } from '../../src/domain/indicators';
+import { computeIndicators, weightedProgress } from '../../src/domain/indicators';
 
 const TODAY = '2026-11-06';
-const task = (over: object = {}) => ({ status: 'TODO', progress: 0, dueDate: null, ...over });
+const task = (over: object = {}) => ({ status: 'TODO', progress: 0, dueDate: null, startDate: null, plannedCostCents: 0, ...over });
 const base = { tasks: [], milestones: [] };
 
 describe('computeIndicators', () => {
@@ -10,7 +10,7 @@ describe('computeIndicators', () => {
     expect(computeIndicators(base, TODAY).progress).toBe(0);
   });
 
-  it('progress es el promedio simple redondeado', () => {
+  it('sin costos ni fechas, cada tarea pesa lo mismo y se redondea', () => {
     const tasks = [task({ progress: 10 }), task({ progress: 20 }), task({ progress: 25 })];
     expect(computeIndicators({ ...base, tasks }, TODAY).progress).toBe(18);
   });
@@ -61,5 +61,33 @@ describe('computeIndicators', () => {
     const result = computeIndicators(base, TODAY);
     expect(result).not.toHaveProperty('budget');
     expect(result).not.toHaveProperty('highRisks');
+  });
+});
+
+describe('weightedProgress', () => {
+  const t = (progress: number, plannedCostCents = 0, startDate: string | null = null, dueDate: string | null = null) => ({ progress, plannedCostCents, startDate, dueDate });
+
+  it('pondera por costo si todas las tareas lo tienen', () => {
+    expect(weightedProgress([t(100, 100), t(0, 300)])).toBe(25);
+  });
+
+  it('sin costos pondera por duración, contando el día de inicio y el de fin', () => {
+    expect(weightedProgress([t(100, 0, '2026-01-01', '2026-01-01'), t(0, 0, '2026-01-01', '2026-01-03')])).toBe(25);
+  });
+
+  it('si a una tarea le falta el costo, todo el proyecto se pondera por duración', () => {
+    expect(weightedProgress([t(100, 100, '2026-01-01', '2026-01-01'), t(0, 0, '2026-01-01', '2026-01-03')])).toBe(25);
+  });
+
+  it('una tarea sin fechas pesa 1 día', () => {
+    expect(weightedProgress([t(100), t(0)])).toBe(50);
+  });
+
+  it('una tarea con las fechas al revés pesa 1 día', () => {
+    expect(weightedProgress([t(100, 0, '2026-01-05', '2026-01-01'), t(0, 0, '2026-01-01', '2026-01-03')])).toBe(25);
+  });
+
+  it('sin tareas es 0', () => {
+    expect(weightedProgress([])).toBe(0);
   });
 });

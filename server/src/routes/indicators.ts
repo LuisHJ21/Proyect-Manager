@@ -16,6 +16,7 @@ export function indicatorRoutes(app: App) {
           risks: await prisma.risk.findMany({ where }),
         }
       : {};
-    return c.json(computeIndicators({ tasks, milestones, ...pmData }, c.var.deps.today()));
+    const progressTasks = tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents) }));
+    return c.json(computeIndicators({ tasks: progressTasks, milestones, ...pmData }, c.var.deps.today()));
   });
 }

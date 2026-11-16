@@ -55,4 +55,17 @@ describe('indicadores por API', () => {
     const [listed] = (await ctx.as(member).get('/api/projects')).json();
     expect(listed.progress).toBe(38);
   });
+
+  it('el avance se pondera por costo en indicadores, lista de proyectos y panel', async () => {
+    await ctx.prisma.task.create({ data: { projectId: project.id, title: 'Chica', progress: 100, plannedCostCents: 10000n } });
+    await ctx.prisma.task.create({ data: { projectId: project.id, title: 'Grande', progress: 0, plannedCostCents: 30000n } });
+    for (const user of [pm, member]) {
+      expect((await ctx.as(user).get(url)).json().progress).toBe(25);
+      const listed = (await ctx.as(user).get('/api/projects')).json().find((p: { id: string }) => p.id === project.id);
+      expect(listed.progress).toBe(25);
+    }
+    await ctx.prisma.project.update({ where: { id: project.id }, data: { status: 'EXECUTING' } });
+    const dashboard = (await ctx.as(pm).get('/api/dashboard')).json();
+    expect(dashboard.projects.find((p: { id: string }) => p.id === project.id).progress).toBe(25);
+  });
 });

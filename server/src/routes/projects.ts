@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { readBody, type App } from '../http';
 import { getProjectAccess, requireProjectAccess, toProjectDto } from '../auth/access';
 import { requirePm, requireUser } from '../auth/guards';
+import { weightedProgress } from '../domain/indicators';
 import { countTasksOutside, isWithinProject, type ProjectRange } from '../domain/projectDates';
 import { fieldError } from '../errors';
 import { sanitizeFields } from '../richText';
@@ -20,14 +21,18 @@ export function projectRoutes(app: App) {
       include: { members: { include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: 'asc' } } } },
       orderBy: { name: 'asc' },
     });
-    const averages = await prisma.task.groupBy({ by: ['projectId'], _avg: { progress: true } });
-    const progressById = new Map(averages.map((a) => [a.projectId, Math.round(a._avg.progress ?? 0)]));
+    const tasks = await prisma.task.findMany({
+      where: { projectId: { in: projects.map((p) => p.id) } },
+      select: { projectId: true, progress: true, plannedCostCents: true, startDate: true, dueDate: true },
+    });
+    const progressOf = (projectId: string) =>
+      weightedProgress(tasks.filter((t) => t.projectId === projectId).map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents) })));
     const summaries = isPm ? await loadProjectSummaries(prisma, projects, c.var.deps.today()) : null;
     return c.json(projects.map(({ members, ...project }) => {
       const summary = summaries?.get(project.id);
       return {
         ...toProjectDto(project, isPm),
-        progress: progressById.get(project.id) ?? 0,
+        progress: progressOf(project.id),
         team: members.map((m) => m.user),
         ...(summary
           ? { health: summary.health, overdueTasks: summary.overdueTasks, highRisks: summary.highRisks, spentCents: summary.spentCents }

@@ -1,5 +1,5 @@
 import { ACTIVE_PROJECT_STATUS, type Health } from '@pm/shared';
-import { averageProgress, HIGH_RISK_SCORE } from './indicators';
+import { HIGH_RISK_SCORE, weightedProgress, type ProgressTask } from './indicators';
 
 const AT_RISK_OVERDUE_TASKS = 3;
 const ATTENTION_BUDGET_RATIO = 0.9;
@@ -41,7 +41,7 @@ export function computeHealth(input: HealthInput, today: string): Health | null 
 }
 
 export type SummaryProject = { status: string; endDate: string | null; plannedBudgetCents: number };
-export type SummaryTask = { status: string; dueDate: string | null; progress: number };
+export type SummaryTask = { status: string } & ProgressTask;
 export type SummaryRisk = { probability: number; impact: number; status: string };
 export type SummaryExpense = { amountCents: number };
 
@@ -59,7 +59,7 @@ export function summarizeProject(
   const highRisks = risks.filter(isHighRisk).length;
   const spentCents = expenses.reduce((sum, e) => sum + e.amountCents, 0);
   return {
-    progress: averageProgress(tasks.map((t) => t.progress)),
+    progress: weightedProgress(tasks),
     overdueTasks,
     highRisks,
     spentCents,

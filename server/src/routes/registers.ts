@@ -15,6 +15,7 @@ import {
 import type { App } from '../http';
 import { fieldError } from '../errors';
 import { assertOwnerCanOwn } from '../domain/owners';
+import { isWithinProject, outsideProjectMessage } from '../domain/projectDates';
 import { registerProjectCrud } from './projectCrud';
 
 export function registerRoutes(app: App) {
@@ -32,6 +33,11 @@ export function registerRoutes(app: App) {
     createSchema: createMilestoneSchema,
     updateSchema: updateMilestoneSchema,
     section: 'planning',
+    // Como en las tareas: solo se comprueba la fecha nueva, así un hito que ya estaba fuera se puede renombrar.
+    validate: async (milestone, project, _prisma, current) => {
+      if (current && milestone.dueDate === current.dueDate) return;
+      if (!isWithinProject(milestone.dueDate, project)) throw fieldError('dueDate', outsideProjectMessage(project));
+    },
   });
   registerProjectCrud(app, {
     path: 'stakeholders',

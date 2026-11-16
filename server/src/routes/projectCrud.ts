@@ -27,8 +27,8 @@ export type ProjectCrudOptions = {
   updateSchema: ZodType<object, any, any>;
   /** Sección de la tabla de capacidades: GET exige leer y las escrituras exigen escribir. */
   section: Section;
-  /** Reglas sobre el registro resultante, ya combinado con lo guardado. */
-  validate?: (merged: Record<string, any>, project: Project, prisma: PrismaClient) => Promise<void>;
+  /** Reglas sobre el registro resultante, ya combinado con lo guardado. `current` es lo guardado; falta al crear. */
+  validate?: (merged: Record<string, any>, project: Project, prisma: PrismaClient, current?: Record<string, any>) => Promise<void>;
   /** `isPm`: quien pide es PM; permite ocultar relaciones a los demás perfiles. */
   toDto?: (item: any, isPm: boolean) => object;
   /**
@@ -89,7 +89,7 @@ export function registerProjectCrud(app: App, options: ProjectCrudOptions) {
     }
     const current = await findItem(delegate, project.id, c.req.param('itemId')!);
     const input = updateSchema.parse(sanitizeFields(body, richTextFields));
-    await validate?.({ ...current, ...input }, project, prisma);
+    await validate?.({ ...current, ...input }, project, prisma, current);
     if (!versioned) {
       const item = await delegate.update({ where: { id: current.id }, data: input, include });
       return c.json(toDto(item, isPm));

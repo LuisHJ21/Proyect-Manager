@@ -1,30 +1,15 @@
 import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrderValid, updateProjectSchema } from '@pm/shared';
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { readBody, type App } from '../http';
 import { getProjectAccess, requireProjectAccess, toProjectDto } from '../auth/access';
 import { requirePm, requireUser } from '../auth/guards';
-import { countTasksOutside, type ProjectRange } from '../domain/projectDates';
+import { countTasksOutside, isWithinProject, type ProjectRange } from '../domain/projectDates';
 import { fieldError } from '../errors';
 import { sanitizeFields } from '../richText';
 import { removeAfterDelete } from '../storage/fileStore';
 import { loadProjectSummaries } from './projectStats';
 
 export function projectRoutes(app: App) {
-
-  /** Solo comprueba los límites que cambian, y solo las tareas que hoy están dentro: las que ya estaban fuera no impiden editar. */
-  const assertTasksStayInside = async (prisma: PrismaClient, project: ProjectRange & { id: string }, changed: ProjectRange) => {
-    const tasks = await prisma.task.findMany({ where: { projectId: project.id }, select: { startDate: true, dueDate: true } });
-    for (const field of ['startDate', 'endDate'] as const) {
-      if (!changed[field]) continue;
-      const limit = (value: string | null): ProjectRange => ({ startDate: null, endDate: null, [field]: value });
-      const inside = tasks.filter((task) => countTasksOutside([task], limit(project[field])) === 0);
-      const count = countTasksOutside(inside, limit(changed[field]));
-      if (count > 0) {
-        const tasksText = count === 1 ? '1 tarea quedaría' : `${count} tareas quedarían`;
-        throw fieldError(field, `${tasksText} fuera del proyecto. Ajusta sus fechas primero.`);
-      }
-    }
-  };
 
   app.get('/api/projects', async (c) => {
     const { prisma } = c.var.deps;
@@ -74,7 +59,7 @@ export function projectRoutes(app: App) {
     const startDate = input.startDate === undefined ? project.startDate : input.startDate;
     const endDate = input.endDate === undefined ? project.endDate : input.endDate;
     if (!isDateOrderValid(startDate, endDate)) throw fieldError('startDate', DATE_ORDER_MESSAGE);
-    await assertTasksStayInside(prisma, project, { startDate: startDate === project.startDate ? null : startDate, endDate: endDate === project.endDate ? null : endDate });
+    await assertDatesStayInside(prisma, project, { startDate: startDate === project.startDate ? null : startDate, endDate: endDate === project.endDate ? null : endDate });
     const updated = await prisma.project.update({ where: { id: project.id }, data: input });
     return c.json(toProjectDto(updated, true));
   });
@@ -91,4 +76,32 @@ export function projectRoutes(app: App) {
     await removeAfterDelete(c.var.deps.files, attachments.map((a) => a.storedName));
     return c.json({ ok: true });
   });
+}
+
+/**
+ * Solo comprueba los límites que cambian, y solo las tareas e hitos que hoy están dentro: los que ya
+ * estaban fuera no impiden editar.
+ */
+export async function assertDatesStayInside(prisma: Prisma.TransactionClient, project: ProjectRange & { id: string }, changed: ProjectRange) {
+  const [tasks, milestones] = await Promise.all([
+    prisma.task.findMany({ where: { projectId: project.id }, select: { startDate: true, dueDate: true } }),
+    prisma.milestone.findMany({ where: { projectId: project.id }, select: { dueDate: true } }),
+  ]);
+  for (const field of ['startDate', 'endDate'] as const) {
+    if (!changed[field]) continue;
+    const limit = (value: string | null): ProjectRange => ({ startDate: null, endDate: null, [field]: value });
+    const inside = tasks.filter((task) => countTasksOutside([task], limit(project[field])) === 0);
+    const count = countTasksOutside(inside, limit(changed[field]));
+    if (count > 0) {
+      const tasksText = count === 1 ? '1 tarea quedaría' : `${count} tareas quedarían`;
+      throw fieldError(field, `${tasksText} fuera del proyecto. Ajusta sus fechas primero.`);
+    }
+    const outside = milestones.filter((m) => isWithinProject(m.dueDate, limit(project[field])) && !isWithinProject(m.dueDate, limit(changed[field]))).length;
+    if (outside > 0) {
+      throw fieldError(
+        field,
+        outside === 1 ? '1 hito quedaría fuera del proyecto. Ajusta su fecha primero.' : `${outside} hitos quedarían fuera del proyecto. Ajusta sus fechas primero.`,
+      );
+    }
+  }
 }

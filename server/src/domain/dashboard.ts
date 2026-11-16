@@ -9,7 +9,7 @@ const HEALTH_ORDER: Record<Health, number> = { AT_RISK: 0, ATTENTION: 1, ON_TRAC
 
 export type Person = { id: string; name: string };
 export type DashboardInput = {
-  projects: { id: string; name: string; status: string; endDate: string | null; plannedBudgetCents: number; team: Person[]; evm?: EvmIndexes }[];
+  projects: { id: string; name: string; status: string; endDate: string | null; plannedBudgetCents: number; team: Person[]; evm?: EvmIndexes; reportDue?: boolean }[];
   tasks: {
     id: string;
     title: string;
@@ -102,6 +102,9 @@ export function buildDashboard(input: DashboardInput, today: string) {
     ...inScope(input.changes ?? [])
       .sort((a, b) => a.number - b.number)
       .map((cr) => ({ kind: 'change' as const, id: cr.id, number: cr.number, title: cr.title, projectId: cr.projectId, projectName: projectName(cr.projectId) })),
+    ...input.projects
+      .filter((p) => p.reportDue)
+      .map((p) => ({ kind: 'report' as const, id: p.id, title: 'Toca emitir el informe de estado', projectId: p.id, projectName: p.name })),
     ...[...highRisks]
       .sort((a, b) => b.probability * b.impact - a.probability * a.impact)
       .map((r) => ({ kind: 'risk' as const, id: r.id, title: toPlainText(r.description), projectId: r.projectId, projectName: projectName(r.projectId), score: r.probability * r.impact })),

@@ -102,4 +102,18 @@ describe('GET /api/dashboard con entregables', () => {
     const changes = (await ctx.as(pm).get('/api/dashboard')).json().attention.filter((a: { kind: string }) => a.kind === 'change');
     expect(changes).toEqual([{ kind: 'change', id: approved.id, number: 1, title: 'Cambio 1', projectId: p.id, projectName: 'Portal' }]);
   });
+
+  it('avisa que toca emitir el informe de estado', async () => {
+    ctx = await createTestApp();
+    ctx.clock.set('2026-11-16T10:00:00');
+    const pm = await ctx.makeUser({ role: 'PM' });
+    const weekly = await ctx.makeProject({ name: 'Portal' });
+    const none = await ctx.makeProject({ name: 'Sin frecuencia' });
+    const recent = await ctx.makeProject({ name: 'Al día' });
+    for (const p of [weekly, recent]) await ctx.prisma.project.update({ where: { id: p.id }, data: { statusReportFrequency: 'WEEKLY', startDate: '2026-11-08' } });
+    await ctx.prisma.project.update({ where: { id: none.id }, data: { startDate: '2026-11-08' } });
+    await ctx.prisma.statusReport.create({ data: { projectId: recent.id, number: 1, periodStart: '2026-11-08', periodEnd: '2026-11-12', report: '{}', issuedById: pm.id } });
+    const reports = (await ctx.as(pm).get('/api/dashboard')).json().attention.filter((a: { kind: string }) => a.kind === 'report');
+    expect(reports).toEqual([{ kind: 'report', id: weekly.id, title: 'Toca emitir el informe de estado', projectId: weekly.id, projectName: 'Portal' }]);
+  });
 });

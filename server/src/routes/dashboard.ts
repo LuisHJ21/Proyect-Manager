@@ -2,6 +2,7 @@ import { ACTIVE_PROJECT_STATUS } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { requirePm } from '../auth/guards';
 import { buildDashboard } from '../domain/dashboard';
+import { isReportDue } from '../domain/statusReport';
 import { loadEvmIndexes } from './evmLoader';
 import { leafWhere } from '../domain/wbs';
 import { loadLaborCosts } from './laborCost';
@@ -16,7 +17,7 @@ export function dashboardRoutes(app: App) {
       include: { members: { include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: 'asc' } } } },
     });
     const where = { projectId: { in: projects.map((p) => p.id) } };
-    const [tasks, risks, expenses, milestones, incidents, deliverables, changes, labor] = await Promise.all([
+    const [tasks, risks, expenses, milestones, incidents, deliverables, changes, labor, reportEnds] = await Promise.all([
       prisma.task.findMany({
         where: { ...where, ...leafWhere },
         include: { assignees: { include: { user: { select: { id: true, name: true, role: true, active: true } } } } },
@@ -34,7 +35,9 @@ export function dashboardRoutes(app: App) {
       }),
       prisma.changeRequest.findMany({ where: { ...where, status: 'APPROVED' }, select: { id: true, number: true, title: true, projectId: true } }),
       loadLaborCosts(prisma, projects.map((p) => p.id)),
+      prisma.statusReport.groupBy({ by: ['projectId'], where, _max: { periodEnd: true } }),
     ]);
+    const lastReportEnd = new Map(reportEnds.map((r) => [r.projectId, r._max.periodEnd]));
     const today = c.var.deps.today();
     const evm = await loadEvmIndexes(prisma, projects.map((p) => p.id), today);
 
@@ -48,6 +51,7 @@ export function dashboardRoutes(app: App) {
           plannedBudgetCents: Number(p.plannedBudgetCents),
           team: p.members.map((m) => m.user),
           evm: evm.get(p.id),
+          reportDue: isReportDue(p.statusReportFrequency, lastReportEnd.get(p.id) ?? null, p.startDate, today),
         })),
         tasks: tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours), assignees: t.assignees.map((a) => a.user) })),
         risks,

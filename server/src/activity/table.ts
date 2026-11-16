@@ -22,6 +22,7 @@ import {
   loadMilestone,
   loadObjective,
   loadProject,
+  loadQualityMetric,
   loadRaciActivity,
   loadRequirement,
   loadRaciCell,
@@ -168,6 +169,10 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'DELETE /api/projects/:id/deliverables/:did/criteria/:cid': criterion(param('cid')),
 
   ...crudEntries('requirements', 'requirementId', { entity: 'requirement', load: loadRequirement, fields: ['status', 'priority'] }),
+  ...crudEntries('quality-metrics', 'metricId', { entity: 'quality', load: loadQualityMetric, fields: ['target', 'direction'] }),
+  // Medir o borrar una medición queda como edición de la métrica.
+  'POST /api/projects/:id/quality-metrics/:metricId/measurements': { entity: 'quality', action: 'updated', target: param('metricId'), load: loadQualityMetric, fields: ['measurements'] },
+  'DELETE /api/projects/:id/quality-metrics/:metricId/measurements/:measurementId': { entity: 'quality', action: 'updated', target: param('metricId'), load: loadQualityMetric, fields: ['measurements'] },
   ...crudEntries('meetings', 'meetingId', { entity: 'meeting', load: loadMeeting, fields: ['date'] }),
   // Convertir un acuerdo queda como edición del acta.
   'POST /api/projects/:id/meetings/:meetingId/agreements/:agreementId/convert': { entity: 'meeting', action: 'updated', target: param('meetingId'), load: loadMeeting, fields: [] },

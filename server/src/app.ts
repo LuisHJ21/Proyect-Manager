@@ -34,6 +34,7 @@ import { scheduleRoutes } from './routes/schedule';
 import { statusReportRoutes } from './routes/statusReports';
 import { meetingRoutes } from './routes/meetings';
 import { requirementRoutes } from './routes/requirements';
+import { qualityMetricRoutes } from './routes/qualityMetrics';
 import { performanceRoutes } from './routes/performance';
 import { projectRoutes } from './routes/projects';
 import { raciRoutes } from './routes/raci';
@@ -112,6 +113,7 @@ export function buildApp(opts: BuildAppOptions): App {
   statusReportRoutes(app);
   meetingRoutes(app);
   requirementRoutes(app);
+  qualityMetricRoutes(app);
   attachmentRoutes(app);
   if (opts.files instanceof DiskFileStore) localUploadRoutes(app, opts.files);
   indicatorRoutes(app);

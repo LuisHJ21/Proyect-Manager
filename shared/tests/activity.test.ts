@@ -6,7 +6,7 @@ describe('tipos de la bitácora', () => {
     expect([...ACTIVITY_ENTITY]).toEqual([
       'project', 'member', 'task', 'step', 'comment', 'attachment', 'objective', 'milestone', 'stakeholder',
       'risk', 'expense', 'raci', 'change', 'incident', 'decision', 'deliverable', 'lesson',
-      'report', 'communication', 'meeting', 'requirement',
+      'report', 'communication', 'meeting', 'requirement', 'quality',
     ]);
   });
 

@@ -146,6 +146,13 @@ const ROUTE_SECTION: Record<string, Section> = {
   'POST /api/projects/:id/requirements': 'requirements',
   'PATCH /api/projects/:id/requirements/:requirementId': 'requirements',
   'DELETE /api/projects/:id/requirements/:requirementId': 'requirements',
+
+  'GET /api/projects/:id/quality-metrics': 'quality',
+  'POST /api/projects/:id/quality-metrics': 'quality',
+  'PATCH /api/projects/:id/quality-metrics/:metricId': 'quality',
+  'DELETE /api/projects/:id/quality-metrics/:metricId': 'quality',
+  'POST /api/projects/:id/quality-metrics/:metricId/measurements': 'quality',
+  'DELETE /api/projects/:id/quality-metrics/:metricId/measurements/:measurementId': 'quality',
 };
 
 /** Escrituras que el colaborador puede hacer por una regla fina en código (asignado, responsable, autor), con pruebas propias. */

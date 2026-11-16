@@ -71,6 +71,7 @@ export const ACTIVITY_ENTITY = [
   'communication',
   'meeting',
   'requirement',
+  'quality',
 ] as const;
 export type ActivityEntity = (typeof ACTIVITY_ENTITY)[number];
 export const ACTIVITY_ACTION = ['created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded'] as const;
@@ -195,6 +196,7 @@ export const LABELS = {
     communication: 'Plan de comunicaciones',
     meeting: 'Reunión',
     requirement: 'Requisito',
+    quality: 'Métrica de calidad',
     change: 'Solicitud de cambio',
     incident: 'Incidente',
     decision: 'Decisión',

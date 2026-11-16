@@ -271,6 +271,8 @@ export type Performance = {
     bacCents: number;
     cpi: number | null;
     spi: number | null;
+    /** Rendimiento de costo necesario para terminar dentro del BAC; ausente en respuestas antiguas. */
+    tcpi?: number | null;
     cvCents: number;
     svCents: number;
     eacCents: number;
@@ -557,4 +559,13 @@ export type Assumption = {
   risk: { id: string } | null;
   incident: { id: string; number: number } | null;
   overdue: boolean;
+};
+export type MilestoneTrendItem = {
+  id: string;
+  name: string;
+  dueDate: string;
+  status: import('@pm/shared').MilestoneStatus;
+  forecastDate: string | null;
+  slipDays: number | null;
+  history: { date: string; forecastDate: string }[];
 };

@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FormField } from '../../components/FormField';
 import { IndicatorCards } from '../../components/project/IndicatorCards';
 import { MembersPanel } from '../../components/project/MembersPanel';
+import { MilestoneTrend } from '../../components/project/MilestoneTrend';
 import { MilestonesPanel, ObjectivesPanel } from '../../components/project/PlanningPanels';
 import { ProjectForm } from '../../components/project/ProjectForm';
 import { RichTextView } from '../../components/richText/RichTextView';
@@ -63,6 +64,7 @@ export function SummaryPage() {
     <div className="space-y-6">
       <IndicatorCards query={indicators} currency={project.currency} />
       {canRead('reports') && <LatestReportLink projectId={project.id} />}
+      <MilestoneTrend projectId={project.id} />
       <Card
         title="Descripción"
         actions={
@@ -108,6 +110,7 @@ export function SummaryPage() {
             void queryClient.invalidateQueries({ queryKey: ['projects'] });
             void queryClient.invalidateQueries({ queryKey: ['project', project.id, 'indicators'] });
             void queryClient.invalidateQueries({ queryKey: statusReportsKey(project.id) });
+            void queryClient.invalidateQueries({ queryKey: ['project', project.id, 'milestone-trend'] });
             void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setEditing(false);
           }}

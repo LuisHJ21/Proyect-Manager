@@ -73,6 +73,14 @@ const base = {
 const open = () => renderApp('/proyectos/p1/desempeno');
 
 describe('pestaña Desempeño', () => {
+  it('muestra el TCPI con su lectura', async () => {
+    mockApi({ ...base, 'GET /api/projects/p1/performance': { ...withBaseline, metrics: { ...withBaseline.metrics, tcpi: 1.2 } } });
+    open();
+    const cards = await screen.findByRole('region', { name: 'Indicadores de valor ganado' });
+    expect(within(cards).getByText('1,20')).toBeInTheDocument();
+    expect(within(cards).getByText(/Necesitas rendir 1,20 por cada unidad que falta gastar/)).toBeInTheDocument();
+  });
+
   it('con CPI 0 el EAC se marca como estimación', async () => {
     mockApi({ ...base, 'GET /api/projects/p1/performance': { ...withBaseline, metrics: { ...withBaseline.metrics, cpi: 0, eacMethod: 'ATYPICAL' } } });
     open();
@@ -123,8 +131,8 @@ describe('pestaña Desempeño', () => {
     open();
     const cards = await screen.findByRole('region', { name: 'Indicadores de valor ganado' });
     const card = (name: RegExp) => within(cards).getByText(name).closest('div[data-card]') as HTMLElement;
-    expect(card(/CPI/)).toHaveTextContent('0,80');
-    expect(card(/CPI/)).toHaveTextContent('Sobre el costo');
+    expect(card(/^CPI/)).toHaveTextContent('0,80');
+    expect(card(/^CPI/)).toHaveTextContent('Sobre el costo');
     expect(card(/SPI/)).toHaveTextContent('—');
     expect(card(/EAC/)).toHaveTextContent(money(500000));
     expect(card(/VAC/)).toHaveTextContent(money(-100000));

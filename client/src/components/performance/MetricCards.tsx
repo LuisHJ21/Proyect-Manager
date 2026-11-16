@@ -27,6 +27,11 @@ export function MetricCards({ metrics, currency }: { metrics: NonNullable<Perfor
     <section aria-label="Indicadores de valor ganado" className="grid gap-3 sm:grid-cols-3">
       <MetricCard label="CPI · eficiencia de costo" value={formatIndex(metrics.cpi)} note={<IndexNote value={metrics.cpi} label={cpiLabel(metrics.cpi)} />} />
       <MetricCard label="SPI · eficiencia de plazo" value={formatIndex(metrics.spi)} note={<IndexNote value={metrics.spi} label={spiLabel(metrics.spi)} />} />
+      <MetricCard
+        label="TCPI · rendimiento necesario"
+        value={formatIndex(metrics.tcpi ?? null)}
+        note={metrics.tcpi == null ? 'Ya se gastó el presupuesto de la línea base' : `Necesitas rendir ${formatIndex(metrics.tcpi)} por cada unidad que falta gastar`}
+      />
       <MetricCard label="% completado" value={`${metrics.percentComplete} %`} note={`Valor ganado ${money(metrics.evCents)} de ${money(metrics.bacCents)}`} />
       <MetricCard
         label="EAC · costo final estimado"

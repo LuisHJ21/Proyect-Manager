@@ -20,6 +20,11 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
   const [management, setManagement] = useState<number | null>(project?.managementReserveCents ?? 0);
   const [currency, setCurrency] = useState(project?.currency ?? 'USD');
   const [frequency, setFrequency] = useState<StatusReportFrequency>(project?.statusReportFrequency ?? 'NONE');
+  // Umbrales de salud (F16): los valores de siempre salvo que el PM los cambie.
+  const [overdueTasks, setOverdueTasks] = useState(String(project?.healthOverdueTasks ?? 3));
+  const [budgetPercent, setBudgetPercent] = useState(String(project?.healthBudgetPercent ?? 90));
+  const [indexMin, setIndexMin] = useState(String(project?.healthIndexMin ?? 90));
+  const [riskScore, setRiskScore] = useState(String(project?.highRiskScore ?? 15));
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
@@ -45,6 +50,10 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
       managementReserveCents: management,
       currency,
       statusReportFrequency: frequency,
+      healthOverdueTasks: Number(overdueTasks),
+      healthBudgetPercent: Number(budgetPercent),
+      healthIndexMin: Number(indexMin),
+      highRiskScore: Number(riskScore),
     };
     try {
       const saved = project
@@ -119,6 +128,21 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
             ))}
           </select>
         </FormField>
+        <fieldset className="grid gap-4 sm:col-span-2 sm:grid-cols-4">
+          <legend className="mb-1 text-sm font-medium text-ink">Umbrales de salud</legend>
+          <FormField label="Tareas vencidas para «En riesgo»" error={errors.fields.healthOverdueTasks}>
+            <input className={inputClass} inputMode="numeric" value={overdueTasks} onChange={(e) => setOverdueTasks(e.target.value)} />
+          </FormField>
+          <FormField label="% del presupuesto para «Atención»" error={errors.fields.healthBudgetPercent}>
+            <input className={inputClass} inputMode="numeric" value={budgetPercent} onChange={(e) => setBudgetPercent(e.target.value)} />
+          </FormField>
+          <FormField label="CPI/SPI mínimo (centésimas)" error={errors.fields.healthIndexMin} hint="90 equivale a 0,90.">
+            <input className={inputClass} inputMode="numeric" value={indexMin} onChange={(e) => setIndexMin(e.target.value)} />
+          </FormField>
+          <FormField label="Puntaje de riesgo alto" error={errors.fields.highRiskScore}>
+            <input className={inputClass} inputMode="numeric" value={riskScore} onChange={(e) => setRiskScore(e.target.value)} />
+          </FormField>
+        </fieldset>
         <div className="flex justify-end gap-2 sm:col-span-2">
           <Button variant="secondary" onClick={onClose}>
             Cancelar

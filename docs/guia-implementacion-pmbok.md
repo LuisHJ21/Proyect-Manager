@@ -176,14 +176,17 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 **F9. Involucramiento de interesados** (Interesados)
 - Modelo: `Stakeholder.currentEngagement` y `desiredEngagement` (desconocedor, reticente, neutral, de apoyo, líder), más expectativas.
 - Vistas: cuadrícula poder/interés con los datos que ya existen y matriz de involucramiento actual frente a deseado.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-6-informes-comunicaciones-design.md`): nivel actual y deseado (o sin evaluar) y expectativas; cuadrícula 3×3 con sus cuadrantes y matriz que resalta la brecha. Solo para el PM.
 
 **F10. Plan de comunicaciones y actas de reunión** (Interesados, Trabajo del proyecto)
 - Modelo: `CommunicationItem { qué, audiencia, frecuencia, canal, responsable }` y `Meeting { fecha, asistentes, notas, acuerdos }`.
 - Cada acuerdo de una reunión puede convertirse en tarea, decisión o incidente con un clic, reutilizando `createDecision` y `createIncident`.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-6-informes-comunicaciones-design.md`): plan de comunicaciones solo del PM; actas con asistentes del equipo e interesados, notas y acuerdos. Convertir un acuerdo lo enlaza y no se repite. El colaborador ve las actas a las que asistió, sin interesados.
 
 **F11. Informe de estado periódico** (Medición, Interesados)
 - Modelo: `StatusReport { projectId, periodo, snapshot JSON, comentario del PM }`.
 - Contenido: salud, avance, indicadores de valor ganado, hitos, riesgos principales, incidentes, cambios y próximos pasos. Mismo patrón que el informe de cierre (`buildClosureReport` y la vista imprimible), congelado al emitirlo. Es lo que verá el Observador.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-6-informes-comunicaciones-design.md`): frecuencia por proyecto con aviso en el panel; borrador en vivo, emisión con confirmación y numeración; el observador lo lee sin montos y recibe un aviso; el colaborador no lo ve.
 
 ### Fase 4. Entrega y calidad
 
@@ -228,7 +231,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 | 3 | F3 ✓, F2 ✓, F4 ✓, C11 ✓ | Control y comunicación al abrir más información |
 | 4 | C6 ✓, C7 ✓, C8 ✓, C9 ✓, C10 ✓ | Dejar fiables los números que ya se muestran |
 | 5 | F5 ✓, F6 ✓, F7 ✓, F8 ✓ | Planificación completa; F5 es requisito de F6, F7 y F12 |
-| 6 | F11, F9, F10 | Informes y comunicaciones para interesados |
+| 6 | F11 ✓, F9 ✓, F10 ✓ | Informes y comunicaciones para interesados |
 | 7 | F12, F13, F15, F16 | Entrega, calidad e incertidumbre |
 | 8 | F14, F17, F18 | Según necesidad |
 

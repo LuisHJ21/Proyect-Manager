@@ -433,6 +433,17 @@ test('flujo principal', async ({ browser }) => {
   await createUser(pm, 'Olga', 'olga@x.com', 'Observador');
   await pm.goto(`${projectUrl}/resumen`);
   await addMember(pm, 'Olga', 'Patrocinadora');
+
+  // Informe de estado: el PM lo emite y queda congelado para el observador.
+  await pm.getByRole('navigation', { name: 'Secciones del proyecto' }).getByRole('link', { name: 'Informes' }).click();
+  await pm.getByRole('button', { name: 'Nuevo informe' }).click();
+  await expect(pm.getByText('Vista previa')).toBeVisible();
+  await pm.getByRole('textbox', { name: 'Comentario' }).fill('Avance según lo previsto');
+  await pm.getByRole('button', { name: 'Emitir', exact: true }).click();
+  await pm.getByRole('dialog', { name: 'Emitir informe' }).getByRole('button', { name: 'Emitir' }).click();
+  await expect(pm.getByRole('heading', { name: 'Informe 1' })).toBeVisible();
+  await expect(pm.getByRole('heading', { name: 'Presupuesto' })).toBeVisible();
+
   const olga = await signInFirstTime(browser, 'olga@x.com', 'Proyectos');
   const olgaNav = olga.getByRole('navigation', { name: 'Principal' });
   await expect(olgaNav.getByRole('link', { name: /Mis tareas/ })).toHaveCount(0);
@@ -445,4 +456,10 @@ test('flujo principal', async ({ browser }) => {
   await olgaTabs.getByRole('link', { name: 'Lecciones' }).click();
   await expect(olga.getByRole('article').first()).toBeVisible();
   await expect(olga.getByRole('button', { name: 'Añadir lección' })).toHaveCount(0);
+  await olgaTabs.getByRole('link', { name: 'Informes' }).click();
+  await olga.getByRole('link', { name: 'Informe 1' }).click();
+  await expect(olga.getByText('Avance según lo previsto')).toBeVisible();
+  await expect(olga.getByRole('heading', { name: 'Desempeño' })).toBeVisible();
+  await expect(olga.getByRole('heading', { name: 'Presupuesto' })).toHaveCount(0);
+  await expect(olga.getByRole('button', { name: 'Nuevo informe' })).toHaveCount(0);
 });

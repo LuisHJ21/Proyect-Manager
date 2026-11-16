@@ -9,6 +9,7 @@ import { RichTextEditor } from '../../components/richText/RichTextEditor';
 import { RichTextView } from '../../components/richText/RichTextView';
 import { Badge, Button, Card, inputClass } from '../../components/ui';
 import { useProject } from './ProjectLayout';
+import { AssumptionsRegister } from '../../components/assumptions/AssumptionsRegister';
 
 const FIELDS = [
   { name: 'sponsor', label: 'Patrocinador', rows: 1 },
@@ -199,5 +200,10 @@ export function CharterPage() {
 
   if (charter.isPending) return <Loading />;
   if (isBlockingError(charter)) return <ErrorState message={errorMessage(charter.error)} onRetry={() => charter.refetch()} />;
-  return isPm && !readOnly ? <CharterForm projectId={project.id} charter={charter.data!} /> : <CharterReadOnly charter={charter.data!} />;
+  return (
+    <div className="space-y-6">
+      {isPm && !readOnly ? <CharterForm projectId={project.id} charter={charter.data!} /> : <CharterReadOnly charter={charter.data!} />}
+      <AssumptionsRegister projectId={project.id} charterText={charter.data?.assumptions ?? ''} canEdit={isPm && !readOnly} />
+    </div>
+  );
 }

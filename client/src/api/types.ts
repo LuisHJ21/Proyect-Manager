@@ -546,3 +546,15 @@ export type QualityMetric = {
   met: boolean | null;
   measurements: { id: string; date: string; value: number; note: string }[];
 };
+export type Assumption = {
+  id: string;
+  number: number;
+  description: string;
+  owner: PersonRef | null;
+  validateBy: string | null;
+  status: import('@pm/shared').AssumptionStatus;
+  version: number;
+  risk: { id: string } | null;
+  incident: { id: string; number: number } | null;
+  overdue: boolean;
+};

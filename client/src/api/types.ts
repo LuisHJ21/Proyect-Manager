@@ -229,10 +229,12 @@ export type ChangeRequest = {
   appliedAt: string | null;
   appliedBy: PersonRef | null;
   createdAt: string;
+  /** Requisitos afectados (F12). */
+  requirements: { id: string; number: number }[];
 };
 
 /** Lo que ve un colaborador de sus propias propuestas: sin impactos ni solicitante. */
-export type ChangeProposal = Pick<ChangeRequest, 'id' | 'number' | 'title' | 'description' | 'status' | 'decisionNote' | 'decidedAt' | 'decidedBy' | 'createdAt'>;
+export type ChangeProposal = Pick<ChangeRequest, 'id' | 'number' | 'title' | 'description' | 'status' | 'decisionNote' | 'decidedAt' | 'decidedBy' | 'createdAt' | 'requirements'>;
 
 export type BaselineInfo = {
   version: number;
@@ -495,3 +497,21 @@ export type Meeting = {
   agreements: MeetingAgreement[];
 };
 export type MeetingSummary = { id: string; title: string; date: string; attendeeCount: number; agreementCount: number };
+export type Requirement = {
+  id: string;
+  number: number;
+  description: string;
+  priority: import('@pm/shared').Priority;
+  status: import('@pm/shared').RequirementStatus;
+  acceptance: string;
+  version: number;
+  deliverables: { id: string; number: number; name: string; status: import('@pm/shared').DeliverableStatus }[];
+  /** Solo llega al PM. */
+  stakeholder?: PersonRef | null;
+  suggestMet: boolean;
+};
+type TraceDeliverable = { id: string; number: number; name: string; status: import('@pm/shared').DeliverableStatus; tasks: { done: number; total: number }; criteria: { met: number; total: number } };
+export type Traceability = {
+  requirements: { id: string; number: number; description: string; status: import('@pm/shared').RequirementStatus; priority: import('@pm/shared').Priority; deliverables: TraceDeliverable[] }[];
+  orphanDeliverables: { id: string; number: number; name: string }[];
+};

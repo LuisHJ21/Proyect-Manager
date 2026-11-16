@@ -19,6 +19,7 @@ const cr = (over: object = {}) => ({
   decidedAt: null,
   decidedBy: null,
   createdAt: '2026-11-08T10:00:00.000Z',
+  requirements: [],
   ...over,
 });
 const decided = cr({
@@ -79,6 +80,7 @@ describe('pestaña Cambios', () => {
       scopeImpact: 'Nueva sección',
       scheduleImpactDays: -3,
       costImpactCents: -123450,
+      requirementIds: [],
     });
   });
 

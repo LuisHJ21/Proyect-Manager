@@ -12,6 +12,7 @@ import { DetailList } from '../../components/RegisterTable';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, EmptyState, inputClass, type Tone } from '../../components/ui';
 import { signedDays } from '../../lib/display';
+import { RequirementPicker, requirementCode } from '../../components/requirements/RequirementPicker';
 import { MyProposals } from './MyProposals';
 import { useProject } from './ProjectLayout';
 
@@ -40,6 +41,7 @@ function ChangeForm({ projectId, item, onClose }: { projectId: string; item?: Ch
   const [scopeImpact, setScopeImpact] = useState(item?.scopeImpact ?? '');
   const [days, setDays] = useState(item?.scheduleImpactDays?.toString() ?? '');
   const [cost, setCost] = useState(moneyText(item?.costImpactCents ?? null));
+  const [requirementIds, setRequirementIds] = useState<string[]>(item?.requirements.map((r) => r.id) ?? []);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
@@ -56,7 +58,7 @@ function ChangeForm({ projectId, item, onClose }: { projectId: string; item?: Ch
     }
     setErrors(NO_ERRORS);
     setBusy(true);
-    const body = { title, description, requestedBy, scopeImpact, scheduleImpactDays, costImpactCents };
+    const body = { title, description, requestedBy, scopeImpact, scheduleImpactDays, costImpactCents, requirementIds };
     try {
       const url = `/api/projects/${projectId}/change-requests`;
       if (item) await api(`${url}/${item.id}`, { method: 'PATCH', body });
@@ -98,6 +100,9 @@ function ChangeForm({ projectId, item, onClose }: { projectId: string; item?: Ch
         <FormField label="Impacto en costo" error={errors.fields.costImpactCents} hint="Negativo si ahorra. Ejemplo: -1.234,50">
           <input className={inputClass} inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} />
         </FormField>
+        <div className="sm:col-span-2">
+          <RequirementPicker projectId={projectId} selected={requirementIds} onChange={setRequirementIds} />
+        </div>
         <div className="flex justify-end gap-2 sm:col-span-2">
           <Button variant="secondary" onClick={onClose}>
             Cancelar
@@ -246,6 +251,7 @@ function ChangeDetail({ item, currency, onClose }: { item: ChangeRequest; curren
     { label: 'Impacto en alcance', value: item.scopeImpact || '—' },
     { label: 'Impacto en plazo', value: signedDays(item.scheduleImpactDays) },
     { label: 'Impacto en costo', value: signedMoney(item.costImpactCents, currency) },
+    { label: 'Requisitos afectados', value: item.requirements.length ? item.requirements.map(requirementCode).join(', ') : '—' },
   ];
   if (item.status !== 'PENDING') {
     rows.push(

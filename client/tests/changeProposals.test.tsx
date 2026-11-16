@@ -50,7 +50,7 @@ describe('propuestas de cambio del colaborador', () => {
     const gets = () => api.calls.filter((c) => c.key === `GET ${url}`).length;
     const before = gets();
     await user.click(within(dialog).getByRole('button', { name: 'Enviar' }));
-    await waitFor(() => expect(api.calls.find((c) => c.key === `POST ${url}`)?.body).toEqual({ title: 'Buscador', description: 'Para encontrar páginas' }));
+    await waitFor(() => expect(api.calls.find((c) => c.key === `POST ${url}`)?.body).toEqual({ title: 'Buscador', description: 'Para encontrar páginas', requirementIds: [] }));
     await waitFor(() => expect(gets()).toBeGreaterThan(before));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });

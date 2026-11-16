@@ -7,6 +7,7 @@ import { Modal } from '../../components/ConfirmDialog';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../../components/FormField';
 import { Badge, Button, Card, EmptyState, inputClass } from '../../components/ui';
+import { RequirementPicker } from '../../components/requirements/RequirementPicker';
 import { changeRequestsKey, code, STATUS_TONE } from './ChangeRequests';
 import { useProject } from './ProjectLayout';
 
@@ -14,6 +15,7 @@ function ProposeForm({ projectId, onClose }: { projectId: string; onClose: () =>
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [requirementIds, setRequirementIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +24,7 @@ function ProposeForm({ projectId, onClose }: { projectId: string; onClose: () =>
     setErrors(NO_ERRORS);
     setBusy(true);
     try {
-      await api(`/api/projects/${projectId}/change-requests`, { method: 'POST', body: { title, description } });
+      await api(`/api/projects/${projectId}/change-requests`, { method: 'POST', body: { title, description, requirementIds } });
       await queryClient.invalidateQueries({ queryKey: changeRequestsKey(projectId) });
       onClose();
     } catch (error) {
@@ -42,6 +44,7 @@ function ProposeForm({ projectId, onClose }: { projectId: string; onClose: () =>
         <FormField label="Descripción" error={errors.fields.description} hint="Qué cambiarías y por qué. El Project Manager analiza los impactos y decide.">
           <textarea className={inputClass} rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
         </FormField>
+        <RequirementPicker projectId={projectId} selected={requirementIds} onChange={setRequirementIds} />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancelar

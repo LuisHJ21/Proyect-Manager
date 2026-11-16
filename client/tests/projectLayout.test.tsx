@@ -31,13 +31,13 @@ describe('pestañas del proyecto', () => {
   it('el colaborador ve sus pestañas, entregables y riesgos incluidos', async () => {
     mockApi({ ...signedInAs(collaborator), ...summaryRoutes });
     renderApp('/proyectos/p1/resumen');
-    expect(await tabNames()).toEqual(['Resumen', 'Acta', 'Tareas', 'Anexos', 'Incidentes', 'Lecciones', 'Reuniones', 'Riesgos', 'Control de cambios', 'Entregables']);
+    expect(await tabNames()).toEqual(['Resumen', 'Acta', 'Tareas', 'Anexos', 'Incidentes', 'Lecciones', 'Reuniones', 'Riesgos', 'Control de cambios', 'Entregables', 'Requisitos']);
   });
 
   it('el observador ve solo las pestañas de lectura de su perfil', async () => {
     mockApi({ ...signedInAs(observer), ...summaryRoutes });
     renderApp('/proyectos/p1/resumen');
-    expect(await tabNames()).toEqual(['Resumen', 'Informes', 'Acta', 'Tareas', 'Anexos', 'Lecciones', 'Entregables']);
+    expect(await tabNames()).toEqual(['Resumen', 'Informes', 'Acta', 'Tareas', 'Anexos', 'Lecciones', 'Entregables', 'Requisitos']);
   });
 
   it('al PM sí se las muestra', async () => {

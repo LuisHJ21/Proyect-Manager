@@ -6,7 +6,7 @@ import { apiError, collaborator, mockApi, pmUser, renderApp, signedInAs } from '
 
 const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'AGILE', startDate: null, endDate: null, plannedBudgetCents: 500000, currency: 'USD' };
 const money = (cents: number) => formatMoney(cents, 'USD').replace(/\s+/g, ' ');
-const empty = { baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, series: [] };
+const empty = { baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, outsideBaselineCostCents: 0, series: [] };
 const v1 = {
   version: 1,
   reason: '',
@@ -31,6 +31,7 @@ const withBaseline = {
     cvCents: -10000,
     svCents: -10000,
     eacCents: 500000,
+    eacMethod: 'CPI',
     etcCents: 450000,
     vacCents: -100000,
     percentComplete: 10,
@@ -42,6 +43,7 @@ const withBaseline = {
     { taskId: 't3', title: 'Blog', baselineCostCents: null, progress: 0, evCents: null, linkedCostCents: 0, finishVarianceDays: null, state: 'OUTSIDE' },
   ],
   outsideBaseline: 1,
+  outsideBaselineCostCents: 0,
   series: [
     { date: '2026-11-01', pvCents: 10000, evCents: null, acCents: null },
     { date: '2026-11-04', pvCents: 40000, evCents: 30000, acCents: 45000 },
@@ -66,6 +68,28 @@ const base = {
 const open = () => renderApp('/proyectos/p1/desempeno');
 
 describe('pestaña Desempeño', () => {
+  it('con CPI 0 el EAC se marca como estimación', async () => {
+    mockApi({ ...base, 'GET /api/projects/p1/performance': { ...withBaseline, metrics: { ...withBaseline.metrics, cpi: 0, eacMethod: 'ATYPICAL' } } });
+    open();
+    const cards = await screen.findByRole('region', { name: 'Indicadores de valor ganado' });
+    const eac = within(cards).getByText(/EAC/).closest('div[data-card]') as HTMLElement;
+    expect(eac).toHaveTextContent('Estimación: aún no hay avance que permita proyectar el costo');
+  });
+
+  it('muestra aparte el gasto que no está ligado a la línea base', async () => {
+    mockApi({ ...base, 'GET /api/projects/p1/performance': { ...withBaseline, outsideBaselineCostCents: 2500 } });
+    open();
+    expect(await screen.findByText(`De este costo real, ${money(2500)} no está ligado a tareas de la línea base`)).toBeInTheDocument();
+  });
+
+  it('sin gasto fuera de la línea base no muestra esa línea', async () => {
+    mockApi({ ...base, 'GET /api/projects/p1/performance': withBaseline });
+    open();
+    await screen.findByRole('region', { name: 'Indicadores de valor ganado' });
+    expect(screen.queryByText(/no está ligado a tareas de la línea base/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Estimación: aún no hay avance/)).not.toBeInTheDocument();
+  });
+
   it('sin línea base invita a fijarla', async () => {
     const api = mockApi({ ...base, 'GET /api/projects/p1/performance': empty, 'POST /api/projects/p1/baselines': v1 });
     open();

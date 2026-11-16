@@ -120,6 +120,11 @@ export function PerformancePage() {
   return (
     <div className="space-y-6">
       <MetricCards metrics={data.metrics} currency={currency} />
+      {data.outsideBaselineCostCents > 0 && (
+        <p className="text-sm text-ink-soft">
+          {`De este costo real, ${formatMoney(data.outsideBaselineCostCents, currency)} no está ligado a tareas de la línea base`}
+        </p>
+      )}
       <Card title="Curva S">
         <SCurve series={data.series} today={localToday(new Date())} currency={currency} />
       </Card>

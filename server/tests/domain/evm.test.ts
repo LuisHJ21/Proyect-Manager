@@ -52,6 +52,7 @@ describe('computeEvm', () => {
       cvCents: -10000,
       svCents: -10000,
       eacCents: 125000,
+      eacMethod: 'CPI',
       etcCents: 75000,
       vacCents: -25000,
       percentComplete: 40,
@@ -120,3 +121,53 @@ describe('computeEvm', () => {
     expect(plannedValueAt([odd], '2026-11-01')).toBe(33);
   });
 });
+
+describe('EAC según el CPI', () => {
+  const small = (progress: number, expenses: EvmInput['expenses']) =>
+    computeEvm(
+      {
+        baseline: { bacCents: 1000, tasks: [{ ...baseTask, plannedCostCents: 1000 }] },
+        tasks: [{ id: 't1', title: 'Diseño', progress, dueDate: '2026-11-10', plannedCostCents: 1000 }],
+        expenses,
+        plannedBudgetCents: 1000,
+      },
+      '2026-11-05',
+    );
+
+  it('con CPI mayor que 0 proyecta BAC / CPI', () => {
+    const { metrics } = small(50, [{ amountCents: 1000, date: '2026-11-04', taskId: 't1' }]);
+    expect(metrics).toMatchObject({ eacCents: 2000, eacMethod: 'CPI' });
+  });
+
+  it('con gasto y ningún avance usa AC + (BAC − EV)', () => {
+    const { metrics } = small(0, [{ amountCents: 300, date: '2026-11-04', taskId: 't1' }]);
+    expect(metrics).toMatchObject({ eacCents: 1300, eacMethod: 'ATYPICAL', etcCents: 1000, vacCents: -300 });
+  });
+
+  it('sin gasto queda en el presupuesto', () => {
+    expect(small(30, []).metrics).toMatchObject({ eacCents: 1000, eacMethod: 'BUDGET' });
+  });
+});
+
+describe('gasto fuera de la línea base', () => {
+  it('suma lo gastado hasta hoy sin tarea o en tareas fuera de la base', () => {
+    const result = computeEvm(
+      input({
+        tasks: [
+          { id: 't1', title: 'Diseño', progress: 40, dueDate: '2026-11-10', plannedCostCents: 100000 },
+          { id: 't2', title: 'Extra', progress: 0, dueDate: null, plannedCostCents: 500 },
+        ],
+        expenses: [
+          { amountCents: 100, date: '2026-11-02', taskId: null },
+          { amountCents: 200, date: '2026-11-03', taskId: 't2' },
+          { amountCents: 50, date: '2026-11-04', taskId: 't1' },
+          { amountCents: 400, date: '2026-11-20', taskId: null },
+        ],
+      }),
+      '2026-11-05',
+    );
+    expect(result.outsideBaselineCostCents).toBe(300);
+    expect(result.metrics.acCents).toBe(350);
+  });
+});
+

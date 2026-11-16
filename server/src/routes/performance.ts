@@ -125,12 +125,12 @@ export function performanceRoutes(app: App) {
     const history = await prisma.baseline.findMany({ where: { projectId: project.id }, include: baselineInclude, orderBy: { version: 'desc' } });
     const input = await loadEvmInput(prisma, project.id);
     if (!input || history.length === 0) {
-      return c.json({ baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, series: [] });
+      return c.json({ baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, outsideBaselineCostCents: 0, series: [] });
     }
 
     const today = c.var.deps.today();
-    const { metrics, tasks, outsideBaseline } = computeEvm(input, today);
-    await saveEvmSnapshot(prisma, project.id, today);
+    // Solo lectura: la foto de cada día la guarda la tarea diaria; el punto de hoy se calcula al momento.
+    const { metrics, tasks, outsideBaseline, outsideBaselineCostCents } = computeEvm(input, today);
 
     const snapshots = new Map(
       (await prisma.evmSnapshot.findMany({ where: { projectId: project.id } })).map((s) => [s.date, s]),
@@ -149,11 +149,12 @@ export function performanceRoutes(app: App) {
     const series = [];
     for (const date of [...dates].sort()) {
       const snap = snapshots.get(date);
+      const live = date === today;
       series.push({
         date,
         pvCents: plannedValueAt(baseTasks, date),
-        evCents: snap ? Number(snap.evCents) : null,
-        acCents: snap ? Number(snap.acCents) : null,
+        evCents: live ? metrics.evCents : snap ? Number(snap.evCents) : null,
+        acCents: live ? metrics.acCents : snap ? Number(snap.acCents) : null,
       });
     }
 
@@ -163,6 +164,7 @@ export function performanceRoutes(app: App) {
       metrics,
       tasks,
       outsideBaseline,
+      outsideBaselineCostCents,
       series,
     });
   });

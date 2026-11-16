@@ -27,6 +27,8 @@ export type EvmMetrics = {
   cvCents: number;
   svCents: number;
   eacCents: number;
+  /** Cómo se calculó el EAC: con el CPI, como variación atípica (CPI 0) o igual al BAC sin gasto. */
+  eacMethod: 'CPI' | 'ATYPICAL' | 'BUDGET';
   etcCents: number;
   vacCents: number;
   percentComplete: number;
@@ -48,7 +50,10 @@ export function plannedValueAt(tasks: BaselineTaskInput[], date: string): number
 const ratio = (numerator: number, denominator: number) => (denominator === 0 ? null : Math.round((numerator / denominator) * 100) / 100);
 
 /** Valor ganado del proyecto a una fecha, contra la línea base vigente. */
-export function computeEvm(input: EvmInput, today: string): { metrics: EvmMetrics; tasks: EvmTaskRow[]; outsideBaseline: number } {
+export function computeEvm(
+  input: EvmInput,
+  today: string,
+): { metrics: EvmMetrics; tasks: EvmTaskRow[]; outsideBaseline: number; outsideBaselineCostCents: number } {
   const current = new Map(input.tasks.map((t) => [t.id, t]));
   const baselineIds = new Set(input.baseline.tasks.map((t) => t.taskId));
   const linkedCost = (taskId: string) => input.expenses.filter((e) => e.taskId === taskId).reduce((sum, e) => sum + e.amountCents, 0);
@@ -87,7 +92,11 @@ export function computeEvm(input: EvmInput, today: string): { metrics: EvmMetric
   const acCents = input.expenses.filter((e) => e.date <= today).reduce((sum, e) => sum + e.amountCents, 0);
   const cpi = ratio(evCents, acCents);
   const spi = ratio(evCents, pvCents);
-  const eacCents = cpi ? Math.round(bacCents / cpi) : bacCents;
+  // CPI 0 (gasto sin avance) no permite proyectar: se suma lo gastado a lo que falta del BAC.
+  const eacMethod: EvmMetrics['eacMethod'] = cpi === null ? 'BUDGET' : cpi > 0 ? 'CPI' : 'ATYPICAL';
+  const eacCents = eacMethod === 'CPI' ? Math.round(bacCents / cpi!) : eacMethod === 'ATYPICAL' ? acCents + bacCents - evCents : bacCents;
+  const spentToDate = input.expenses.filter((e) => e.date <= today);
+  const outsideBaselineCostCents = spentToDate.filter((e) => !e.taskId || !baselineIds.has(e.taskId)).reduce((sum, e) => sum + e.amountCents, 0);
 
   return {
     metrics: {
@@ -100,6 +109,7 @@ export function computeEvm(input: EvmInput, today: string): { metrics: EvmMetric
       cvCents: evCents - acCents,
       svCents: evCents - pvCents,
       eacCents,
+      eacMethod,
       etcCents: Math.max(eacCents - acCents, 0),
       vacCents: bacCents - eacCents,
       percentComplete: bacCents === 0 ? 0 : Math.round((evCents / bacCents) * 100),
@@ -107,5 +117,6 @@ export function computeEvm(input: EvmInput, today: string): { metrics: EvmMetric
     },
     tasks: rows,
     outsideBaseline: outside.length,
+    outsideBaselineCostCents,
   };
 }

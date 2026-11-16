@@ -1,5 +1,6 @@
 import type { Project, Task, User } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { saveEvmSnapshot } from '../src/routes/performance';
 import { createTestApp, type TestCtx } from './helpers/testApp';
 
 describe('líneas base y desempeño', () => {
@@ -42,7 +43,7 @@ describe('líneas base y desempeño', () => {
 
   it('sin línea base devuelve vacío', async () => {
     const body = (await ctx.as(pm).get(perf())).json();
-    expect(body).toEqual({ baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, series: [] });
+    expect(body).toEqual({ baseline: null, history: [], metrics: null, tasks: [], outsideBaseline: 0, outsideBaselineCostCents: 0, series: [] });
     expect(await ctx.prisma.evmSnapshot.count()).toBe(0);
   });
 
@@ -109,23 +110,35 @@ describe('líneas base y desempeño', () => {
     expect(metrics).toMatchObject({ pvCents: 50000, evCents: 40000, acCents: 50000, bacCents: 400000, cpi: 0.8, spi: 0.8, reserveCents: 100000 });
   });
 
-  it('la foto diaria es única y se actualiza, y series la usa', async () => {
+  it('leer el desempeño no guarda fotos', async () => {
     await ctx.as(pm).post(baselines(), {});
     await ctx.as(pm).get(perf());
+    expect(await ctx.prisma.evmSnapshot.count()).toBe(0);
+  });
+
+  it('series usa las fotos de la tarea diaria y calcula hoy al momento', async () => {
+    await ctx.as(pm).post(baselines(), {});
     await ctx.prisma.expense.create({ data: { projectId: project.id, description: 'G', amountCents: 7000, date: '2026-11-05', category: 'OTHER' } });
-    await ctx.as(pm).get(perf());
-    const snaps = await ctx.prisma.evmSnapshot.findMany();
-    expect(snaps).toHaveLength(1);
-    expect(Number(snaps[0]!.acCents)).toBe(7000);
+    await saveEvmSnapshot(ctx.prisma, project.id, '2026-11-05');
     ctx.clock.set('2026-11-06T10:00:00');
+    await ctx.prisma.task.update({ where: { id: design.id }, data: { progress: 40 } });
     const { series } = (await ctx.as(pm).get(perf())).json();
-    expect(await ctx.prisma.evmSnapshot.count()).toBe(2);
     expect(series[0]).toMatchObject({ date: '2026-11-01', evCents: null, acCents: null });
     expect(series.at(-1).date).toBe('2026-11-30');
     expect(series).toHaveLength(30);
     const day = (date: string) => series.find((p: { date: string }) => p.date === date);
-    expect(day('2026-11-05')).toMatchObject({ pvCents: 50000, acCents: 7000 });
-    expect(day('2026-11-06').acCents).toBe(7000);
+    expect(day('2026-11-05')).toMatchObject({ pvCents: 50000, evCents: 0, acCents: 7000 });
+    expect(day('2026-11-06')).toMatchObject({ evCents: 40000, acCents: 7000 });
+    expect(await ctx.prisma.evmSnapshot.count()).toBe(1);
+  });
+
+  it('informa el gasto que no está ligado a tareas de la línea base', async () => {
+    await ctx.as(pm).post(baselines(), {});
+    await ctx.prisma.expense.create({ data: { projectId: project.id, description: 'Sin tarea', amountCents: 2500, date: '2026-11-03', category: 'OTHER' } });
+    await ctx.prisma.expense.create({ data: { projectId: project.id, description: 'Diseño', amountCents: 1000, date: '2026-11-03', category: 'OTHER', taskId: design.id } });
+    const body = (await ctx.as(pm).get(perf())).json();
+    expect(body.outsideBaselineCostCents).toBe(2500);
+    expect(body.metrics.acCents).toBe(3500);
   });
 
   it('series incluye hoy aunque caiga fuera de la base', async () => {

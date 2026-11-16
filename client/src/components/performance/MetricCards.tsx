@@ -28,7 +28,16 @@ export function MetricCards({ metrics, currency }: { metrics: NonNullable<Perfor
       <MetricCard label="CPI · eficiencia de costo" value={formatIndex(metrics.cpi)} note={<IndexNote value={metrics.cpi} label={cpiLabel(metrics.cpi)} />} />
       <MetricCard label="SPI · eficiencia de plazo" value={formatIndex(metrics.spi)} note={<IndexNote value={metrics.spi} label={spiLabel(metrics.spi)} />} />
       <MetricCard label="% completado" value={`${metrics.percentComplete} %`} note={`Valor ganado ${money(metrics.evCents)} de ${money(metrics.bacCents)}`} />
-      <MetricCard label="EAC · costo final estimado" value={money(metrics.eacCents)} note={`Falta por gastar ${money(metrics.etcCents)}`} />
+      <MetricCard
+        label="EAC · costo final estimado"
+        value={money(metrics.eacCents)}
+        note={
+          <>
+            {metrics.eacMethod === 'ATYPICAL' && <p>Estimación: aún no hay avance que permita proyectar el costo</p>}
+            <p>{`Falta por gastar ${money(metrics.etcCents)}`}</p>
+          </>
+        }
+      />
       <MetricCard
         label="VAC · variación al terminar"
         value={money(metrics.vacCents)}

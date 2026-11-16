@@ -212,6 +212,7 @@ export type Performance = {
     cvCents: number;
     svCents: number;
     eacCents: number;
+    eacMethod: 'CPI' | 'ATYPICAL' | 'BUDGET';
     etcCents: number;
     vacCents: number;
     percentComplete: number;
@@ -228,6 +229,7 @@ export type Performance = {
     state: EvmTaskState;
   }[];
   outsideBaseline: number;
+  outsideBaselineCostCents: number;
   series: { date: string; pvCents: number; evCents: number | null; acCents: number | null }[];
 };
 

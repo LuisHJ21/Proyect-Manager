@@ -100,6 +100,24 @@ test('flujo principal', async ({ browser }) => {
   await pm.getByRole('link', { name: 'Tareas', exact: true }).click();
   await createTask(pm, 'Diseño', 'Beatriz');
   await createTask(pm, 'Construcción', 'Carlos');
+
+  // EDT: una subtarea bajo una tarea sin trabajo propio recibe su código.
+  await pm.getByRole('button', { name: 'Nueva tarea' }).click();
+  await pm.getByRole('dialog').getByLabel('Título').fill('Entrega');
+  await pm.getByRole('dialog').getByRole('button', { name: 'Guardar tarea' }).click();
+  await expect(pm.getByRole('main').getByRole('link', { name: 'Entrega', exact: true })).toBeVisible();
+  await pm.getByRole('button', { name: 'Nueva tarea' }).click();
+  await pm.getByRole('dialog').getByLabel('Título').fill('Documentación');
+  await pm.getByRole('dialog').getByLabel('Tarea padre').selectOption({ label: '3 Entrega' });
+  await pm.getByRole('dialog').getByRole('button', { name: 'Guardar tarea' }).click();
+  await expect(pm.getByRole('row').filter({ hasText: 'Documentación' })).toContainText('3.1');
+  // Se retiran para no alterar el avance ni los costos del resto del flujo; la padre no se borra antes que su subtarea.
+  for (const title of ['Documentación', 'Entrega']) {
+    await pm.getByRole('main').getByRole('link', { name: title, exact: true }).click();
+    await pm.getByRole('button', { name: 'Eliminar tarea' }).click();
+    await pm.getByRole('dialog').getByRole('button', { name: 'Eliminar' }).click();
+    await expect(pm.getByRole('main').getByRole('link', { name: 'Construcción' })).toBeVisible();
+  }
   await pm.getByRole('link', { name: 'Construcción' }).click();
   await pm.getByLabel('Añadir predecesora').selectOption({ label: 'Diseño' });
   await pm.getByRole('button', { name: 'Añadir dependencia' }).click();
@@ -122,7 +140,7 @@ test('flujo principal', async ({ browser }) => {
   const laterText = `${later.getFullYear()}-${String(later.getMonth() + 1).padStart(2, '0')}-${String(later.getDate()).padStart(2, '0')}`;
   const planTask = async (title: string, cost: string, due: string) => {
     await pm.goto(`${projectUrl}/tareas`);
-    await pm.getByRole('main').getByRole('link', { name: title }).click();
+    await pm.getByRole('main').getByRole('link', { name: title, exact: true }).click();
     await pm.getByRole('button', { name: 'Editar tarea' }).click();
     const dialog = pm.getByRole('dialog');
     await dialog.getByLabel('Fecha de inicio').fill(todayText);

@@ -44,6 +44,9 @@ export type Project = {
   team?: PersonRef[];
   /** Solo para Project Manager. */
   plannedBudgetCents?: number;
+  /** Solo llegan al Project Manager. */
+  contingencyReserveCents?: number;
+  managementReserveCents?: number;
   currency?: string;
   health?: Health | null;
   overdueTasks?: number;
@@ -228,7 +231,11 @@ export type Performance = {
     etcCents: number;
     vacCents: number;
     percentComplete: number;
-    reserveCents: number;
+    contingencyCents: number;
+    managementCents: number;
+    unallocatedCents: number;
+    contingencyUseCents: number;
+    contingencyExceeded: boolean;
   } | null;
   tasks: {
     taskId: string;
@@ -387,3 +394,12 @@ export type Notification = {
 };
 
 export type NotificationPage = { items: Notification[]; nextCursor: string | null };
+
+export type BudgetCategories = {
+  items: { category: import('@pm/shared').ExpenseCategory; plannedCents: number; actualCents: number }[];
+  teamLaborCents: number;
+  contingencyCents: number;
+  managementCents: number;
+  unallocatedCents: number;
+  overAllocated: boolean;
+};

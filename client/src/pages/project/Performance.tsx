@@ -121,6 +121,11 @@ export function PerformancePage() {
   return (
     <div className="space-y-6">
       <MetricCards metrics={data.metrics} currency={currency} />
+      {data.metrics.contingencyExceeded && (
+        <p role="status" className="rounded-md bg-warn-bg px-3 py-2 text-sm text-warn-fg">
+          El sobrecosto proyectado supera la reserva de contingencia
+        </p>
+      )}
       {data.outsideBaselineCostCents > 0 && (
         <p className="text-sm text-ink-soft">
           {`De este costo real, ${formatMoney(data.outsideBaselineCostCents, currency)} no está ligado a tareas de la línea base`}

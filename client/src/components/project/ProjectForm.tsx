@@ -16,14 +16,18 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
   const [startDate, setStartDate] = useState(project?.startDate ?? '');
   const [endDate, setEndDate] = useState(project?.endDate ?? '');
   const [budget, setBudget] = useState<number | null>(project?.plannedBudgetCents ?? 0);
+  const [contingency, setContingency] = useState<number | null>(project?.contingencyReserveCents ?? 0);
+  const [management, setManagement] = useState<number | null>(project?.managementReserveCents ?? 0);
   const [currency, setCurrency] = useState(project?.currency ?? 'USD');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (budget === null) {
-      setErrors({ fields: { plannedBudgetCents: INVALID_MONEY_MESSAGE } });
+    const invalid = { plannedBudgetCents: budget, contingencyReserveCents: contingency, managementReserveCents: management };
+    const fields = Object.fromEntries(Object.entries(invalid).filter(([, v]) => v === null).map(([k]) => [k, INVALID_MONEY_MESSAGE]));
+    if (Object.keys(fields).length > 0) {
+      setErrors({ fields });
       return;
     }
     setErrors(NO_ERRORS);
@@ -36,6 +40,8 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
       startDate: startDate || null,
       endDate: endDate || null,
       plannedBudgetCents: budget,
+      contingencyReserveCents: contingency,
+      managementReserveCents: management,
       currency,
     };
     try {
@@ -92,6 +98,12 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
         </FormField>
         <FormField label="Presupuesto planificado" error={errors.fields.plannedBudgetCents}>
           <MoneyInput value={budget} onChange={setBudget} blankIsZero />
+        </FormField>
+        <FormField label="Reserva de contingencia" error={errors.fields.contingencyReserveCents} hint="Para riesgos identificados.">
+          <MoneyInput value={contingency} onChange={setContingency} blankIsZero />
+        </FormField>
+        <FormField label="Reserva de gestión" error={errors.fields.managementReserveCents} hint="Para imprevistos no identificados.">
+          <MoneyInput value={management} onChange={setManagement} blankIsZero />
         </FormField>
         <FormField label="Moneda" error={errors.fields.currency} hint="Código de 3 letras, por ejemplo USD o MXN">
           <input className={inputClass} value={currency} onChange={(e) => setCurrency(e.target.value)} />

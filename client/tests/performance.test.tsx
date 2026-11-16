@@ -35,7 +35,11 @@ const withBaseline = {
     etcCents: 450000,
     vacCents: -100000,
     percentComplete: 10,
-    reserveCents: 100000,
+    contingencyCents: 30000,
+    managementCents: 0,
+    unallocatedCents: 70000,
+    contingencyUseCents: 100000,
+    contingencyExceeded: true,
   },
   tasks: [
     { taskId: 't1', title: 'Diseño', baselineCostCents: 100000, progress: 40, evCents: 40000, linkedCostCents: 50000, finishVarianceDays: 3, state: 'LATE' },
@@ -125,7 +129,10 @@ describe('pestaña Desempeño', () => {
     expect(card(/EAC/)).toHaveTextContent(money(500000));
     expect(card(/VAC/)).toHaveTextContent(money(-100000));
     expect(card(/completado/)).toHaveTextContent('10 %');
-    expect(card(/Reserva/)).toHaveTextContent(money(100000));
+    expect(card(/Contingencia/)).toHaveTextContent(money(30000));
+    expect(card(/Contingencia/)).toHaveTextContent(`Uso proyectado ${money(100000)}`);
+    expect(within(cards).queryByText(/^Reserva$/)).not.toBeInTheDocument();
+    expect(screen.getByText('El sobrecosto proyectado supera la reserva de contingencia')).toBeInTheDocument();
   });
 
   it('la curva S tiene una descripción accesible y leyenda', async () => {

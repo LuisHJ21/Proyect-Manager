@@ -43,11 +43,7 @@ export function MetricCards({ metrics, currency }: { metrics: NonNullable<Perfor
         value={money(metrics.vacCents)}
         note={metrics.vacCents < 0 ? 'Se espera terminar por encima del presupuesto planeado' : 'Se espera terminar dentro del presupuesto planeado'}
       />
-      <MetricCard
-        label="Reserva"
-        value={money(metrics.reserveCents)}
-        note={metrics.reserveCents < 0 ? 'El costo planeado de las tareas supera el presupuesto del proyecto' : 'Presupuesto del proyecto menos el costo planeado'}
-      />
+      <MetricCard label="Contingencia" value={money(metrics.contingencyCents)} note={`Uso proyectado ${money(metrics.contingencyUseCents)}`} />
     </section>
   );
 }

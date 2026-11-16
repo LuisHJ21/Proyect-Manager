@@ -15,6 +15,7 @@ import { RichTextClamp, RichTextView } from '../../components/richText/RichTextV
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card } from '../../components/ui';
 import { useAccess } from '../../auth/useAccess';
+import { BudgetCategoriesSection } from '../../components/budget/BudgetCategories';
 import { useProject } from './ProjectLayout';
 
 const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
@@ -246,6 +247,7 @@ export function BudgetPage() {
   return (
     <div className="space-y-6">
       <BudgetTotals projectId={project.id} currency={currency} />
+      <BudgetCategoriesSection projectId={project.id} currency={currency} canEdit={!readOnly} />
       <RegisterTable<Expense>
         projectId={project.id}
         path="expenses"

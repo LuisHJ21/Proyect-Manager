@@ -118,6 +118,20 @@ describe('lista de proyectos', () => {
     });
   });
 
+  it('crear un proyecto envía las reservas', async () => {
+    const api = mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'POST /api/projects': project });
+    renderApp('/proyectos');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Nuevo proyecto' }));
+    await user.type(screen.getByLabelText('Nombre'), 'Portal');
+    await user.type(screen.getByLabelText('Reserva de contingencia'), '50');
+    await user.type(screen.getByLabelText('Reserva de gestión'), '20');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() =>
+      expect(api.calls.find((c) => c.key === 'POST /api/projects')?.body).toMatchObject({ contingencyReserveCents: 5000, managementReserveCents: 2000 }),
+    );
+  });
+
   it('un presupuesto inválido no se envía', async () => {
     const api = mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [], 'POST /api/projects': project });
     renderApp('/proyectos');

@@ -48,6 +48,11 @@ export type Project = {
   contingencyReserveCents?: number;
   managementReserveCents?: number;
   currency?: string;
+  /** Umbrales de salud: solo llegan al PM. */
+  healthOverdueTasks?: number;
+  healthBudgetPercent?: number;
+  healthIndexMin?: number;
+  highRiskScore?: number;
   statusReportFrequency?: import('@pm/shared').StatusReportFrequency;
   health?: Health | null;
   overdueTasks?: number;
@@ -138,6 +143,15 @@ export type Risk = {
   ownerId: string | null;
   status: RiskStatus;
   incidents?: IncidentRef[];
+  trigger?: string;
+  nextReviewDate?: string | null;
+  reviewOverdue?: boolean;
+  residualProbability?: number | null;
+  residualImpact?: number | null;
+  residualScore?: number | null;
+  /** Solo llega al PM. */
+  contingencyCostCents?: number | null;
+  assessments?: { assessedAt: string; assessedBy: PersonRef; probability: number; impact: number; residualProbability: number | null; residualImpact: number | null }[];
 };
 export type Expense = { id: string; description: string; amountCents: number; date: string; category: ExpenseCategory; taskId: string | null };
 

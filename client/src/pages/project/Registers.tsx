@@ -18,6 +18,8 @@ import { useAccess } from '../../auth/useAccess';
 import { BudgetCategoriesSection } from '../../components/budget/BudgetCategories';
 import { EngagementMatrix } from '../../components/stakeholders/EngagementMatrix';
 import { PowerInterestGrid } from '../../components/stakeholders/PowerInterestGrid';
+import { RiskMatrix } from '../../components/risks/RiskMatrix';
+import { shortDate } from '../../lib/display';
 import { useProject } from './ProjectLayout';
 
 const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
@@ -198,8 +200,13 @@ export function RisksPage() {
     const valid = responseOptions(values.type).map((o) => o.value);
     return valid.includes(values.response) ? values : { ...values, response: valid[0] };
   };
+  // La misma consulta que la tabla: la matriz se refresca con ella.
+  const risks = useQuery({ queryKey: registerKey(project.id, 'risks'), queryFn: () => api<Risk[]>(`/api/projects/${project.id}/risks`) });
+  const isPm = canWrite('risks');
+  const residualText = (p: number | null | undefined, i: number | null | undefined) => (p && i ? `${p} × ${i} (${p * i})` : 'Sin evaluar');
 
   return (
+    <div className="space-y-6">
     <RegisterTable<Risk>
       projectId={project.id}
       path="risks"
@@ -220,6 +227,34 @@ export function RisksPage() {
               { label: 'Puntaje', value: `${item.score} (${item.probability} × ${item.impact})` },
               { label: 'Respuesta', value: LABELS.riskResponse[item.response as keyof typeof LABELS.riskResponse] },
               { label: 'Responsable', value: memberName(item.ownerId) },
+              { label: 'Disparador', value: item.trigger || '—' },
+              {
+                label: 'Próxima revisión',
+                value: item.nextReviewDate ? (
+                  <span className="flex items-center gap-2">
+                    {shortDate(item.nextReviewDate)}
+                    {item.reviewOverdue && <Badge tone="danger">Revisión vencida</Badge>}
+                  </span>
+                ) : (
+                  '—'
+                ),
+              },
+              { label: 'Residual', value: residualText(item.residualProbability, item.residualImpact) },
+              ...(isPm ? [{ label: 'Costo de contingencia', value: item.contingencyCostCents == null ? '—' : formatMoney(item.contingencyCostCents, project.currency ?? 'USD') }] : []),
+              {
+                label: 'Historial de evaluaciones',
+                value: item.assessments?.length ? (
+                  <ul className="space-y-0.5">
+                    {item.assessments.map((a) => (
+                      <li key={a.assessedAt}>
+                        {`${shortDate(a.assessedAt.slice(0, 10))} · ${a.assessedBy.name} · ${a.probability} × ${a.impact}${a.residualProbability && a.residualImpact ? ` · residual ${a.residualProbability} × ${a.residualImpact}` : ''}`}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  '—'
+                ),
+              },
               { label: 'Estado', value: canChangeOwnStatus ? <RiskStatusSelect projectId={project.id} risk={item} /> : LABELS.riskStatus[item.status] },
               // El vínculo con incidentes es del PM.
               ...(canWrite('risks') ? [{ label: 'Incidentes', value: <RiskIncidents projectId={project.id} risk={item} readOnly={readOnly} /> }] : []),
@@ -227,7 +262,7 @@ export function RisksPage() {
           />
         ),
       }}
-      defaults={{ description: '', type: 'THREAT', probability: 3, impact: 3, response: 'MITIGATE', responsePlan: '', ownerId: null, status: 'OPEN' }}
+      defaults={{ description: '', type: 'THREAT', probability: 3, impact: 3, response: 'MITIGATE', responsePlan: '', ownerId: null, status: 'OPEN', trigger: '', nextReviewDate: null, residualProbability: null, residualImpact: null, contingencyCostCents: null }}
       columns={[
         { header: 'Riesgo', cell: (item) => <span className="font-medium text-ink"><RichTextClamp html={item.description} /></span> },
         { header: 'Tipo', cell: (item) => LABELS.riskType[item.type] },
@@ -248,6 +283,11 @@ export function RisksPage() {
         { name: 'impact', label: 'Impacto (1 a 5)', type: 'select', numeric: true, options: SCALE },
         { name: 'response', label: 'Respuesta', type: 'select', options: (values) => responseOptions(values.type) },
         { name: 'responsePlan', label: 'Plan de respuesta', type: 'richtext' },
+        { name: 'trigger', label: 'Disparador', type: 'textarea' },
+        { name: 'nextReviewDate', label: 'Próxima revisión', type: 'date' },
+        { name: 'residualProbability', label: 'Probabilidad residual', type: 'select', numeric: true, nullable: true, emptyLabel: 'Sin evaluar', options: SCALE },
+        { name: 'residualImpact', label: 'Impacto residual', type: 'select', numeric: true, nullable: true, emptyLabel: 'Sin evaluar', options: SCALE },
+        ...(isPm ? [{ name: 'contingencyCostCents', label: 'Costo de contingencia', type: 'money' as const, nullable: true }] : []),
         {
           name: 'ownerId',
           label: 'Responsable',
@@ -260,6 +300,8 @@ export function RisksPage() {
         { name: 'status', label: 'Estado', type: 'select', options: options(RISK_STATUS, LABELS.riskStatus) },
       ]}
     />
+    {risks.data && risks.data.length > 0 && <RiskMatrix risks={risks.data} highRiskScore={project.highRiskScore} />}
+    </div>
   );
 }
 

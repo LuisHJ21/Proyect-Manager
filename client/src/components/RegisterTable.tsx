@@ -92,7 +92,7 @@ function RegisterForm({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const invalidMoney = fields.find((f) => f.type === 'money' && values[f.name] === null);
+    const invalidMoney = fields.find((f) => f.type === 'money' && !f.nullable && values[f.name] === null);
     if (invalidMoney) {
       setErrors({ fields: { [invalidMoney.name]: INVALID_MONEY_MESSAGE } });
       return;
@@ -123,7 +123,7 @@ function RegisterForm({
                 value={values[field.name] ?? ''}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  setField(field.name, field.numeric ? Number(raw) : field.nullable && raw === '' ? null : raw);
+                  setField(field.name, field.nullable && raw === '' ? null : field.numeric ? Number(raw) : raw);
                 }}
               >
                 {field.nullable && <option value="">{field.emptyLabel ?? 'Sin asignar'}</option>}

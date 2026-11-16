@@ -73,7 +73,7 @@ describe('riesgos del colaborador', () => {
     const api = mockApi({ ...riskRoutes, 'PATCH /api/projects/p1/risks/r1': { ...risk, status: 'TREATING' } });
     renderApp('/proyectos/p1/riesgos');
     const user = userEvent.setup();
-    expect(await screen.findByText('Proveedor tarde')).toBeInTheDocument();
+    expect((await screen.findAllByText('Proveedor tarde')).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Añadir riesgo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Editar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Eliminar/ })).not.toBeInTheDocument();

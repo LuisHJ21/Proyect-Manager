@@ -49,9 +49,10 @@ describe('riesgos', () => {
   it('la tabla muestra el riesgo en texto plano recortado', async () => {
     mockApi({ ...routes, 'GET /api/projects/p1/risks': [formatted] });
     renderApp('/proyectos/p1/riesgos');
-    const cell = await screen.findByText('Retraso del proveedor');
-    expect(cell).toHaveClass('line-clamp-2');
-    expect(screen.getByRole('table').querySelector('strong')).toBeNull();
+    // El texto también aparece en la matriz de riesgos: se busca el de la tabla del registro.
+    const cell = (await screen.findAllByText('Retraso del proveedor')).find((el) => el.classList.contains('line-clamp-2'));
+    expect(cell).toBeDefined();
+    expect(screen.getAllByRole('table')[0]!.querySelector('strong')).toBeNull();
   });
 
   it('las acciones y la confirmación usan texto plano', async () => {

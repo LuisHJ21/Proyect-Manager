@@ -121,6 +121,9 @@ export type Stakeholder = {
   influence: Level;
   interest: Level;
   strategy: string;
+  currentEngagement: import('@pm/shared').EngagementLevel | null;
+  desiredEngagement: import('@pm/shared').EngagementLevel | null;
+  expectations: string;
 };
 export type Risk = {
   id: string;

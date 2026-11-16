@@ -1,4 +1,4 @@
-import { EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
+import { ENGAGEMENT_LEVEL, EXPENSE_CATEGORY, formatMoney, LABELS, LEVEL, RISK_RESPONSE, RISK_STATUS, RISK_TYPE, toPlainText, type RiskType } from '@pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, EDIT_CONFLICT_NOTICE, errorMessage, isEditConflict } from '../../api/client';
@@ -16,6 +16,8 @@ import { useToast } from '../../components/Toast';
 import { Badge, Button, Card } from '../../components/ui';
 import { useAccess } from '../../auth/useAccess';
 import { BudgetCategoriesSection } from '../../components/budget/BudgetCategories';
+import { EngagementMatrix } from '../../components/stakeholders/EngagementMatrix';
+import { PowerInterestGrid } from '../../components/stakeholders/PowerInterestGrid';
 import { useProject } from './ProjectLayout';
 
 const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
@@ -29,6 +31,11 @@ const responseOptions = (type: RiskType): Option[] =>
 export function StakeholdersPage() {
   const { project, readOnly } = useProject();
   const queryClient = useQueryClient();
+  // La misma consulta que usa la tabla: las vistas se refrescan con ella.
+  const stakeholders = useQuery({
+    queryKey: registerKey(project.id, 'stakeholders'),
+    queryFn: () => api<Stakeholder[]>(`/api/projects/${project.id}/stakeholders`),
+  });
   return (
     <div className="space-y-6">
       <RegisterTable<Stakeholder>
@@ -39,7 +46,7 @@ export function StakeholdersPage() {
         canEdit={!readOnly}
         emptyText="Aún no hay interesados registrados."
         itemLabel={(item) => item.name}
-        defaults={{ name: '', organization: '', position: '', contact: '', influence: 'MEDIUM', interest: 'MEDIUM', strategy: '' }}
+        defaults={{ name: '', organization: '', position: '', contact: '', influence: 'MEDIUM', interest: 'MEDIUM', strategy: '', currentEngagement: null, desiredEngagement: null, expectations: '' }}
         columns={[
           { header: 'Nombre', cell: (item) => <span className="font-medium text-ink">{item.name}</span> },
           { header: 'Organización y cargo', cell: (item) => [item.organization, item.position].filter(Boolean).join(' · ') },
@@ -56,9 +63,18 @@ export function StakeholdersPage() {
           { name: 'influence', label: 'Influencia', type: 'select', options: options(LEVEL, LABELS.level) },
           { name: 'interest', label: 'Interés', type: 'select', options: options(LEVEL, LABELS.level) },
           { name: 'strategy', label: 'Estrategia de gestión', type: 'textarea' },
+          { name: 'currentEngagement', label: 'Involucramiento actual', type: 'select', options: options(ENGAGEMENT_LEVEL, LABELS.engagement), nullable: true, emptyLabel: 'Sin evaluar' },
+          { name: 'desiredEngagement', label: 'Involucramiento deseado', type: 'select', options: options(ENGAGEMENT_LEVEL, LABELS.engagement), nullable: true, emptyLabel: 'Sin evaluar' },
+          { name: 'expectations', label: 'Expectativas', type: 'textarea' },
         ]}
         onChanged={() => void queryClient.invalidateQueries({ queryKey: raciKey(project.id) })}
       />
+      {stakeholders.data && stakeholders.data.length > 0 && (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <PowerInterestGrid stakeholders={stakeholders.data} />
+          <EngagementMatrix stakeholders={stakeholders.data} />
+        </div>
+      )}
       <RaciMatrix projectId={project.id} readOnly={readOnly} />
     </div>
   );

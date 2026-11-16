@@ -48,6 +48,17 @@ describe('registros del proyecto', () => {
     expect((await client.post(url(path), samples[path])).statusCode).toBe(403);
   });
 
+  it('el PM guarda el involucramiento y el colaborador sigue sin acceso', async () => {
+    const created = (await ctx.as(pm).post(url('stakeholders'), samples.stakeholders)).json();
+    expect(created).toMatchObject({ currentEngagement: null, desiredEngagement: null, expectations: '' });
+    const res = await ctx.as(pm).patch(`${url('stakeholders')}/${created.id}`, { currentEngagement: 'RESISTANT', desiredEngagement: 'SUPPORTIVE', expectations: 'Plazos' });
+    expect(res.statusCode).toBe(200);
+    const listed = (await ctx.as(pm).get(url('stakeholders'))).json()[0];
+    expect(listed).toMatchObject({ currentEngagement: 'RESISTANT', desiredEngagement: 'SUPPORTIVE', expectations: 'Plazos' });
+    expect((await ctx.as(pm).patch(`${url('stakeholders')}/${created.id}`, { desiredEngagement: 'FAN' })).statusCode).toBe(400);
+    expect((await ctx.as(member).get(url('stakeholders'))).statusCode).toBe(403);
+  });
+
   it('no miembro recibe 404', async () => {
     const outsider = await ctx.makeUser({ role: 'COLLABORATOR' });
     expect((await ctx.as(outsider).get(url('objectives'))).statusCode).toBe(404);

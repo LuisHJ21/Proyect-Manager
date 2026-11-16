@@ -92,9 +92,11 @@ describe('riesgos', () => {
       ],
     });
     renderApp('/proyectos/p1/interesados');
-    expect(await screen.findByText('Dirección')).toBeInTheDocument();
-    expect(screen.getByText('Alto')).toBeInTheDocument();
-    expect(screen.getByText('Bajo')).toBeInTheDocument();
+    // La fila del registro; el nombre también aparece en la cuadrícula y en la matriz.
+    const row = await screen.findByRole('row', { name: /ACME · CEO/ });
+    expect(within(row).getByText('Dirección')).toBeInTheDocument();
+    expect(within(row).getByText('Alto')).toBeInTheDocument();
+    expect(within(row).getByText('Bajo')).toBeInTheDocument();
   });
 });
 

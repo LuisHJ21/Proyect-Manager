@@ -116,7 +116,8 @@ export type TimeEntry = {
   rateCents?: number;
   costCents?: number;
 };
-export type WorkloadWeek = { start: string; assignedHours: number; capacityHours: number; overloaded: boolean };
+/** `byProject`: horas de la semana por proyecto (etapa 8); los proyectos en pausa no cuentan. */
+export type WorkloadWeek = { start: string; assignedHours: number; capacityHours: number; overloaded: boolean; byProject?: { projectId: string; name: string; hours: number }[] };
 
 export type Charter = {
   version: number;

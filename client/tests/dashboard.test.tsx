@@ -134,3 +134,28 @@ describe('cambios por aplicar en el panel', () => {
   });
 });
 
+describe('carga semanal por proyecto', () => {
+  it('cada semana muestra las horas de cada proyecto', async () => {
+    const week = (start: string, byProject: object[]) => ({ start, assignedHours: 16, capacityHours: 40, overloaded: false, byProject });
+    mockApi(
+      routes({
+        ...dashboard,
+        workload: [
+          {
+            userId: 'c',
+            name: 'Carlos Vega',
+            openTasks: 2,
+            overdueTasks: 0,
+            weeks: [week('2026-11-16', [{ projectId: 'p1', name: 'Portal', hours: 10 }, { projectId: 'p2', name: 'Obra', hours: 6 }]), week('2026-11-23', [])],
+          },
+        ],
+      }),
+    );
+    renderApp('/');
+    const load = await screen.findByRole('list', { name: 'Carga semanal de Carlos Vega' });
+    const [first, second] = within(load).getAllByRole('listitem');
+    expect(first).toHaveTextContent('Portal 10 h');
+    expect(first).toHaveTextContent('Obra 6 h');
+    expect(second).not.toHaveTextContent('Portal');
+  });
+});

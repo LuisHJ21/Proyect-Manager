@@ -270,6 +270,9 @@ export function DashboardPage() {
                               <span className="block text-ink-soft">Semana del {shortDate(week.start)}</span>
                               <span className="font-medium">{`${formatHours(week.assignedHours)} / ${formatHours(week.capacityHours)}`}</span>
                               {week.overloaded && <span className="block font-semibold">Sobrecargada</span>}
+                              {week.byProject?.map((p) => (
+                                <span key={p.projectId} className="block truncate text-ink-soft">{`${p.name} ${formatHours(p.hours)}`}</span>
+                              ))}
                             </li>
                           ))}
                         </ul>

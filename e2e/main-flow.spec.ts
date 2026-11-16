@@ -274,6 +274,12 @@ test('flujo principal', async ({ browser }) => {
   await carlos.getByRole('checkbox', { name: 'Base' }).click();
   await expect(carlos.getByText('1 de 2 completados')).toBeVisible();
   await expect(carlos.getByText('Avance: 50 %')).toBeVisible();
+
+  // Horas: Carlos registra 2 h en su tarea.
+  const hours = carlos.getByRole('region', { name: 'Horas' });
+  await hours.getByLabel('Horas', { exact: true }).fill('2');
+  await hours.getByRole('button', { name: 'Registrar horas' }).click();
+  await expect(hours.getByText('2 h registradas')).toBeVisible();
   await carlos.getByLabel('Estado').selectOption({ label: 'En curso' });
 
   await carlos.getByRole('link', { name: 'Tareas del proyecto' }).click();
@@ -370,6 +376,10 @@ test('flujo principal', async ({ browser }) => {
   await expect(history.getByRole('link', { name: 'acta de aceptación.pdf' })).toBeVisible();
   await deliverable.getByRole('button', { name: 'Cerrar' }).click();
   await expect(pm.getByRole('table').getByText('Aceptado')).toBeVisible();
+
+  // El cronograma resalta la ruta crítica.
+  await pm.goto(`${projectUrl}/tareas?vista=cronograma`);
+  await expect(pm.getByText('Ruta crítica')).toBeVisible();
 
   // 7. El PM ve el avance actualizado.
   await pm.goto(`${projectUrl}/resumen`);

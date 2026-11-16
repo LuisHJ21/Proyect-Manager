@@ -158,15 +158,18 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 - Modelo: `Task.estimatedHours`, `TimeEntry { taskId, userId, date, hours, note }`, `ProjectMember.hourlyRateCents` y `weeklyCapacityHours`.
 - El colaborador registra horas en su tarea; el costo de mano de obra real se calcula con la tarifa (visible solo para PM) y entra al valor ganado como costo real.
 - El panel de carga pasa de contar tareas a comparar horas asignadas con capacidad por semana.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-5-planificacion-design.md`): horas por tarea con la tarifa congelada al registrar; horas por tarifa suman al costo real en valor ganado, presupuesto, salud, panel y cierre. Carga semanal de 4 semanas frente a la capacidad sumada entre proyectos.
 
 **F7. Ruta crítica y tipos de dependencia** (Planificación)
 - Modelo: `TaskDependency.type` (FS, SS, FF, SF) y `lagDays`.
 - Función pura `criticalPath(tasks, dependencies)` en `server/src/domain/` con pasada hacia adelante y hacia atrás; devuelve holgura por tarea.
 - El cronograma resalta la ruta crítica; opción "reprogramar sucesoras" al mover una fecha, siempre con confirmación.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-5-planificacion-design.md`): tipos FS, SS, FF y SF con desfase, holgura y ruta crítica en días naturales, y reprogramación con vista previa que nunca mueve hacia atrás.
 
 **F8. Reservas y presupuesto por categoría** (Planificación, Incertidumbre)
 - Modelo: `Project.contingencyReserveCents`, `managementReserveCents` y un presupuesto por categoría de gasto.
 - Presupuesto muestra planeado frente a real por categoría y el consumo de la reserva. `reserveCents` de `evm.ts` deja de ser la simple diferencia entre presupuesto y BAC.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-5-planificacion-design.md`): reservas de contingencia y de gestión, presupuesto por categoría frente a lo real, «Sin asignar» y uso proyectado de la contingencia (EAC − BAC).
 
 ### Fase 3. Interesados y comunicaciones
 
@@ -224,7 +227,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 | 2 | C2, C1 + F1 | PM que ejecuta tareas y los tres perfiles de acceso |
 | 3 | F3 ✓, F2 ✓, F4 ✓, C11 ✓ | Control y comunicación al abrir más información |
 | 4 | C6 ✓, C7 ✓, C8 ✓, C9 ✓, C10 ✓ | Dejar fiables los números que ya se muestran |
-| 5 | F5 ✓, F6, F7, F8 | Planificación completa; F5 es requisito de F6, F7 y F12 |
+| 5 | F5 ✓, F6 ✓, F7 ✓, F8 ✓ | Planificación completa; F5 es requisito de F6, F7 y F12 |
 | 6 | F11, F9, F10 | Informes y comunicaciones para interesados |
 | 7 | F12, F13, F15, F16 | Entrega, calidad e incertidumbre |
 | 8 | F14, F17, F18 | Según necesidad |

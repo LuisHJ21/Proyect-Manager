@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHANGE_STATUS, INCIDENT_STATUS, LABELS } from '../src/enums';
-import { createIncidentSchema, proposeChangeSchema, decisionRecordSchema, reportIncidentSchema, updateIncidentSchema, baselineSchema, changeRequestSchema, createExpenseSchema, createMilestoneSchema, createTaskSchema, decisionSchema, updateTaskSchema } from '../src/schemas';
+import { charterSchema, commentSchema, createIncidentSchema, proposeChangeSchema, decisionRecordSchema, reportIncidentSchema, updateIncidentSchema, baselineSchema, changeRequestSchema, createExpenseSchema, createMilestoneSchema, createTaskSchema, decisionSchema, updateTaskSchema } from '../src/schemas';
 
 describe('mensajes de validación', () => {
   it('una fecha ausente da un mensaje en español', () => {
@@ -86,5 +86,24 @@ describe('versión de edición', () => {
       expect(result.error?.issues[0].message).toBe(VERSION_REQUIRED);
     }
     expect(VERSION_REQUIRED).toBe('Recarga la página para editar este registro');
+  });
+});
+
+describe('límites de longitud', () => {
+  const issue = (r: { success: boolean; error?: { issues: { message: string }[] } }) => r.error?.issues[0]?.message;
+
+  it('títulos: 200 caracteres', () => {
+    expect(updateTaskSchema.safeParse({ title: 'a'.repeat(200), version: 1 }).success).toBe(true);
+    expect(issue(updateTaskSchema.safeParse({ title: 'a'.repeat(201), version: 1 }))).toBe('Máximo 200 caracteres');
+  });
+
+  it('textos largos: 20 000 caracteres', () => {
+    expect(charterSchema.safeParse({ justification: 'a'.repeat(20000), version: 1 }).success).toBe(true);
+    expect(issue(charterSchema.safeParse({ justification: 'a'.repeat(20001), version: 1 }))).toBe('Máximo 20 000 caracteres');
+  });
+
+  it('comentarios: 5 000 caracteres', () => {
+    expect(commentSchema.safeParse({ body: 'a'.repeat(5000) }).success).toBe(true);
+    expect(issue(commentSchema.safeParse({ body: 'a'.repeat(5001) }))).toBe('Máximo 5 000 caracteres');
   });
 });

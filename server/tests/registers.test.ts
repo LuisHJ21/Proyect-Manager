@@ -104,4 +104,10 @@ describe('registros del proyecto', () => {
     const res = await ctx.as(pm).post(url('milestones'), { name: 'X', dueDate: '2026-13-01' });
     expect(res.json().error.fields.dueDate).toBeTruthy();
   });
+
+  it('el nombre del hito admite como mucho 200 caracteres', async () => {
+    const res = await ctx.as(pm).post(url('milestones'), { name: 'a'.repeat(201), dueDate: '2026-12-01' });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.fields.name).toBe('Máximo 200 caracteres');
+  });
 });

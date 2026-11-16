@@ -134,6 +134,13 @@ describe('tareas', () => {
     expect((await ctx.as(ana).post(url, { body: '  ' })).statusCode).toBe(400);
   });
 
+  it('un comentario de más de 5 000 caracteres responde 400', async () => {
+    const task = await ctx.makeTask(project.id, { assignees: [ana] });
+    const res = await ctx.as(ana).post(`/api/tasks/${task.id}/comments`, { body: 'a'.repeat(5001) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.fields.body).toBe('Máximo 5 000 caracteres');
+  });
+
   it('el detalle incluye comentarios con su autor; no existen PATCH ni DELETE de comentarios', async () => {
     const task = await ctx.makeTask(project.id, { assignees: [ana] });
     const created = await ctx.as(ana).post(`/api/tasks/${task.id}/comments`, { body: 'Hola' });

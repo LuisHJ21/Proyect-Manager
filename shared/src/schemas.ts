@@ -38,6 +38,15 @@ export const optionalDateSchema = calendarDateSchema.nullable().optional();
 
 export const required = (message = 'Este campo es obligatorio') => z.string().trim().min(1, message);
 
+/** Límites de longitud: con mensaje, el texto además es obligatorio. */
+const limited = (max: number, maxMessage: string) => (message?: string) => (message ? required(message) : z.string()).max(max, maxMessage);
+/** Títulos, nombres y campos de una línea. */
+export const shortText = limited(200, 'Máximo 200 caracteres');
+/** Descripciones, textos con formato y campos del acta. */
+export const longText = limited(20_000, 'Máximo 20 000 caracteres');
+/** Comentarios, notas y motivos. */
+export const noteText = limited(5_000, 'Máximo 5 000 caracteres');
+
 /** Versión de edición que el navegador abrió; si no coincide con la guardada, la API responde 409. */
 export const VERSION_REQUIRED = 'Recarga la página para editar este registro';
 export const versionField = z.number({ message: VERSION_REQUIRED }).int(VERSION_REQUIRED).positive(VERSION_REQUIRED);
@@ -46,7 +55,7 @@ export const emailSchema = z.string().trim().toLowerCase().email('Correo inváli
 export const passwordSchema = z.string().min(10, 'La contraseña debe tener al menos 10 caracteres');
 
 export const setupSchema = z.object({
-  name: required('Escribe tu nombre'),
+  name: shortText('Escribe tu nombre'),
   email: emailSchema,
   password: passwordSchema,
   /** Código de configuración inicial (SETUP_TOKEN), cuando el servidor lo exige. */
@@ -62,13 +71,13 @@ export const changePasswordSchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  name: required('Escribe el nombre'),
+  name: shortText('Escribe el nombre'),
   email: emailSchema,
   role: z.enum(ROLE),
   temporaryPassword: passwordSchema,
 });
 export const updateUserSchema = z.object({
-  name: required('Escribe el nombre').optional(),
+  name: shortText('Escribe el nombre').optional(),
   role: z.enum(ROLE).optional(),
   active: z.boolean().optional(),
 });
@@ -83,8 +92,8 @@ const CLOSE_VIA_TAB = 'Para cerrar el proyecto usa la pestaña Cierre';
 const openProjectStatus = z.enum(PROJECT_STATUS).refine((s) => !(CLOSED_PROJECT_STATUS as readonly string[]).includes(s), CLOSE_VIA_TAB);
 
 const projectFields = {
-  name: required('Escribe el nombre del proyecto'),
-  description: z.string().default(''),
+  name: shortText('Escribe el nombre del proyecto'),
+  description: longText().default(''),
   status: openProjectStatus.default('PLANNING'),
   approach: z.enum(APPROACH).default('PREDICTIVE'),
   startDate: optionalDateSchema,
@@ -101,7 +110,7 @@ export const createProjectSchema = z.object(projectFields).superRefine((value, c
 });
 export const updateProjectSchema = z.object({
   name: projectFields.name.optional(),
-  description: z.string().optional(),
+  description: longText().optional(),
   status: openProjectStatus.optional(),
   approach: z.enum(APPROACH).optional(),
   startDate: optionalDateSchema,
@@ -113,9 +122,9 @@ export const deleteProjectSchema = z.object({ confirmName: z.string() });
 
 export const addMemberSchema = z.object({
   userId: required('Selecciona un usuario'),
-  projectRole: z.string().default(''),
+  projectRole: shortText().default(''),
 });
-export const updateMemberSchema = z.object({ projectRole: z.string() });
+export const updateMemberSchema = z.object({ projectRole: shortText() });
 
 export const CHARTER_TEXT_FIELDS = [
   'justification',
@@ -129,60 +138,60 @@ export const CHARTER_TEXT_FIELDS = [
 ] as const;
 export const CHARTER_REQUIRED_TO_APPROVE = ['justification', 'scopeIncluded', 'successCriteria'] as const;
 export const charterSchema = z.object({
-  justification: z.string().default(''),
-  scopeIncluded: z.string().default(''),
-  scopeExcluded: z.string().default(''),
-  boundaries: z.string().default(''),
-  assumptions: z.string().default(''),
-  constraints: z.string().default(''),
-  successCriteria: z.string().default(''),
-  sponsor: z.string().default(''),
+  justification: longText().default(''),
+  scopeIncluded: longText().default(''),
+  scopeExcluded: longText().default(''),
+  boundaries: longText().default(''),
+  assumptions: longText().default(''),
+  constraints: longText().default(''),
+  successCriteria: longText().default(''),
+  sponsor: shortText().default(''),
   version: versionField,
 });
 export const approveCharterSchema = z.object({ version: versionField });
 
 const objectiveFields = {
-  description: required('Describe el objetivo'),
-  metric: z.string().default(''),
-  target: z.string().default(''),
+  description: longText('Describe el objetivo'),
+  metric: shortText().default(''),
+  target: shortText().default(''),
   status: z.enum(OBJECTIVE_STATUS).default('PENDING'),
 };
 export const createObjectiveSchema = z.object(objectiveFields);
 export const updateObjectiveSchema = z.object({
   description: objectiveFields.description.optional(),
-  metric: z.string().optional(),
-  target: z.string().optional(),
+  metric: shortText().optional(),
+  target: shortText().optional(),
   status: z.enum(OBJECTIVE_STATUS).optional(),
 });
 
 export const createMilestoneSchema = z.object({
-  name: required('Escribe el nombre del hito'),
+  name: shortText('Escribe el nombre del hito'),
   dueDate: calendarDateSchema,
   status: z.enum(MILESTONE_STATUS).default('PENDING'),
 });
 export const updateMilestoneSchema = z.object({
-  name: required('Escribe el nombre del hito').optional(),
+  name: shortText('Escribe el nombre del hito').optional(),
   dueDate: calendarDateSchema.optional(),
   status: z.enum(MILESTONE_STATUS).optional(),
 });
 
 export const createStakeholderSchema = z.object({
-  name: required('Escribe el nombre'),
-  organization: z.string().default(''),
-  position: z.string().default(''),
-  contact: z.string().default(''),
+  name: shortText('Escribe el nombre'),
+  organization: shortText().default(''),
+  position: shortText().default(''),
+  contact: shortText().default(''),
   influence: z.enum(LEVEL).default('MEDIUM'),
   interest: z.enum(LEVEL).default('MEDIUM'),
-  strategy: z.string().default(''),
+  strategy: longText().default(''),
 });
 export const updateStakeholderSchema = z.object({
-  name: required('Escribe el nombre').optional(),
-  organization: z.string().optional(),
-  position: z.string().optional(),
-  contact: z.string().optional(),
+  name: shortText('Escribe el nombre').optional(),
+  organization: shortText().optional(),
+  position: shortText().optional(),
+  contact: shortText().optional(),
   influence: z.enum(LEVEL).optional(),
   interest: z.enum(LEVEL).optional(),
-  strategy: z.string().optional(),
+  strategy: longText().optional(),
 });
 
 const scale = z.number({ message: 'Usa un valor de 1 a 5' }).int('Usa un valor de 1 a 5').min(1, 'Usa un valor de 1 a 5').max(5, 'Usa un valor de 1 a 5');
@@ -193,12 +202,12 @@ export const isResponseValidForType = (type: RiskType, response: string) =>
   (RISK_RESPONSE[type] as readonly string[]).includes(response);
 export const createRiskSchema = z
   .object({
-    description: required('Describe el riesgo'),
+    description: longText('Describe el riesgo'),
     type: z.enum(RISK_TYPE),
     probability: scale,
     impact: scale,
     response: riskResponse,
-    responsePlan: z.string().default(''),
+    responsePlan: longText().default(''),
     ownerId: z.string().nullable().optional(),
     status: z.enum(RISK_STATUS).default('OPEN'),
   })
@@ -208,12 +217,12 @@ export const createRiskSchema = z
     }
   });
 export const updateRiskSchema = z.object({
-  description: required('Describe el riesgo').optional(),
+  description: longText('Describe el riesgo').optional(),
   type: z.enum(RISK_TYPE).optional(),
   probability: scale.optional(),
   impact: scale.optional(),
   response: riskResponse.optional(),
-  responsePlan: z.string().optional(),
+  responsePlan: longText().optional(),
   ownerId: z.string().nullable().optional(),
   status: z.enum(RISK_STATUS).optional(),
   version: versionField,
@@ -221,14 +230,14 @@ export const updateRiskSchema = z.object({
 
 const amount = z.number({ message: 'Monto inválido' }).int('Monto inválido').positive('El monto debe ser mayor que cero').max(MAX_AMOUNT_CENTS, AMOUNT_TOO_LARGE);
 export const createExpenseSchema = z.object({
-  description: required('Describe el gasto'),
+  description: shortText('Describe el gasto'),
   amountCents: amount,
   date: calendarDateSchema,
   category: z.enum(EXPENSE_CATEGORY),
   taskId: z.string().nullable().optional(),
 });
 export const updateExpenseSchema = z.object({
-  description: required('Describe el gasto').optional(),
+  description: shortText('Describe el gasto').optional(),
   amountCents: amount.optional(),
   date: calendarDateSchema.optional(),
   category: z.enum(EXPENSE_CATEGORY).optional(),
@@ -236,7 +245,7 @@ export const updateExpenseSchema = z.object({
 });
 
 const taskCommonFields = {
-  description: z.string().optional(),
+  description: longText().optional(),
   priority: z.enum(PRIORITY).optional(),
   startDate: optionalDateSchema,
   dueDate: optionalDateSchema,
@@ -246,7 +255,7 @@ const taskCommonFields = {
 export const TASK_DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la fecha límite';
 export const createTaskSchema = z
   .object({
-    title: required('Escribe el título'),
+    title: shortText('Escribe el título'),
     assigneeIds: z.array(z.string()).default([]),
     ...taskCommonFields,
   })
@@ -257,7 +266,7 @@ export const createTaskSchema = z
   });
 const useProgressRoute = 'El estado y el avance se actualizan por separado';
 export const updateTaskSchema = z.object({
-  title: required('Escribe el título').optional(),
+  title: shortText('Escribe el título').optional(),
   ...taskCommonFields,
   assigneeIds: z.array(z.string()).optional(),
   version: versionField,
@@ -286,27 +295,27 @@ export const calendarRangeSchema = z
   });
 
 export const stepSchema = z.object({
-  title: required('Escribe el paso'),
+  title: shortText('Escribe el paso'),
   assigneeId: z.string().nullable().optional(),
 });
 export const updateStepSchema = z.object({
-  title: required('Escribe el paso').optional(),
+  title: shortText('Escribe el paso').optional(),
   assigneeId: z.string().nullable().optional(),
   done: z.boolean().optional(),
 });
-export const commentSchema = z.object({ body: required('Escribe un comentario') });
+export const commentSchema = z.object({ body: noteText('Escribe un comentario') });
 export const dependencySchema = z.object({ predecessorId: required('Selecciona una tarea') });
 
 export const baselineSchema = z.object({
-  reason: z.string().trim().default(''),
+  reason: noteText().trim().default(''),
   changeRequestId: z.string().nullable().optional(),
 });
 
 const changeRequestFields = {
-  title: required('Escribe el título'),
-  description: z.string().default(''),
-  requestedBy: z.string().default(''),
-  scopeImpact: z.string().default(''),
+  title: shortText('Escribe el título'),
+  description: longText().default(''),
+  requestedBy: shortText().default(''),
+  scopeImpact: longText().default(''),
   scheduleImpactDays: z.number({ message: 'Usa un número entero de días' }).int('Usa un número entero de días').nullable().optional(),
   costImpactCents: z
     .number({ message: 'Monto inválido' })
@@ -319,28 +328,28 @@ const changeRequestFields = {
 export const changeRequestSchema = z.object(changeRequestFields);
 export const updateChangeRequestSchema = z.object({
   title: changeRequestFields.title.optional(),
-  description: z.string().optional(),
-  requestedBy: z.string().optional(),
-  scopeImpact: z.string().optional(),
+  description: longText().optional(),
+  requestedBy: shortText().optional(),
+  scopeImpact: longText().optional(),
   scheduleImpactDays: changeRequestFields.scheduleImpactDays,
   costImpactCents: changeRequestFields.costImpactCents,
 });
 /** Lo que puede enviar un colaborador al proponer un cambio. */
 export const proposeChangeSchema = z.object({
-  title: required('Escribe el título'),
-  description: z.string().default(''),
+  title: shortText('Escribe el título'),
+  description: longText().default(''),
 });
 export const decisionSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
-  note: required('Escribe la nota de la decisión'),
+  note: noteText('Escribe la nota de la decisión'),
 });
 
 const optionalId = z.string().min(1, 'Selecciona una opción válida').nullable().optional();
 
 /** Lo que puede enviar cualquier miembro al reportar un incidente. */
 export const reportIncidentSchema = z.object({
-  title: required('Escribe el título'),
-  description: z.string().default(''),
+  title: shortText('Escribe el título'),
+  description: longText().default(''),
   taskId: optionalId,
 });
 /** Campos que solo fija el Project Manager. */
@@ -352,27 +361,27 @@ export const pmIncidentFields = {
 };
 export const createIncidentSchema = reportIncidentSchema.extend(pmIncidentFields);
 export const updateIncidentSchema = z.object({
-  title: required('Escribe el título').optional(),
-  description: z.string().optional(),
+  title: shortText('Escribe el título').optional(),
+  description: longText().optional(),
   taskId: optionalId,
   ...pmIncidentFields,
   status: z.enum(INCIDENT_STATUS).optional(),
-  resolution: z.string().optional(),
+  resolution: longText().optional(),
   recordDecision: z.boolean().optional(),
 });
 
 export const decisionRecordSchema = z.object({
-  title: required('Escribe el título'),
-  rationale: z.string().default(''),
-  decidedBy: z.string().default(''),
+  title: shortText('Escribe el título'),
+  rationale: longText().default(''),
+  decidedBy: shortText().default(''),
   decidedOn: calendarDateSchema,
   changeRequestId: optionalId,
   incidentId: optionalId,
 });
 export const updateDecisionRecordSchema = z.object({
-  title: required('Escribe el título').optional(),
-  rationale: z.string().optional(),
-  decidedBy: z.string().optional(),
+  title: shortText('Escribe el título').optional(),
+  rationale: longText().optional(),
+  decidedBy: shortText().optional(),
   decidedOn: calendarDateSchema.optional(),
   changeRequestId: optionalId,
   incidentId: optionalId,
@@ -381,14 +390,14 @@ export const updateDecisionRecordSchema = z.object({
 const deliverableName = required('Escribe el nombre').max(200, 'Máximo 200 caracteres');
 export const deliverableSchema = z.object({
   name: deliverableName,
-  description: z.string().default(''),
+  description: longText().default(''),
   milestoneId: optionalId,
   dueDate: optionalDateSchema,
   criteria: z.array(z.string().max(300, 'Máximo 300 caracteres')).max(50, 'Máximo 50 criterios').optional(),
 });
 export const updateDeliverableSchema = z.object({
   name: deliverableName.optional(),
-  description: z.string().optional(),
+  description: longText().optional(),
   milestoneId: optionalId,
   dueDate: optionalDateSchema,
   status: z.enum(DELIVERABLE_STATUS).optional(),
@@ -403,15 +412,15 @@ export const deliverableReviewSchema = z.object({
   stakeholderId: optionalId,
   attachmentId: optionalId,
   reviewedOn: calendarDateSchema,
-  note: z.string().default(''),
+  note: noteText().default(''),
 });
 
 export const closeProjectSchema = z.object({
   finalStatus: z.enum(CLOSED_PROJECT_STATUS),
-  summary: z.string().default(''),
-  pendingReason: z.string().default(''),
+  summary: longText().default(''),
+  pendingReason: longText().default(''),
 });
-export const reopenProjectSchema = z.object({ reason: required('Escribe el motivo') });
+export const reopenProjectSchema = z.object({ reason: noteText('Escribe el motivo') });
 const lessonText = z.string().max(2000, 'Máximo 2000 caracteres');
 export const lessonSchema = z.object({
   type: z.enum(LESSON_TYPE),

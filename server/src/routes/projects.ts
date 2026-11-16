@@ -1,4 +1,4 @@
-import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrderValid, updateProjectSchema } from '@pm/shared';
+import { createProjectSchema, DATE_ORDER_MESSAGE, deleteProjectSchema, isDateOrderValid, PAUSE_VIA_ACTIONS, updateProjectSchema } from '@pm/shared';
 import type { Prisma } from '@prisma/client';
 import { readBody, type App } from '../http';
 import { getProjectAccess, requireProjectAccess, toProjectDto } from '../auth/access';
@@ -8,6 +8,7 @@ import { countTasksOutside, isWithinProject, type ProjectRange } from '../domain
 import { fieldError } from '../errors';
 import { sanitizeFields } from '../richText';
 import { removeAfterDelete } from '../storage/fileStore';
+import { activePauseOf } from './projectPause';
 import { loadProjectSummaries } from './projectStats';
 import { leafWhere } from '../domain/wbs';
 
@@ -55,13 +56,15 @@ export function projectRoutes(app: App) {
 
   app.get('/api/projects/:id', async (c) => {
     const { project, isPm } = await getProjectAccess(c, c.req.param('id'));
-    return c.json(toProjectDto(project, isPm));
+    return c.json({ ...toProjectDto(project, isPm), activePause: await activePauseOf(c.var.deps.prisma, project, requireUser(c)) });
   });
 
   app.patch('/api/projects/:id', async (c) => {
     const { prisma } = c.var.deps;
     const project = await requireProjectAccess(c, c.req.param('id'), 'project', 'write');
     const input = updateProjectSchema.parse(sanitizeFields(await readBody(c), ['description']));
+    // Entrar o salir de la pausa guarda fecha y motivo: solo con Pausar o Reanudar (etapa 8).
+    if (input.status !== undefined && (input.status === 'PAUSED') !== (project.status === 'PAUSED')) throw fieldError('status', PAUSE_VIA_ACTIONS);
     const startDate = input.startDate === undefined ? project.startDate : input.startDate;
     const endDate = input.endDate === undefined ? project.endDate : input.endDate;
     if (!isDateOrderValid(startDate, endDate)) throw fieldError('startDate', DATE_ORDER_MESSAGE);

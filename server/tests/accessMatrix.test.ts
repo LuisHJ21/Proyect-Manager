@@ -160,6 +160,12 @@ const ROUTE_SECTION: Record<string, Section> = {
   'PATCH /api/projects/:id/assumptions/:assumptionId': 'planning',
   'DELETE /api/projects/:id/assumptions/:assumptionId': 'planning',
   'POST /api/projects/:id/assumptions/:assumptionId/convert': 'planning',
+
+  'GET /api/projects/:id/pause-impact': 'project',
+  'POST /api/projects/:id/pause': 'project',
+  'GET /api/projects/:id/resume-preview': 'project',
+  'POST /api/projects/:id/resume': 'project',
+  'GET /api/projects/:id/pauses': 'project',
 };
 
 /** Escrituras que el colaborador puede hacer por una regla fina en código (asignado, responsable, autor), con pruebas propias. */
@@ -178,7 +184,7 @@ const FINE_GRAINED = new Set([
 ]);
 
 /** Lecturas reservadas al PM aunque la sección se lea: herramientas de gestión. */
-const PM_ONLY_READS = new Set(['GET /api/projects/:id/members/:userId/impact', 'GET /api/tasks/:id/reschedule', 'GET /api/projects/:id/status-reports/draft']);
+const PM_ONLY_READS = new Set(['GET /api/projects/:id/members/:userId/impact', 'GET /api/tasks/:id/reschedule', 'GET /api/projects/:id/status-reports/draft', 'GET /api/projects/:id/pause-impact', 'GET /api/projects/:id/resume-preview', 'GET /api/projects/:id/pauses']);
 
 const isProjectRoute = (url: string) => /^\/api\/(projects\/:id|tasks\/:id)(\/|$)/.test(url);
 

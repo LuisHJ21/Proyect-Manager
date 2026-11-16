@@ -95,6 +95,8 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'POST /api/projects/:id/baselines': project({ action: 'baselined' }),
   'POST /api/projects/:id/closure': project({ action: 'closed' }),
   'POST /api/projects/:id/reopen': project({ action: 'reopened' }),
+  'POST /api/projects/:id/pause': project({ action: 'paused' }),
+  'POST /api/projects/:id/resume': project({ action: 'resumed' }),
 
   'POST /api/projects/:id/members': member(),
   'PATCH /api/projects/:id/members/:userId': member(),

@@ -403,6 +403,22 @@ test('flujo principal', async ({ browser }) => {
   await pm.goto(`${projectUrl}/riesgos`);
   await expect(pm.getByRole('region', { name: 'Matriz de riesgos' }).getByText('El proveedor entrega el hosting a tiempo')).toBeVisible();
 
+  // Etapa 8: el acta aprobada quedó como versión 1; el PM pausa el proyecto por prioridad y lo reanuda.
+  await pm.goto(`${projectUrl}/acta`);
+  await expect(pm.getByRole('region', { name: 'Versiones aprobadas' }).getByText('Versión 1')).toBeVisible();
+  await pm.getByRole('button', { name: 'Pausar proyecto' }).click();
+  const pauseDialog = pm.getByRole('dialog', { name: 'Pausar proyecto' });
+  await pauseDialog.getByLabel('Motivo').fill('Prioridad de gerencia');
+  await pauseDialog.getByRole('button', { name: 'Pausar' }).click();
+  await expect(pm.getByRole('status').filter({ hasText: /En pausa desde el .*: Prioridad de gerencia/ })).toBeVisible();
+  await pm.getByRole('button', { name: 'Reanudar proyecto' }).click();
+  const resumeDialog = pm.getByRole('dialog', { name: 'Reanudar proyecto' });
+  await resumeDialog.getByLabel('Días a correr').fill('2');
+  await expect(resumeDialog.getByRole('region', { name: 'Vista previa' }).getByText(/cambian de fecha/)).toBeVisible();
+  await resumeDialog.getByRole('checkbox', { name: 'Crear una nueva línea base' }).uncheck();
+  await resumeDialog.getByRole('button', { name: 'Reanudar' }).click();
+  await expect(pm.getByRole('status').filter({ hasText: 'En pausa' })).toHaveCount(0);
+
   // El cronograma resalta la ruta crítica.
   await pm.goto(`${projectUrl}/tareas?vista=cronograma`);
   await expect(pm.getByText('Ruta crítica')).toBeVisible();

@@ -115,6 +115,7 @@ Prevalece el último guardado. Al abrir más información al equipo aumenta el r
 **C12. Repositorio.** Falta `.gitattributes`: el índice está en LF y la copia de trabajo en CRLF, y fuera de Windows decenas de archivos aparecen como modificados por completo. Añadir `* text=auto` y normalizar. Añadir `"engines": { "node": ">=24" }` en `package.json`.
 
 **C13. Biblioteca global de lecciones.** `GET /api/lessons` muestra a cualquier usuario lecciones y nombres de proyectos de los que no es miembro. Es intencional, pero choca con "solo la información necesaria": hacerlo configurable en F1.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-8-pausa-acta-lecciones-design.md`): opción por proyecto «Compartir lecciones en la biblioteca», activada por defecto; si se desactiva, solo el equipo del proyecto y el PM ven sus lecciones.
 
 ## 6. Funciones faltantes
 
@@ -203,6 +204,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 **F14. Adquisiciones** (Trabajo del proyecto)
 - Modelo: `Vendor`, `Contract { proveedor, objeto, monto, fechas, estado, anexo }`. `Expense.contractId` liga los pagos al contrato.
 - La categoría "Proveedores" ya existe en lecciones; falta el módulo.
+- Descartada (2026-11-16): el responsable no la necesita.
 
 ### Fase 5. Incertidumbre y medición
 
@@ -222,9 +224,12 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 - Plantillas: crear un proyecto copiando estructura (EDT, hitos, RACI, riesgos típicos) de otro.
 - Fases con puerta de aprobación: `Phase { nombre, fechas, estado, criterios de salida }`.
 - Para proyectos ágiles o híbridos: backlog priorizado e iteraciones, con gráfico de trabajo pendiente. El campo `approach` decide qué vistas aparecen.
+- Sustituida (2026-11-16): los proyectos empiezan de cero (sin plantillas), las fases con puerta chocan con prioridades que cambian a menudo y el equipo no trabaja por iteraciones. El problema real es que gerencia prioriza otro proyecto y hay que rehacer el cronograma.
+- Hecho en su lugar (`docs/superpowers/specs/2026-11-16-etapa-8-pausa-acta-lecciones-design.md`): pausa por prioridad con impacto en las personas compartidas, reanudación que corre de una vez tareas pendientes, hitos y fin (con nueva línea base opcional), la tarea diaria no avisa ni mide proyectos en pausa y la carga semanal del panel se desglosa por proyecto sin contar los pausados.
 
 **F18. Versiones y PDF del acta** (Planificación)
 - Guardar una versión del acta en cada aprobación (`CharterVersion` con el contenido congelado) y ofrecer la vista imprimible. Ambas quedaron fuera del alcance de la primera versión.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-8-pausa-acta-lecciones-design.md`): versión numerada con acta, objetivos e hitos congelados en cada aprobación; lista «Versiones aprobadas» y botón «Imprimir / Guardar PDF» del navegador.
 
 ## 7. Orden recomendado
 
@@ -237,7 +242,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 | 5 | F5 ✓, F6 ✓, F7 ✓, F8 ✓ | Planificación completa; F5 es requisito de F6, F7 y F12 |
 | 6 | F11 ✓, F9 ✓, F10 ✓ | Informes y comunicaciones para interesados |
 | 7 | F12 ✓, F13 ✓, F15 ✓, F16 ✓ | Entrega, calidad e incertidumbre |
-| 8 | F14, F17, F18 | Según necesidad |
+| 8 | F14 ✗, F17 (sustituida por pausa por prioridad) ✓, F18 ✓, C13 ✓ | Según necesidad |
 
 ## 8. Reglas para cada bloque
 

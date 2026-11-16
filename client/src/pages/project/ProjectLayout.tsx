@@ -8,6 +8,8 @@ import type { Member, Project } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
 import { useAccess } from '../../auth/useAccess';
 import { ReopenDialog } from '../../components/closure/ReopenDialog';
+import { PauseDialog } from '../../components/project/PauseDialog';
+import { ResumeDialog } from '../../components/project/ResumeDialog';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { membersKey } from '../../components/project/MembersPanel';
 import { TaskForm } from '../../components/tasks/TaskForm';
@@ -50,6 +52,8 @@ export function ProjectLayout() {
   const members = useQuery({ queryKey: membersKey(id), queryFn: () => api<Member[]>(`/api/projects/${id}/members`) });
   const [creatingTask, setCreatingTask] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const team = members.data?.map((m) => ({ id: m.userId, name: m.name })) ?? [];
 
   if (project.isPending) return <Loading />;
@@ -80,6 +84,11 @@ export function ProjectLayout() {
         <Badge>{LABELS.projectStatus[current.status]}</Badge>
         <div className="ml-auto flex items-center gap-3">
           <AvatarStack people={team} max={4} />
+          {isPm && (current.status === 'PLANNING' || current.status === 'EXECUTING') && (
+            <Button variant="secondary" onClick={() => setPausing(true)}>
+              Pausar proyecto
+            </Button>
+          )}
           {isPm && !readOnly && (
             <Button onClick={() => setCreatingTask(true)}>
               <Plus size={16} aria-hidden="true" />
@@ -94,6 +103,16 @@ export function ProjectLayout() {
           {isPm && (
             <Button variant="secondary" className="ml-auto" onClick={() => setReopening(true)}>
               Reabrir
+            </Button>
+          )}
+        </div>
+      )}
+      {current.status === 'PAUSED' && (
+        <div role="status" data-print-hide className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-raised px-4 py-3 text-sm text-ink">
+          <span>{pauseNotice(current.activePause)}</span>
+          {isPm && (
+            <Button variant="secondary" className="ml-auto" onClick={() => setResuming(true)}>
+              Reanudar proyecto
             </Button>
           )}
         </div>
@@ -113,9 +132,18 @@ export function ProjectLayout() {
       </nav>
       <Outlet context={{ project: current, isPm, readOnly } satisfies ProjectContext} />
       {reopening && <ReopenDialog projectId={current.id} onClose={() => setReopening(false)} />}
+      {pausing && <PauseDialog project={current} onClose={() => setPausing(false)} />}
+      {resuming && <ResumeDialog project={current} onClose={() => setResuming(false)} />}
       {creatingTask && <TaskForm projectId={current.id} onClose={() => setCreatingTask(false)} />}
     </>
   );
+}
+
+/** «En pausa desde el 1 nov 2026: Prioridad de gerencia · prioridad: Obra urgente». */
+function pauseNotice(pause: Project['activePause']): string {
+  if (!pause || !pause.pausedOn) return pause?.reason ? `En pausa: ${pause.reason}` : 'En pausa';
+  const priority = pause.priorityProject ? ` · prioridad: ${pause.priorityProject.name}` : '';
+  return `En pausa desde el ${shortDate(pause.pausedOn)}: ${pause.reason}${priority}`;
 }
 
 /** Sección que el perfil no puede leer: vuelve al resumen sin que se pidan los datos. */

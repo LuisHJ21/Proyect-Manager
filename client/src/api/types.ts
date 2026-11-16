@@ -56,11 +56,27 @@ export type Project = {
   statusReportFrequency?: import('@pm/shared').StatusReportFrequency;
   /** C13: si sus lecciones aparecen en la biblioteca para quien no es miembro. */
   shareLessons?: boolean;
+  /** Pausa abierta (etapa 8); el prioritario llega solo si quien ve es PM o miembro de ese proyecto. */
+  activePause?: { pausedOn: string | null; reason: string; priorityProject: PersonRef | null } | null;
   health?: Health | null;
   overdueTasks?: number;
   highRisks?: number;
   spentCents?: number;
 };
+
+export type PauseImpact = { shared: { userId: string; name: string; hours: { projectId: string; total: number }[] }[] };
+type Dates = { startDate: string | null; dueDate: string | null };
+export type ResumePreview = {
+  proposedDays: number;
+  days: number;
+  hasBaseline: boolean;
+  changes: {
+    tasks: { id: string; name: string; from: Dates; to: Dates }[];
+    milestones: { id: string; name: string; from: string; to: string }[];
+    endDate: { from: string; to: string } | null;
+  };
+};
+export type ProjectPauseEntry = { pausedOn: string | null; resumedOn: string | null; reason: string; shiftDays: number | null; priorityProject: PersonRef | null };
 
 export type Dashboard = {
   totals: { activeProjects: number; atRiskProjects: number; overdueTasks: number; overdueProjects: number; highRisks: number; overBudgetProjects: number };

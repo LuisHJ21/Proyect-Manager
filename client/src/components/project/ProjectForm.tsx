@@ -1,4 +1,4 @@
-import { ACTIVE_PROJECT_STATUS, APPROACH, LABELS, STATUS_REPORT_FREQUENCY, type Approach, type ProjectStatus, type StatusReportFrequency } from '@pm/shared';
+import { APPROACH, LABELS, STATUS_REPORT_FREQUENCY, type Approach, type ProjectStatus, type StatusReportFrequency } from '@pm/shared';
 import { useState, type FormEvent } from 'react';
 import { api } from '../../api/client';
 import type { Project } from '../../api/types';
@@ -7,6 +7,9 @@ import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } 
 import { INVALID_MONEY_MESSAGE, MoneyInput } from '../MoneyInput';
 import { RichTextEditor } from '../richText/RichTextEditor';
 import { Button, inputClass } from '../ui';
+
+/** Estados que el formulario ofrece: la pausa tiene sus propios botones. */
+const FORM_STATUS = ['PLANNING', 'EXECUTING'] as const;
 
 export function ProjectForm({ project, onSaved, onClose }: { project?: Project; onSaved: (project: Project) => void; onClose: () => void }) {
   const [name, setName] = useState(project?.name ?? '');
@@ -27,6 +30,7 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
   const [riskScore, setRiskScore] = useState(String(project?.highRiskScore ?? 15));
   const [shareLessons, setShareLessons] = useState(project?.shareLessons ?? true);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
+  const isPaused = project?.status === 'PAUSED';
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent) => {
@@ -42,7 +46,8 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
     const body = {
       name,
       description,
-      status,
+      // Entrar o salir de la pausa va por Pausar o Reanudar: un proyecto pausado no envía su estado.
+      ...(isPaused ? {} : { status }),
       approach,
       startDate: startDate || null,
       endDate: endDate || null,
@@ -85,15 +90,22 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
             <RichTextEditor label="Descripción" value={description} onChange={setDescription} />
           </FormField>
         </div>
-        <FormField label="Estado" error={errors.fields.status}>
-          <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)}>
-            {ACTIVE_PROJECT_STATUS.map((value) => (
-              <option key={value} value={value}>
-                {LABELS.projectStatus[value]}
-              </option>
-            ))}
-          </select>
-        </FormField>
+        {isPaused ? (
+          <div className="text-sm">
+            <p className="mb-1 font-medium text-ink">Estado</p>
+            <p className="text-ink-soft">En pausa · usa Reanudar proyecto</p>
+          </div>
+        ) : (
+          <FormField label="Estado" error={errors.fields.status}>
+            <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)}>
+              {FORM_STATUS.map((value) => (
+                <option key={value} value={value}>
+                  {LABELS.projectStatus[value]}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        )}
         <FormField label="Enfoque de desarrollo" error={errors.fields.approach}>
           <select className={inputClass} value={approach} onChange={(e) => setApproach(e.target.value as Approach)}>
             {APPROACH.map((value) => (

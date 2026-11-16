@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '../../api/client';
-import type { Indicators, Project } from '../../api/types';
+import type { Indicators, Project, ProjectPauseEntry } from '../../api/types';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FormField } from '../../components/FormField';
 import { IndicatorCards } from '../../components/project/IndicatorCards';
@@ -17,6 +17,7 @@ import { LABELS } from '@pm/shared';
 import { useAccess } from '../../auth/useAccess';
 import { projectKey, useProject } from './ProjectLayout';
 import { LatestReportLink, statusReportsKey } from './StatusReports';
+import { shortDate } from '../../lib/display';
 
 function DeleteProjectDialog({ project, onClose }: { project: Project; onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -46,6 +47,28 @@ function DeleteProjectDialog({ project, onClose }: { project: Project; onClose: 
         <input className={inputClass} value={confirmName} onChange={(e) => setConfirmName(e.target.value)} autoComplete="off" />
       </FormField>
     </ConfirmDialog>
+  );
+}
+
+/** Historial de pausas del proyecto (etapa 8), solo para el PM; oculto si nunca se pausó. */
+function PauseHistory({ projectId }: { projectId: string }) {
+  const pauses = useQuery({ queryKey: ['project', projectId, 'pauses'], queryFn: () => api<ProjectPauseEntry[]>(`/api/projects/${projectId}/pauses`) });
+  if (!pauses.data || pauses.data.length === 0) return null;
+  return (
+    <div role="region" aria-label="Pausas">
+      <Card title="Pausas">
+        <ul className="divide-y divide-line text-sm">
+          {pauses.data.map((p, i) => (
+            <li key={i} className="grid gap-1 py-2 sm:grid-cols-[10rem_1fr_10rem_6rem] sm:gap-3">
+              <span className="text-ink-nav">{`${p.pausedOn ? shortDate(p.pausedOn) : '—'} → ${p.resumedOn ? shortDate(p.resumedOn) : 'en curso'}`}</span>
+              <span className="text-ink">{p.reason || '—'}</span>
+              <span className="text-ink-nav">{p.priorityProject?.name ?? '—'}</span>
+              <span className="text-ink-nav">{p.shiftDays === null ? '—' : `${p.shiftDays} días`}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
   );
 }
 
@@ -101,6 +124,7 @@ export function SummaryPage() {
       <ObjectivesPanel projectId={project.id} canEdit={isPm && !readOnly} />
       <MilestonesPanel projectId={project.id} canEdit={isPm && !readOnly} />
       <MembersPanel projectId={project.id} canEdit={isPm && !readOnly} />
+      {isPm && <PauseHistory projectId={project.id} />}
       {editing && (
         <ProjectForm
           project={project}

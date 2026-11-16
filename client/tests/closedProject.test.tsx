@@ -84,6 +84,6 @@ describe('proyecto cerrado', () => {
     renderApp('/proyectos/p1/resumen');
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Editar proyecto' }));
     const select = within(screen.getByRole('dialog', { name: 'Editar proyecto' })).getByLabelText('Estado');
-    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['Planificación', 'En ejecución', 'En pausa']);
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['Planificación', 'En ejecución']);
   });
 });

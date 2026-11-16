@@ -23,6 +23,7 @@ const NOUN: Record<ActivityEntity, string> = {
   lesson: 'la lección',
   report: 'el informe de estado',
   communication: 'la fila del plan de comunicaciones',
+  meeting: 'el acta de la reunión',
 };
 
 const VERB: Record<Exclude<ActivityAction, 'updated'>, string> = {

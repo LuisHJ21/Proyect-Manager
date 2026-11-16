@@ -27,13 +27,32 @@ import { leafWhere } from '../domain/wbs';
 type TaskParams = { Params: { id: string } };
 
 /** Avisa a quienes pasan a ser responsables de la tarea (no a los que ya lo eran). */
-async function notifyNewAssignees(c: Ctx, task: { id: string; projectId: string; title: string }, before: string[], after: string[]) {
+export async function notifyNewAssignees(c: Ctx, task: { id: string; projectId: string; title: string }, before: string[], after: string[]) {
   const added = after.filter((id) => !before.includes(id));
   await notify(c.var.deps.prisma, { kind: 'TASK_ASSIGNED', projectId: task.projectId, entityId: task.id, title: task.title, userIds: added, actorId: requireUser(c).id });
 }
 
 const assigneeIdsOf = async (prisma: PrismaClient, taskId: string) =>
   (await prisma.taskAssignee.findMany({ where: { taskId }, select: { userId: true } })).map((a) => a.userId);
+
+export const assertDatesWithinProject = (project: ProjectRange, dates: { startDate?: string | null; dueDate?: string | null }) => {
+  for (const field of ['startDate', 'dueDate'] as const) {
+    const date = dates[field];
+    if (date && !isWithinProject(date, project)) throw fieldError(field, outsideProjectMessage(project));
+  }
+};
+
+/** Quien ya está asignado puede seguirlo aunque se haya desactivado; solo se valida a los nuevos. */
+export const assertAssignable = async (prisma: PrismaClient, projectId: string, userIds: string[], field: string, taskId?: string) => {
+  const unique = [...new Set(userIds)];
+  const current = taskId ? await prisma.taskAssignee.findMany({ where: { taskId }, select: { userId: true } }) : [];
+  const added = unique.filter((id) => !current.some((a) => a.userId === id));
+  const count = await prisma.projectMember.count({
+    where: { projectId, userId: { in: added }, user: { active: true, role: { in: ['PM', 'COLLABORATOR'] } } },
+  });
+  if (count !== added.length) throw fieldError(field, 'Solo se pueden asignar miembros activos del proyecto');
+  return unique;
+};
 
 export async function getTaskAccess(c: Ctx, taskId: string) {
   const user = requireUser(c);
@@ -73,29 +92,10 @@ export function taskRoutes(app: App) {
     return task;
   };
 
-  const assertDatesWithinProject = (project: ProjectRange, dates: { startDate?: string | null; dueDate?: string | null }) => {
-    for (const field of ['startDate', 'dueDate'] as const) {
-      const date = dates[field];
-      if (date && !isWithinProject(date, project)) throw fieldError(field, outsideProjectMessage(project));
-    }
-  };
-
   const assertMilestone = async (prisma: PrismaClient, projectId: string, milestoneId?: string | null) => {
     if (!milestoneId) return;
     const milestone = await prisma.milestone.findFirst({ where: { id: milestoneId, projectId } });
     if (!milestone) throw fieldError('milestoneId', 'El hito debe pertenecer al proyecto');
-  };
-
-  /** Quien ya está asignado puede seguirlo aunque se haya desactivado; solo se valida a los nuevos. */
-  const assertAssignable = async (prisma: PrismaClient, projectId: string, userIds: string[], field: string, taskId?: string) => {
-    const unique = [...new Set(userIds)];
-    const current = taskId ? await prisma.taskAssignee.findMany({ where: { taskId }, select: { userId: true } }) : [];
-    const added = unique.filter((id) => !current.some((a) => a.userId === id));
-    const count = await prisma.projectMember.count({
-      where: { projectId, userId: { in: added }, user: { active: true, role: { in: ['PM', 'COLLABORATOR'] } } },
-    });
-    if (count !== added.length) throw fieldError(field, 'Solo se pueden asignar miembros activos del proyecto');
-    return unique;
   };
 
   app.get('/api/projects/:id/tasks', async (c) => {

@@ -90,6 +90,9 @@ export function memberRoutes(app: App) {
       prisma.risk.updateMany({ where: { ownerId: member.userId, projectId: project.id }, data: { ownerId: null, version: { increment: 1 } } }),
       prisma.raciCell.deleteMany({ where: { userId: member.userId, activity: { projectId: project.id } } }),
       prisma.incident.updateMany({ where: { ownerId: member.userId, projectId: project.id }, data: { ownerId: null } }),
+      // Acuerdos sin convertir y filas del plan de comunicaciones: el responsable deja de serlo.
+      prisma.meetingAgreement.updateMany({ where: { ownerId: member.userId, meeting: { projectId: project.id }, taskId: null, decisionId: null, incidentId: null }, data: { ownerId: null } }),
+      prisma.communicationItem.updateMany({ where: { ownerId: member.userId, projectId: project.id }, data: { ownerId: null } }),
       prisma.projectMember.delete({ where: { id: member.id } }),
     ]);
     return c.json({ ok: true });

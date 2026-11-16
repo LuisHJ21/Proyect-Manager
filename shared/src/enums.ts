@@ -69,6 +69,7 @@ export const ACTIVITY_ENTITY = [
   'lesson',
   'report',
   'communication',
+  'meeting',
 ] as const;
 export type ActivityEntity = (typeof ACTIVITY_ENTITY)[number];
 export const ACTIVITY_ACTION = ['created', 'updated', 'deleted', 'approved', 'closed', 'reopened', 'baselined', 'decided', 'reviewed', 'commented', 'uploaded'] as const;
@@ -180,6 +181,7 @@ export const LABELS = {
     raci: 'RACI',
     report: 'Informe de estado',
     communication: 'Plan de comunicaciones',
+    meeting: 'Reunión',
     change: 'Solicitud de cambio',
     incident: 'Incidente',
     decision: 'Decisión',

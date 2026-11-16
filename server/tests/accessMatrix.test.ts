@@ -133,6 +133,13 @@ const ROUTE_SECTION: Record<string, Section> = {
   'GET /api/projects/:id/status-reports/draft': 'reports',
   'GET /api/projects/:id/status-reports/:reportId': 'reports',
   'POST /api/projects/:id/status-reports': 'reports',
+
+  'GET /api/projects/:id/meetings': 'meetings',
+  'GET /api/projects/:id/meetings/:meetingId': 'meetings',
+  'POST /api/projects/:id/meetings': 'meetings',
+  'PATCH /api/projects/:id/meetings/:meetingId': 'meetings',
+  'DELETE /api/projects/:id/meetings/:meetingId': 'meetings',
+  'POST /api/projects/:id/meetings/:meetingId/agreements/:agreementId/convert': 'meetings',
 };
 
 /** Escrituras que el colaborador puede hacer por una regla fina en código (asignado, responsable, autor), con pruebas propias. */

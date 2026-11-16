@@ -59,14 +59,17 @@ export async function assertIncidentLinks(prisma: PrismaClient, projectId: strin
 
 /** Crea un incidente con el siguiente número del proyecto. */
 export function createIncident(prisma: PrismaClient, projectId: string, data: Omit<Prisma.IncidentUncheckedCreateInput, 'projectId' | 'number'>) {
-  return prisma.$transaction(async (tx) => {
-    const { lastIncidentNumber } = await tx.project.update({
-      where: { id: projectId },
-      data: { lastIncidentNumber: { increment: 1 } },
-      select: { lastIncidentNumber: true },
-    });
-    return tx.incident.create({ data: { ...data, projectId, number: lastIncidentNumber }, include: incidentInclude });
+  return prisma.$transaction((tx) => createIncidentIn(tx, projectId, data));
+}
+
+/** Lo mismo dentro de una transacción ya abierta (p. ej. al convertir un acuerdo de reunión). */
+export async function createIncidentIn(tx: Prisma.TransactionClient, projectId: string, data: Omit<Prisma.IncidentUncheckedCreateInput, 'projectId' | 'number'>) {
+  const { lastIncidentNumber } = await tx.project.update({
+    where: { id: projectId },
+    data: { lastIncidentNumber: { increment: 1 } },
+    select: { lastIncidentNumber: true },
   });
+  return tx.incident.create({ data: { ...data, projectId, number: lastIncidentNumber }, include: incidentInclude });
 }
 
 const hasKey = (body: unknown, key: string) => Boolean(body && typeof body === 'object' && key in body);

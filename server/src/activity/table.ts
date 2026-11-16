@@ -17,6 +17,7 @@ import {
   loadIncident,
   loadIncidentFromRisk,
   loadLesson,
+  loadMeeting,
   loadMember,
   loadMilestone,
   loadObjective,
@@ -165,6 +166,9 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'PATCH /api/projects/:id/deliverables/:did/criteria/:cid': criterion(param('cid')),
   'DELETE /api/projects/:id/deliverables/:did/criteria/:cid': criterion(param('cid')),
 
+  ...crudEntries('meetings', 'meetingId', { entity: 'meeting', load: loadMeeting, fields: ['date'] }),
+  // Convertir un acuerdo queda como edición del acta.
+  'POST /api/projects/:id/meetings/:meetingId/agreements/:agreementId/convert': { entity: 'meeting', action: 'updated', target: param('meetingId'), load: loadMeeting, fields: [] },
   // Emitir un informe lo registra como creado; el informe congelado no se edita ni se borra.
   'POST /api/projects/:id/status-reports': { entity: 'report', target: responseId, load: loadStatusReport, fields: [] },
 

@@ -32,6 +32,7 @@ import { budgetRoutes } from './routes/budget';
 import { timeEntryRoutes } from './routes/timeEntries';
 import { scheduleRoutes } from './routes/schedule';
 import { statusReportRoutes } from './routes/statusReports';
+import { meetingRoutes } from './routes/meetings';
 import { performanceRoutes } from './routes/performance';
 import { projectRoutes } from './routes/projects';
 import { raciRoutes } from './routes/raci';
@@ -108,6 +109,7 @@ export function buildApp(opts: BuildAppOptions): App {
   dependencyRoutes(app);
   scheduleRoutes(app);
   statusReportRoutes(app);
+  meetingRoutes(app);
   attachmentRoutes(app);
   if (opts.files instanceof DiskFileStore) localUploadRoutes(app, opts.files);
   indicatorRoutes(app);

@@ -357,6 +357,8 @@ test('flujo principal', async ({ browser }) => {
   await deliverable.getByRole('button', { name: 'Rechazar' }).click();
   const reject = pm.getByRole('dialog', { name: 'Rechazar ENT-1' });
   await reject.getByLabel('Nota').fill('Falta el manual');
+  // Este rechazo no abre no conformidad: el flujo cierra el proyecto más adelante sin incidentes abiertos.
+  await reject.getByRole('checkbox', { name: 'Registrar no conformidad' }).uncheck();
   await reject.getByRole('button', { name: 'Rechazar' }).click();
   await expect(deliverable.getByRole('region', { name: 'Revisiones' }).getByText('Falta el manual')).toBeVisible();
 
@@ -376,6 +378,17 @@ test('flujo principal', async ({ browser }) => {
   await expect(history.getByRole('link', { name: 'acta de aceptación.pdf' })).toBeVisible();
   await deliverable.getByRole('button', { name: 'Cerrar' }).click();
   await expect(pm.getByRole('table').getByText('Aceptado')).toBeVisible();
+
+  // Requisitos: el PM liga un requisito al entregable y lo ve en la matriz de trazabilidad.
+  await pm.getByRole('navigation', { name: 'Secciones del proyecto' }).getByRole('link', { name: 'Requisitos' }).click();
+  await pm.getByRole('button', { name: 'Añadir requisito' }).click();
+  const newRequirement = pm.getByRole('dialog', { name: 'Añadir requisito' });
+  await newRequirement.getByRole('textbox', { name: 'Descripción' }).fill('El sitio funciona en móvil');
+  await newRequirement.getByRole('checkbox', { name: 'ENT-1 · Portal publicado' }).check();
+  await newRequirement.getByRole('button', { name: 'Guardar' }).click();
+  const traceability = pm.getByRole('region', { name: 'Matriz de trazabilidad' });
+  await expect(traceability.getByText('REQ-1')).toBeVisible();
+  await expect(traceability.getByText('ENT-1 · Portal publicado')).toBeVisible();
 
   // El cronograma resalta la ruta crítica.
   await pm.goto(`${projectUrl}/tareas?vista=cronograma`);

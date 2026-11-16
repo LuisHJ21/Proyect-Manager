@@ -193,10 +193,12 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 **F12. Requisitos y trazabilidad** (Entrega)
 - Modelo: `Requirement { código, descripción, origen (interesado), prioridad, estado }` con relación a entregables.
 - Matriz de trazabilidad: requisito → entregable → tareas → criterio de aceptación. Las solicitudes de cambio pueden citar requisitos afectados.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-7a-entrega-calidad-design.md`): requisitos REQ-N con prioridad, estado e interesado de origen (solo lo ve el PM), ligados a entregables; matriz con tareas terminadas, criterios cumplidos y huecos; los cambios citan requisitos. Todos los miembros leen; edita el PM.
 
 **F13. Calidad** (Entrega)
 - Métricas de calidad por proyecto con meta y valor medido.
 - No conformidades: reutilizar incidentes añadiendo `Incident.kind` (incidente, defecto, no conformidad) y un vínculo opcional al entregable; un rechazo de entregable puede generar una.
+- Hecho (`docs/superpowers/specs/2026-11-16-etapa-7a-entrega-calidad-design.md`): métricas con meta, sentido e historial de mediciones (cumple, no cumple, sin medir); tipo y entregable en los incidentes; al rechazar un entregable se registra la no conformidad (casilla marcada por defecto).
 
 **F14. Adquisiciones** (Trabajo del proyecto)
 - Modelo: `Vendor`, `Contract { proveedor, objeto, monto, fechas, estado, anexo }`. `Expense.contractId` liga los pagos al contrato.
@@ -232,7 +234,7 @@ Cada función indica el dominio de PMBOK 7 que cubre, el modelo de datos mínimo
 | 4 | C6 ✓, C7 ✓, C8 ✓, C9 ✓, C10 ✓ | Dejar fiables los números que ya se muestran |
 | 5 | F5 ✓, F6 ✓, F7 ✓, F8 ✓ | Planificación completa; F5 es requisito de F6, F7 y F12 |
 | 6 | F11 ✓, F9 ✓, F10 ✓ | Informes y comunicaciones para interesados |
-| 7 | F12, F13, F15, F16 | Entrega, calidad e incertidumbre |
+| 7 | F12 ✓, F13 ✓, F15, F16 | Entrega, calidad e incertidumbre |
 | 8 | F14, F17, F18 | Según necesidad |
 
 ## 8. Reglas para cada bloque

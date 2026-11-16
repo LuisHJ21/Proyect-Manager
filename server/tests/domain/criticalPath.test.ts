@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { criticalPath } from '../../src/domain/criticalPath';
+import { criticalPath, proposeReschedule } from '../../src/domain/criticalPath';
 
 const t = (id: string, startDate: string, dueDate: string) => ({ id, startDate, dueDate });
 const d = (predecessorId: string, successorId: string, type: 'FS' | 'SS' | 'FF' | 'SF' = 'FS', lagDays = 0) => ({ predecessorId, successorId, type, lagDays });
@@ -50,3 +50,30 @@ describe('criticalPath', () => {
     expect(result.tasks.get('A')!.critical).toBe(true);
   });
 });
+
+describe('proposeReschedule', () => {
+  it('corre la sucesora directa y, si choca, la indirecta, conservando la duración', () => {
+    const tasks = [t('A', '2026-01-01', '2026-01-08'), t('B', '2026-01-06', '2026-01-07'), t('C', '2026-01-08', '2026-01-10')];
+    const changes = proposeReschedule('A', tasks, [d('A', 'B'), d('B', 'C')]);
+    expect(changes).toEqual([
+      { id: 'B', from: { startDate: '2026-01-06', dueDate: '2026-01-07' }, to: { startDate: '2026-01-09', dueDate: '2026-01-10' } },
+      { id: 'C', from: { startDate: '2026-01-08', dueDate: '2026-01-10' }, to: { startDate: '2026-01-11', dueDate: '2026-01-13' } },
+    ]);
+  });
+
+  it('una indirecta con holgura suficiente no se mueve', () => {
+    const tasks = [t('A', '2026-01-01', '2026-01-08'), t('B', '2026-01-06', '2026-01-07'), t('C', '2026-01-20', '2026-01-22')];
+    expect(proposeReschedule('A', tasks, [d('A', 'B'), d('B', 'C')]).map((c) => c.id)).toEqual(['B']);
+  });
+
+  it('una sucesora que ya cumple no aparece, y nunca se mueve hacia atrás', () => {
+    const tasks = [t('A', '2026-01-01', '2026-01-03'), t('B', '2026-01-10', '2026-01-12')];
+    expect(proposeReschedule('A', tasks, [d('A', 'B')])).toEqual([]);
+  });
+
+  it('respeta el tipo y el desfase', () => {
+    const tasks = [t('A', '2026-01-05', '2026-01-10'), t('B', '2026-01-01', '2026-01-03')];
+    expect(proposeReschedule('A', tasks, [d('A', 'B', 'SS', 2)])[0]!.to).toEqual({ startDate: '2026-01-07', dueDate: '2026-01-09' });
+  });
+});
+

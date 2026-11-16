@@ -1,8 +1,11 @@
-import type { DependencyType } from '@pm/shared';
+import { rescheduleSchema, type DependencyType } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
-import type { App } from '../http';
+import { readBody, type App } from '../http';
 import { getProjectAccess } from '../auth/access';
-import { criticalPath } from '../domain/criticalPath';
+import { criticalPath, proposeReschedule } from '../domain/criticalPath';
+import { isWithinProject } from '../domain/projectDates';
+import { AppError, forbidden } from '../errors';
+import { getTaskAccess } from './tasks';
 import { leafWhere } from '../domain/wbs';
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -24,6 +27,28 @@ export async function loadSchedule(db: Db, projectId: string) {
 }
 
 export function scheduleRoutes(app: App) {
+  /** Propone (apply: false) o guarda (apply: true) nuevas fechas para las sucesoras en conflicto. Solo el PM. */
+  app.post('/api/tasks/:id/reschedule', async (c) => {
+    const { prisma } = c.var.deps;
+    const { task, isPm } = await getTaskAccess(c, c.req.param('id'));
+    if (!isPm) throw forbidden();
+    const { apply } = rescheduleSchema.parse(await readBody(c));
+    const { dated, dependencies } = await loadSchedule(prisma, task.projectId);
+    const changes = proposeReschedule(task.id, dated, dependencies);
+    if (!apply || changes.length === 0) return c.json({ changes, applied: false });
+
+    const project = await prisma.project.findUniqueOrThrow({ where: { id: task.projectId }, select: { startDate: true, endDate: true } });
+    const outside = changes.filter((ch) => !isWithinProject(ch.to.startDate, project) || !isWithinProject(ch.to.dueDate, project));
+    if (outside.length > 0) {
+      const titles = new Map(dated.map((t) => [t.id, t.title]));
+      throw new AppError(409, 'reschedule_outside', `La reprogramación deja tareas fuera del proyecto: ${outside.map((ch) => titles.get(ch.id)).join(', ')}`);
+    }
+    await prisma.$transaction(
+      changes.map((ch) => prisma.task.update({ where: { id: ch.id }, data: { ...ch.to, version: { increment: 1 } } })),
+    );
+    return c.json({ changes, applied: true });
+  });
+
   /** Holgura y ruta crítica de las hojas con fechas. No lleva costos: lo lee todo el equipo. */
   app.get('/api/projects/:id/schedule', async (c) => {
     const { project } = await getProjectAccess(c, c.req.param('id'));

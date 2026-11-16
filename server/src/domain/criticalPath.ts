@@ -109,3 +109,42 @@ export function criticalPath(
   }
   return { tasks: results, critical: order.filter((id) => results.get(id)!.critical), unscheduled };
 }
+
+export type RescheduleChange = { id: string; from: { startDate: string; dueDate: string }; to: { startDate: string; dueDate: string } };
+
+/**
+ * Propone nuevas fechas para las sucesoras (directas e indirectas) de una tarea que ya no respetan
+ * sus dependencias. Cada una se adelanta lo mínimo, conserva su duración y nunca se mueve hacia atrás.
+ */
+export function proposeReschedule(rootId: string, tasks: ScheduleTask[], dependencies: ScheduleDependency[]): RescheduleChange[] {
+  const byId = new Map(tasks.map((t) => [t.id, { ...t }]));
+  const deps = dependencies.filter((d) => byId.has(d.predecessorId) && byId.has(d.successorId));
+  // Sucesoras alcanzables desde la tarea, en orden topológico.
+  const reachable = new Set<string>();
+  const walk = (id: string) => {
+    for (const dep of deps) if (dep.predecessorId === id && !reachable.has(dep.successorId)) reachable.add(dep.successorId), walk(dep.successorId);
+  };
+  walk(rootId);
+  const order = topologicalOrder([...byId.keys()], deps).filter((id) => reachable.has(id));
+
+  const changes: RescheduleChange[] = [];
+  for (const id of order) {
+    const task = byId.get(id)!;
+    const dur = Math.max(1, diffDays(task.startDate, task.dueDate) + 1);
+    let start = task.startDate;
+    for (const dep of deps.filter((d) => d.successorId === id)) {
+      const p = byId.get(dep.predecessorId)!;
+      const need =
+        dep.type === 'FS' ? addDays(p.dueDate, 1 + dep.lagDays)
+        : dep.type === 'SS' ? addDays(p.startDate, dep.lagDays)
+        : dep.type === 'FF' ? addDays(p.dueDate, dep.lagDays - dur + 1)
+        : addDays(p.startDate, dep.lagDays - dur + 1);
+      if (need > start) start = need;
+    }
+    if (start === task.startDate) continue;
+    const to = { startDate: start, dueDate: addDays(start, dur - 1) };
+    changes.push({ id, from: { startDate: task.startDate, dueDate: task.dueDate }, to });
+    byId.set(id, { ...task, ...to });
+  }
+  return changes;
+}

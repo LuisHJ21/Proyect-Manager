@@ -338,6 +338,7 @@ export const dependencySchema = z.object({
   type: z.enum(DEPENDENCY_TYPE).default('FS'),
   lagDays: lagDays.default(0),
 });
+export const rescheduleSchema = z.object({ apply: z.boolean({ message: 'Indica si se aplica' }) });
 export const updateDependencySchema = z.object({ type: z.enum(DEPENDENCY_TYPE).optional(), lagDays: lagDays.optional() });
 
 export const baselineSchema = z.object({

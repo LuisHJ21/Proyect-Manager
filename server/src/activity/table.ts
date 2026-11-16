@@ -98,6 +98,7 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'PATCH /api/tasks/:id': task(),
   'DELETE /api/tasks/:id': task(),
   'POST /api/tasks/:id/move': task(),
+  'POST /api/tasks/:id/reschedule': task(),
   'POST /api/tasks/:id/time-entries': task(),
   'PATCH /api/tasks/:id/time-entries/:entryId': task(),
   'DELETE /api/tasks/:id/time-entries/:entryId': task(),

@@ -33,6 +33,7 @@ import { timeEntryRoutes } from './routes/timeEntries';
 import { scheduleRoutes } from './routes/schedule';
 import { statusReportRoutes } from './routes/statusReports';
 import { meetingRoutes } from './routes/meetings';
+import { requirementRoutes } from './routes/requirements';
 import { performanceRoutes } from './routes/performance';
 import { projectRoutes } from './routes/projects';
 import { raciRoutes } from './routes/raci';
@@ -110,6 +111,7 @@ export function buildApp(opts: BuildAppOptions): App {
   scheduleRoutes(app);
   statusReportRoutes(app);
   meetingRoutes(app);
+  requirementRoutes(app);
   attachmentRoutes(app);
   if (opts.files instanceof DiskFileStore) localUploadRoutes(app, opts.files);
   indicatorRoutes(app);

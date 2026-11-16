@@ -23,6 +23,7 @@ import {
   loadObjective,
   loadProject,
   loadRaciActivity,
+  loadRequirement,
   loadRaciCell,
   loadRisk,
   loadStakeholder,
@@ -166,6 +167,7 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'PATCH /api/projects/:id/deliverables/:did/criteria/:cid': criterion(param('cid')),
   'DELETE /api/projects/:id/deliverables/:did/criteria/:cid': criterion(param('cid')),
 
+  ...crudEntries('requirements', 'requirementId', { entity: 'requirement', load: loadRequirement, fields: ['status', 'priority'] }),
   ...crudEntries('meetings', 'meetingId', { entity: 'meeting', load: loadMeeting, fields: ['date'] }),
   // Convertir un acuerdo queda como edición del acta.
   'POST /api/projects/:id/meetings/:meetingId/agreements/:agreementId/convert': { entity: 'meeting', action: 'updated', target: param('meetingId'), load: loadMeeting, fields: [] },

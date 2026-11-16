@@ -144,6 +144,11 @@ export async function loadMeeting(prisma: PrismaClient, id: string): Promise<Sna
   return item ? { label: item.title, values: { date: item.date } } : null;
 }
 
+export async function loadRequirement(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
+  const item = await prisma.requirement.findUnique({ where: { id } });
+  return item ? { label: `REQ-${item.number} ${plainLabel(item.description)}`, values: scalars(item) } : null;
+}
+
 export async function loadLesson(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
   const item = await prisma.lesson.findUnique({ where: { id } });
   return item ? { label: plainLabel(item.situation), values: scalars(item, ['authorId']) } : null;

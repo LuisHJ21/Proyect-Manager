@@ -20,33 +20,34 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  sessions           Session[]
-  memberships        ProjectMember[]
-  assignments        TaskAssignee[]
-  timeEntries        TimeEntry[]
-  comments           TaskComment[]
-  attachments        Attachment[]
-  ownedRisks         Risk[]
-  approvedCharters   Charter[]
-  taskSteps          TaskStep[]
-  raciCells          RaciCell[]
-  baselines          Baseline[]
-  decidedChanges     ChangeRequest[]     @relation("ChangeDecider")
-  requestedChanges   ChangeRequest[]     @relation("ChangeRequester")
-  appliedChanges     ChangeRequest[]     @relation("ChangeApplier")
-  reportedIncidents  Incident[]          @relation("incidentReporter")
-  ownedIncidents     Incident[]          @relation("incidentOwner")
-  deliverableReviews DeliverableReview[] @relation("deliverableReviewer")
-  closedProjects     ProjectClosure[]    @relation("projectCloser")
-  reopenedProjects   ProjectClosure[]    @relation("projectReopener")
-  lessons            Lesson[]            @relation("lessonAuthor")
-  activityLogs       ActivityLog[]
-  notifications      Notification[]
-  statusReports      StatusReport[]
-  communicationItems CommunicationItem[]
-  createdMeetings    Meeting[]
-  meetingAttendances MeetingAttendee[]
-  meetingAgreements  MeetingAgreement[]
+  sessions            Session[]
+  memberships         ProjectMember[]
+  assignments         TaskAssignee[]
+  timeEntries         TimeEntry[]
+  comments            TaskComment[]
+  attachments         Attachment[]
+  ownedRisks          Risk[]
+  approvedCharters    Charter[]
+  taskSteps           TaskStep[]
+  raciCells           RaciCell[]
+  baselines           Baseline[]
+  decidedChanges      ChangeRequest[]      @relation("ChangeDecider")
+  requestedChanges    ChangeRequest[]      @relation("ChangeRequester")
+  appliedChanges      ChangeRequest[]      @relation("ChangeApplier")
+  reportedIncidents   Incident[]           @relation("incidentReporter")
+  ownedIncidents      Incident[]           @relation("incidentOwner")
+  deliverableReviews  DeliverableReview[]  @relation("deliverableReviewer")
+  closedProjects      ProjectClosure[]     @relation("projectCloser")
+  reopenedProjects    ProjectClosure[]     @relation("projectReopener")
+  lessons             Lesson[]             @relation("lessonAuthor")
+  activityLogs        ActivityLog[]
+  notifications       Notification[]
+  statusReports       StatusReport[]
+  communicationItems  CommunicationItem[]
+  createdMeetings     Meeting[]
+  meetingAttendances  MeetingAttendee[]
+  meetingAgreements   MeetingAgreement[]
+  qualityMeasurements QualityMeasurement[]
 }
 
 model Session {
@@ -88,6 +89,7 @@ model Project {
   lastDecisionNumber      Int       @default(0)
   lastDeliverableNumber   Int       @default(0)
   lastStatusReportNumber  Int       @default(0)
+  lastRequirementNumber   Int       @default(0)
   /// Cada cuánto se emite el informe de estado: NONE, WEEKLY, BIWEEKLY, MONTHLY.
   statusReportFrequency   String    @default("NONE")
   closedAt                DateTime?
@@ -118,6 +120,8 @@ model Project {
   statusReports    StatusReport[]
   communications   CommunicationItem[]
   meetings         Meeting[]
+  requirements     Requirement[]
+  qualityMetrics   QualityMetric[]
 }
 
 model ProjectMember {
@@ -336,6 +340,7 @@ model Stakeholder {
   raciCells          RaciCell[]
   deliverableReviews DeliverableReview[]
   meetingAttendances MeetingAttendee[]
+  requirements       Requirement[]
 
   @@index([projectId])
 }
@@ -467,12 +472,13 @@ model ChangeRequest {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  decidedBy       User?      @relation("ChangeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
-  requestedByUser User?      @relation("ChangeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
-  appliedBy       User?      @relation("ChangeApplier", fields: [appliedById], references: [id], onDelete: SetNull)
+  project         Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  decidedBy       User?                      @relation("ChangeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  requestedByUser User?                      @relation("ChangeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  appliedBy       User?                      @relation("ChangeApplier", fields: [appliedById], references: [id], onDelete: SetNull)
   baselines       Baseline[]
   decisions       Decision[]
+  requirements    ChangeRequestRequirement[]
 
   @@unique([projectId, number])
   @@index([requestedById])
@@ -493,29 +499,33 @@ model EvmSnapshot {
 }
 
 model Incident {
-  id           String    @id @default(cuid())
-  projectId    String
-  number       Int
-  title        String
-  description  String    @default("")
-  reportedById String
-  ownerId      String?
-  priority     String    @default("MEDIUM")
-  dueDate      String?
-  status       String    @default("OPEN")
-  resolution   String    @default("")
-  taskId       String?
-  riskId       String?
-  resolvedAt   DateTime?
-  closedAt     DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  projectId     String
+  number        Int
+  title         String
+  description   String    @default("")
+  reportedById  String
+  ownerId       String?
+  priority      String    @default("MEDIUM")
+  dueDate       String?
+  status        String    @default("OPEN")
+  resolution    String    @default("")
+  taskId        String?
+  riskId        String?
+  /// INCIDENT, DEFECT o NONCONFORMITY.
+  kind          String    @default("INCIDENT")
+  deliverableId String?
+  resolvedAt    DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   reportedBy        User               @relation("incidentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
   owner             User?              @relation("incidentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   task              Task?              @relation(fields: [taskId], references: [id], onDelete: SetNull)
   risk              Risk?              @relation(fields: [riskId], references: [id], onDelete: SetNull)
+  deliverable       Deliverable?       @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   decisions         Decision[]
   meetingAgreements MeetingAgreement[]
 
@@ -524,6 +534,7 @@ model Incident {
   @@index([reportedById])
   @@index([taskId])
   @@index([riskId])
+  @@index([deliverableId])
 }
 
 model Decision {
@@ -560,11 +571,14 @@ model Deliverable {
   version     Int      @default(1)
   updatedAt   DateTime @updatedAt
 
-  project   Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  milestone Milestone?             @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
-  criteria  DeliverableCriterion[]
-  tasks     Task[]
-  reviews   DeliverableReview[]
+  project        Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone      Milestone?               @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  criteria       DeliverableCriterion[]
+  tasks          Task[]
+  reviews        DeliverableReview[]
+  requirements   RequirementDeliverable[]
+  qualityMetrics QualityMetric[]
+  incidents      Incident[]
 
   @@unique([projectId, number])
   @@index([milestoneId])
@@ -816,4 +830,85 @@ model MeetingAgreement {
   incident Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
 
   @@index([meetingId])
+}
+
+/// Requisito del proyecto (F12), numerado REQ-N.
+model Requirement {
+  id            String   @id @default(cuid())
+  projectId     String
+  number        Int
+  description   String
+  priority      String   @default("MEDIUM")
+  status        String   @default("PROPOSED")
+  stakeholderId String?
+  acceptance    String   @default("")
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project      Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stakeholder  Stakeholder?               @relation(fields: [stakeholderId], references: [id], onDelete: SetNull)
+  deliverables RequirementDeliverable[]
+  changes      ChangeRequestRequirement[]
+
+  @@unique([projectId, number])
+  @@index([stakeholderId])
+}
+
+model RequirementDeliverable {
+  requirementId String
+  deliverableId String
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+
+  @@id([requirementId, deliverableId])
+  @@index([deliverableId])
+}
+
+model ChangeRequestRequirement {
+  changeRequestId String
+  requirementId   String
+
+  changeRequest ChangeRequest @relation(fields: [changeRequestId], references: [id], onDelete: Cascade)
+  requirement   Requirement   @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@id([changeRequestId, requirementId])
+  @@index([requirementId])
+}
+
+/// Métrica de calidad con meta (F13).
+model QualityMetric {
+  id            String   @id @default(cuid())
+  projectId     String
+  name          String
+  unit          String   @default("")
+  target        Decimal  @db.Decimal(14, 4)
+  /// HIGHER_BETTER o LOWER_BETTER.
+  direction     String   @default("HIGHER_BETTER")
+  deliverableId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project      Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliverable  Deliverable?         @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  measurements QualityMeasurement[]
+
+  @@index([projectId])
+  @@index([deliverableId])
+}
+
+model QualityMeasurement {
+  id          String   @id @default(cuid())
+  metricId    String
+  date        String
+  value       Decimal  @db.Decimal(14, 4)
+  note        String   @default("")
+  createdById String
+  createdAt   DateTime @default(now())
+
+  metric    QualityMetric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+  createdBy User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([metricId])
 }

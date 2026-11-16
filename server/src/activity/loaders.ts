@@ -43,7 +43,7 @@ export async function loadProject(prisma: PrismaClient, id: string): Promise<Sna
   const project = await prisma.project.findUnique({ where: { id }, include: { charter: true } });
   if (!project) return null;
   const { charter, ...rest } = project;
-  const values = scalars(rest, ['lastChangeNumber', 'lastIncidentNumber', 'lastDecisionNumber', 'lastDeliverableNumber', 'lastStatusReportNumber']);
+  const values = scalars(rest, ['lastChangeNumber', 'lastIncidentNumber', 'lastDecisionNumber', 'lastDeliverableNumber', 'lastStatusReportNumber', 'lastRequirementNumber']);
   if (charter) {
     for (const [key, value] of Object.entries(scalars(charter, ['id', 'projectId', 'createdAt', 'updatedAt']))) values[`charter.${key}`] = value;
   }

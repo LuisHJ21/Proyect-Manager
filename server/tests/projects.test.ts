@@ -17,6 +17,13 @@ describe('proyectos y miembros', () => {
   });
   afterEach(() => ctx.close());
 
+  it('el contador de requisitos no sale en el proyecto', async () => {
+    const project = await ctx.makeProject();
+    await ctx.prisma.requirement.create({ data: { projectId: project.id, number: 1, description: 'Acceso con usuario' } });
+    await ctx.prisma.project.update({ where: { id: project.id }, data: { lastRequirementNumber: 1 } });
+    expect((await ctx.as(pm).get(`/api/projects/${project.id}`)).json()).not.toHaveProperty('lastRequirementNumber');
+  });
+
   it('crear un proyecto crea su acta en DRAFT', async () => {
     const res = await ctx.as(pm).post('/api/projects', { name: 'Portal', plannedBudgetCents: 500000, currency: 'mxn' });
     expect(res.statusCode).toBe(201);

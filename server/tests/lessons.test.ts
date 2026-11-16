@@ -65,6 +65,19 @@ describe('lecciones aprendidas', () => {
     expect((await get('?category=COST&category=TEAM')).statusCode).toBe(400);
   });
 
+  it('un proyecto que no comparte sus lecciones solo las muestra a su equipo y al PM', async () => {
+    const carlos = await ctx.makeUser({ role: 'COLLABORATOR', name: 'Carlos' });
+    await ctx.makeProject({ name: 'Intranet', members: [carlos] });
+    await ctx.as(ana).post(base(), lesson);
+    const names = async (user: User) => ((await ctx.as(user).get('/api/lessons')).json() as { project: { name: string } }[]).map((l) => l.project.name);
+    expect(await names(carlos)).toEqual(['Portal']);
+    await ctx.prisma.project.update({ where: { id: project.id }, data: { shareLessons: false } });
+    expect(await names(carlos)).toEqual([]);
+    expect(await names(beto)).toEqual(['Portal']);
+    expect(await names(pm)).toEqual(['Portal']);
+    expect((await ctx.as(pm).get(`/api/projects/${project.id}`)).json().shareLessons).toBe(false);
+  });
+
   it('anónimo', async () => {
     expect((await ctx.anon.get('/api/lessons')).statusCode).toBe(401);
   });

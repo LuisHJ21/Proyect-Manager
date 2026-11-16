@@ -25,6 +25,7 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
   const [budgetPercent, setBudgetPercent] = useState(String(project?.healthBudgetPercent ?? 90));
   const [indexMin, setIndexMin] = useState(String(project?.healthIndexMin ?? 90));
   const [riskScore, setRiskScore] = useState(String(project?.highRiskScore ?? 15));
+  const [shareLessons, setShareLessons] = useState(project?.shareLessons ?? true);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
@@ -54,6 +55,7 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
       healthBudgetPercent: Number(budgetPercent),
       healthIndexMin: Number(indexMin),
       highRiskScore: Number(riskScore),
+      shareLessons,
     };
     try {
       const saved = project
@@ -128,6 +130,10 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
             ))}
           </select>
         </FormField>
+        <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
+          <input type="checkbox" checked={shareLessons} onChange={(e) => setShareLessons(e.target.checked)} className="h-4 w-4 accent-primary" />
+          Compartir lecciones en la biblioteca
+        </label>
         <fieldset className="grid gap-4 sm:col-span-2 sm:grid-cols-4">
           <legend className="mb-1 text-sm font-medium text-ink">Umbrales de salud</legend>
           <FormField label="Tareas vencidas para «En riesgo»" error={errors.fields.healthOverdueTasks}>

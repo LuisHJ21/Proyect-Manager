@@ -92,8 +92,10 @@ export function lessonRoutes(app: App) {
         ...(category ? { category } : {}),
         ...(type ? { type } : {}),
         ...(projectId ? { projectId } : {}),
-        // El observador solo consulta las lecciones de los proyectos donde es miembro.
+        // El observador solo consulta las lecciones de los proyectos donde es miembro; el colaborador,
+        // además, las de proyectos que las comparten (C13). El PM las ve todas.
         ...(viewer.role === 'OBSERVER' ? { project: { members: { some: { userId: viewer.id } } } } : {}),
+        ...(viewer.role === 'COLLABORATOR' ? { OR: [{ project: { members: { some: { userId: viewer.id } } } }, { project: { shareLessons: true } }] } : {}),
       },
       include,
       orderBy: { createdAt: 'desc' },

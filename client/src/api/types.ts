@@ -54,6 +54,8 @@ export type Project = {
   healthIndexMin?: number;
   highRiskScore?: number;
   statusReportFrequency?: import('@pm/shared').StatusReportFrequency;
+  /** C13: si sus lecciones aparecen en la biblioteca para quien no es miembro. */
+  shareLessons?: boolean;
   health?: Health | null;
   overdueTasks?: number;
   highRisks?: number;

@@ -45,3 +45,18 @@ describe('tendencia de hitos y umbrales', () => {
     );
   });
 });
+
+describe('compartir lecciones', () => {
+  it('la casilla viene marcada y se envía al desmarcarla', async () => {
+    const api = mockApi({ ...routes, 'GET /api/projects/p1': { ...project, shareLessons: true }, 'PATCH /api/projects/p1': project });
+    renderApp('/proyectos/p1/resumen');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Editar proyecto' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Editar proyecto' }));
+    const box = dialog.getByRole('checkbox', { name: 'Compartir lecciones en la biblioteca' });
+    expect(box).toBeChecked();
+    await user.click(box);
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(api.calls.find((c) => c.key === 'PATCH /api/projects/p1')?.body).toMatchObject({ shareLessons: false }));
+  });
+});

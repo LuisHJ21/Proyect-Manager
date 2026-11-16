@@ -29,6 +29,7 @@ const TABS: { to: string; label: string; section: Section }[] = [
   { to: 'incidentes', label: 'Incidentes', section: 'incidents' },
   { to: 'lecciones', label: 'Lecciones', section: 'lessons' },
   { to: 'interesados', label: 'Interesados', section: 'stakeholders' },
+  { to: 'reuniones', label: 'Reuniones', section: 'meetings' },
   { to: 'riesgos', label: 'Riesgos', section: 'risks' },
   { to: 'presupuesto', label: 'Presupuesto', section: 'budget' },
   { to: 'desempeno', label: 'Desempeño', section: 'performance' },

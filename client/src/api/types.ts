@@ -474,3 +474,24 @@ export type CommunicationItem = {
   owner: PersonRef | null;
   notes: string;
 };
+export type MeetingAgreement = {
+  id: string;
+  text: string;
+  owner: PersonRef | null;
+  dueDate: string | null;
+  position: number;
+  taskId: string | null;
+  /** Solo llegan al PM; el colaborador recibe `convertedTo`. */
+  decisionId?: string | null;
+  incidentId?: string | null;
+  convertedTo: import('@pm/shared').AgreementTarget | null;
+};
+export type Meeting = {
+  id: string;
+  title: string;
+  date: string;
+  notes: string;
+  attendees: { users: PersonRef[]; stakeholders: PersonRef[] };
+  agreements: MeetingAgreement[];
+};
+export type MeetingSummary = { id: string; title: string; date: string; attendeeCount: number; agreementCount: number };

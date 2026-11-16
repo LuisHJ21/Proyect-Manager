@@ -24,6 +24,15 @@ describe('proyectos y miembros', () => {
     expect((await ctx.as(pm).get(`/api/projects/${project.id}`)).json()).not.toHaveProperty('lastRequirementNumber');
   });
 
+  it('los umbrales de salud solo van al PM', async () => {
+    const project = await ctx.makeProject({ members: [member] });
+    const forPm = (await ctx.as(pm).get(`/api/projects/${project.id}`)).json();
+    expect(forPm).toMatchObject({ healthOverdueTasks: 3, healthBudgetPercent: 90, healthIndexMin: 90, highRiskScore: 15 });
+    expect(forPm).not.toHaveProperty('lastAssumptionNumber');
+    const forMember = (await ctx.as(member).get(`/api/projects/${project.id}`)).json();
+    for (const key of ['healthOverdueTasks', 'healthBudgetPercent', 'healthIndexMin', 'highRiskScore', 'lastAssumptionNumber']) expect(forMember).not.toHaveProperty(key);
+  });
+
   it('crear un proyecto crea su acta en DRAFT', async () => {
     const res = await ctx.as(pm).post('/api/projects', { name: 'Portal', plannedBudgetCents: 500000, currency: 'mxn' });
     expect(res.statusCode).toBe(201);

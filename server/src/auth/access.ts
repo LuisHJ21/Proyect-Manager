@@ -39,9 +39,19 @@ export async function requireProjectAccess(c: Ctx, projectId: string, section: S
 
 export function toProjectDto(project: Project, isPm: boolean) {
   // Los contadores de cambios, incidentes y decisiones son internos: no se envían a nadie.
-  const { plannedBudgetCents, contingencyReserveCents, managementReserveCents, currency, lastChangeNumber: _c, lastIncidentNumber: _i, lastDecisionNumber: _d, lastDeliverableNumber: _e, lastStatusReportNumber: _r, lastRequirementNumber: _q, ...visible } = project;
-  // Presupuesto y reservas son del PM.
+  const { plannedBudgetCents, contingencyReserveCents, managementReserveCents, currency, lastChangeNumber: _c, lastIncidentNumber: _i, lastDecisionNumber: _d, lastDeliverableNumber: _e, lastStatusReportNumber: _r, lastRequirementNumber: _q, lastAssumptionNumber: _a, healthOverdueTasks, healthBudgetPercent, healthIndexMin, highRiskScore, ...visible } = project;
+  // Presupuesto, reservas y umbrales de salud son del PM.
   return isPm
-    ? { ...visible, plannedBudgetCents: Number(plannedBudgetCents), contingencyReserveCents: Number(contingencyReserveCents), managementReserveCents: Number(managementReserveCents), currency }
+    ? {
+        ...visible,
+        plannedBudgetCents: Number(plannedBudgetCents),
+        contingencyReserveCents: Number(contingencyReserveCents),
+        managementReserveCents: Number(managementReserveCents),
+        currency,
+        healthOverdueTasks,
+        healthBudgetPercent,
+        healthIndexMin,
+        highRiskScore,
+      }
     : visible;
 }

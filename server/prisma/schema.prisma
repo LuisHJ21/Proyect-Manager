@@ -48,6 +48,8 @@ model User {
   meetingAttendances  MeetingAttendee[]
   meetingAgreements   MeetingAgreement[]
   qualityMeasurements QualityMeasurement[]
+  riskAssessments     RiskAssessment[]
+  ownedAssumptions    Assumption[]         @relation("assumptionOwner")
 }
 
 model Session {
@@ -90,6 +92,12 @@ model Project {
   lastDeliverableNumber   Int       @default(0)
   lastStatusReportNumber  Int       @default(0)
   lastRequirementNumber   Int       @default(0)
+  lastAssumptionNumber    Int       @default(0)
+  /// Umbrales de salud (F16): tareas vencidas para «En riesgo», % del presupuesto e índice mínimo (centésimas) para «Atención», puntaje de riesgo alto.
+  healthOverdueTasks      Int       @default(3)
+  healthBudgetPercent     Int       @default(90)
+  healthIndexMin          Int       @default(90)
+  highRiskScore           Int       @default(15)
   /// Cada cuánto se emite el informe de estado: NONE, WEEKLY, BIWEEKLY, MONTHLY.
   statusReportFrequency   String    @default("NONE")
   closedAt                DateTime?
@@ -122,6 +130,7 @@ model Project {
   meetings         Meeting[]
   requirements     Requirement[]
   qualityMetrics   QualityMetric[]
+  assumptions      Assumption[]
 }
 
 model ProjectMember {
@@ -190,9 +199,10 @@ model Milestone {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks        Task[]
   deliverables Deliverable[]
+  forecasts    MilestoneForecast[]
 
   @@index([projectId])
 }
@@ -346,23 +356,31 @@ model Stakeholder {
 }
 
 model Risk {
-  id           String   @id @default(cuid())
-  projectId    String
-  description  String
-  type         String
-  probability  Int
-  impact       Int
-  response     String
-  responsePlan String   @default("")
-  ownerId      String?
-  status       String   @default("OPEN")
-  createdAt    DateTime @default(now())
-  version      Int      @default(1)
-  updatedAt    DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  projectId            String
+  description          String
+  type                 String
+  probability          Int
+  impact               Int
+  response             String
+  responsePlan         String   @default("")
+  ownerId              String?
+  status               String   @default("OPEN")
+  /// F15: disparador, próxima revisión, costo de contingencia (solo PM) y evaluación residual.
+  trigger              String   @default("")
+  nextReviewDate       String?
+  contingencyCostCents BigInt?
+  residualProbability  Int?
+  residualImpact       Int?
+  createdAt            DateTime @default(now())
+  version              Int      @default(1)
+  updatedAt            DateTime @updatedAt
 
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  incidents Incident[]
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner       User?            @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  incidents   Incident[]
+  assessments RiskAssessment[]
+  assumptions Assumption[]
 
   @@index([projectId])
 }
@@ -528,6 +546,7 @@ model Incident {
   deliverable       Deliverable?       @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   decisions         Decision[]
   meetingAgreements MeetingAgreement[]
+  assumptions       Assumption[]
 
   @@unique([projectId, number])
   @@index([ownerId])
@@ -911,4 +930,58 @@ model QualityMeasurement {
   createdBy User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([metricId])
+}
+
+/// Evaluación de un riesgo en el tiempo (F15): se guarda al crear y cuando cambian P, I o el residual.
+model RiskAssessment {
+  id                  String   @id @default(cuid())
+  riskId              String
+  probability         Int
+  impact              Int
+  residualProbability Int?
+  residualImpact      Int?
+  assessedAt          DateTime @default(now())
+  assessedById        String
+
+  risk       Risk @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  assessedBy User @relation(fields: [assessedById], references: [id], onDelete: Restrict)
+
+  @@index([riskId])
+}
+
+/// Supuesto del proyecto (F15), numerado SUP-N.
+model Assumption {
+  id          String   @id @default(cuid())
+  projectId   String
+  number      Int
+  description String
+  ownerId     String?
+  validateBy  String?
+  /// PENDING, VALID o FALSE.
+  status      String   @default("PENDING")
+  riskId      String?
+  incidentId  String?
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner    User?     @relation("assumptionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  risk     Risk?     @relation(fields: [riskId], references: [id], onDelete: SetNull)
+  incident Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, number])
+  @@index([ownerId])
+}
+
+/// Pronóstico diario de un hito (F16), para su tendencia.
+model MilestoneForecast {
+  id           String @id @default(cuid())
+  milestoneId  String
+  date         String
+  forecastDate String
+
+  milestone Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@unique([milestoneId, date])
 }

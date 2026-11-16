@@ -97,6 +97,8 @@ const ROUTE_SECTION: Record<string, Section> = {
   'DELETE /api/projects/:id/stakeholders/:itemId': 'stakeholders',
 
   'GET /api/projects/:id/expenses': 'budget',
+  'GET /api/projects/:id/budget-categories': 'budget',
+  'PUT /api/projects/:id/budget-categories': 'budget',
   'POST /api/projects/:id/expenses': 'budget',
   'PATCH /api/projects/:id/expenses/:itemId': 'budget',
   'DELETE /api/projects/:id/expenses/:itemId': 'budget',

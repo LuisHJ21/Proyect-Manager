@@ -28,6 +28,7 @@ import { indicatorRoutes } from './routes/indicators';
 import { lessonRoutes } from './routes/lessons';
 import { memberRoutes } from './routes/members';
 import { notificationRoutes } from './routes/notifications';
+import { budgetRoutes } from './routes/budget';
 import { performanceRoutes } from './routes/performance';
 import { projectRoutes } from './routes/projects';
 import { raciRoutes } from './routes/raci';
@@ -90,6 +91,7 @@ export function buildApp(opts: BuildAppOptions): App {
   raciRoutes(app);
   changeRequestRoutes(app);
   performanceRoutes(app);
+  budgetRoutes(app);
   incidentRoutes(app);
   decisionRoutes(app);
   deliverableRoutes(app);

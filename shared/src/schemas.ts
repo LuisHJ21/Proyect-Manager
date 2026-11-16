@@ -99,6 +99,8 @@ const projectFields = {
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
   plannedBudgetCents: budgetAmount.default(0),
+  contingencyReserveCents: budgetAmount.default(0),
+  managementReserveCents: budgetAmount.default(0),
   currency: z.string().trim().toUpperCase().length(3, 'Usa un código de 3 letras, por ejemplo USD').default('USD'),
 };
 export const DATE_ORDER_MESSAGE = 'La fecha de inicio no puede ser posterior a la de fin';
@@ -116,7 +118,17 @@ export const updateProjectSchema = z.object({
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
   plannedBudgetCents: budgetAmount.optional(),
+  contingencyReserveCents: budgetAmount.optional(),
+  managementReserveCents: budgetAmount.optional(),
   currency: z.string().trim().toUpperCase().length(3, 'Usa un código de 3 letras, por ejemplo USD').optional(),
+});
+
+/** Presupuesto planeado por categoría de gasto; cada categoría va una sola vez. */
+export const budgetCategoriesSchema = z.object({
+  items: z
+    .array(z.object({ category: z.enum(EXPENSE_CATEGORY), plannedCents: budgetAmount }))
+    .max(EXPENSE_CATEGORY.length)
+    .refine((items) => new Set(items.map((i) => i.category)).size === items.length, 'Cada categoría va una sola vez'),
 });
 export const deleteProjectSchema = z.object({ confirmName: z.string() });
 

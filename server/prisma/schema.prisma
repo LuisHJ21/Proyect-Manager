@@ -65,44 +65,47 @@ model LoginAttempt {
 }
 
 model Project {
-  id                    String    @id @default(cuid())
-  name                  String
-  description           String    @default("")
-  status                String    @default("PLANNING")
-  approach              String    @default("PREDICTIVE")
-  startDate             String?
-  endDate               String?
-  plannedBudgetCents    BigInt    @default(0)
-  currency              String    @default("USD")
+  id                      String    @id @default(cuid())
+  name                    String
+  description             String    @default("")
+  status                  String    @default("PLANNING")
+  approach                String    @default("PREDICTIVE")
+  startDate               String?
+  endDate                 String?
+  plannedBudgetCents      BigInt    @default(0)
+  contingencyReserveCents BigInt    @default(0)
+  managementReserveCents  BigInt    @default(0)
+  currency                String    @default("USD")
   /// Último número de solicitud de cambio usado; los números no se reutilizan aunque se borre una solicitud.
-  lastChangeNumber      Int       @default(0)
-  lastIncidentNumber    Int       @default(0)
-  lastDecisionNumber    Int       @default(0)
-  lastDeliverableNumber Int       @default(0)
-  closedAt              DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  lastChangeNumber        Int       @default(0)
+  lastIncidentNumber      Int       @default(0)
+  lastDecisionNumber      Int       @default(0)
+  lastDeliverableNumber   Int       @default(0)
+  closedAt                DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  members        ProjectMember[]
-  charter        Charter?
-  objectives     Objective[]
-  milestones     Milestone[]
-  tasks          Task[]
-  attachments    Attachment[]
-  stakeholders   Stakeholder[]
-  risks          Risk[]
-  expenses       Expense[]
-  raciActivities RaciActivity[]
-  baselines      Baseline[]
-  changeRequests ChangeRequest[]
-  evmSnapshots   EvmSnapshot[]
-  incidents      Incident[]
-  decisions      Decision[]
-  deliverables   Deliverable[]
-  closures       ProjectClosure[]
-  lessons        Lesson[]
-  activityLogs   ActivityLog[]
-  notifications  Notification[]
+  members          ProjectMember[]
+  charter          Charter?
+  objectives       Objective[]
+  milestones       Milestone[]
+  tasks            Task[]
+  attachments      Attachment[]
+  stakeholders     Stakeholder[]
+  risks            Risk[]
+  expenses         Expense[]
+  raciActivities   RaciActivity[]
+  baselines        Baseline[]
+  changeRequests   ChangeRequest[]
+  evmSnapshots     EvmSnapshot[]
+  incidents        Incident[]
+  decisions        Decision[]
+  deliverables     Deliverable[]
+  closures         ProjectClosure[]
+  lessons          Lesson[]
+  activityLogs     ActivityLog[]
+  notifications    Notification[]
+  budgetCategories BudgetCategory[]
 }
 
 model ProjectMember {
@@ -655,4 +658,15 @@ model Notification {
 
   @@unique([userId, dedupeKey])
   @@index([userId, createdAt])
+}
+
+model BudgetCategory {
+  id           String @id @default(cuid())
+  projectId    String
+  category     String
+  plannedCents BigInt @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, category])
 }

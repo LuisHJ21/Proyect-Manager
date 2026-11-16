@@ -43,7 +43,7 @@ function crudEntries(path: string, idParam: string, entry: Omit<ActivityEntry, '
   };
 }
 
-const PROJECT_FIELDS = ['status', 'startDate', 'endDate', 'plannedBudgetCents'] as const;
+const PROJECT_FIELDS = ['status', 'startDate', 'endDate', 'plannedBudgetCents', 'contingencyReserveCents', 'managementReserveCents'] as const;
 const TASK_FIELDS = ['status', 'startDate', 'dueDate', 'progress', 'plannedCostCents', 'milestoneId', 'assignees'] as const;
 const STEP_FIELDS = ['done', 'assigneeId'] as const;
 const MEMBER_FIELDS = ['projectRole'] as const;
@@ -83,6 +83,7 @@ async function dependencyKey(c: Ctx): Promise<string | null> {
 export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'POST /api/projects': project({ target: responseId }),
   'PATCH /api/projects/:id': project(),
+  'PUT /api/projects/:id/budget-categories': project(),
   'PUT /api/projects/:id/charter': project(),
   'POST /api/projects/:id/charter/approve': project({ action: 'approved' }),
   'POST /api/projects/:id/baselines': project({ action: 'baselined' }),

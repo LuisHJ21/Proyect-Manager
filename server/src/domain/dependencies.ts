@@ -1,3 +1,5 @@
+import { diffDays, type DependencyType } from '@pm/shared';
+
 export type DependencyEdge = { predecessorId: string; successorId: string };
 export type ProgressState = { status: string; progress: number };
 export type ProgressChange = { status?: string; progress?: number };
@@ -25,10 +27,34 @@ export function findDependencyCycle(edges: DependencyEdge[], predecessorId: stri
 
 const ADVANCING_STATUSES = new Set(['IN_PROGRESS', 'DONE']);
 
-/** Una tarea con predecesoras pendientes no puede avanzar, ni por estado ni por porcentaje. */
-export function checkProgressChange(current: ProgressState, next: ProgressChange, pendingPredecessors: number): 'ok' | 'blocked' {
-  if (pendingPredecessors === 0) return 'ok';
+/**
+ * Una tarea no puede avanzar, ni por estado ni por porcentaje, si una predecesora fin a inicio no
+ * terminó o una inicio a inicio no empezó. Fin a fin e inicio a fin no bloquean el avance.
+ */
+export function checkProgressChange(current: ProgressState, next: ProgressChange, predecessors: { type: DependencyType; status: string }[]): 'ok' | 'blocked' {
+  const blocking = predecessors.some((p) => (p.type === 'FS' && p.status !== 'DONE') || (p.type === 'SS' && p.status === 'TODO'));
+  if (!blocking) return 'ok';
   const advancesStatus = next.status !== undefined && next.status !== current.status && ADVANCING_STATUSES.has(next.status);
   const advancesProgress = next.progress !== undefined && next.progress > current.progress;
   return advancesStatus || advancesProgress ? 'blocked' : 'ok';
+}
+
+type Dates = { startDate: string | null; dueDate: string | null };
+
+/**
+ * Las fechas guardadas no respetan la dependencia (S = inicio, F = fin, en días naturales):
+ * FS: S suc ≥ F pred + 1 + desfase; SS: S suc ≥ S pred + desfase; FF: F suc ≥ F pred + desfase;
+ * SF: F suc ≥ S pred + desfase. Sin alguna de las fechas que la regla usa, no hay conflicto.
+ */
+export function dependencyViolated(type: DependencyType, lagDays: number, predecessor: Dates, successor: Dates): boolean {
+  const [from, to, min] =
+    type === 'FS'
+      ? [predecessor.dueDate, successor.startDate, 1 + lagDays]
+      : type === 'SS'
+        ? [predecessor.startDate, successor.startDate, lagDays]
+        : type === 'FF'
+          ? [predecessor.dueDate, successor.dueDate, lagDays]
+          : [predecessor.startDate, successor.dueDate, lagDays];
+  if (!from || !to) return false;
+  return diffDays(from, to) < min;
 }

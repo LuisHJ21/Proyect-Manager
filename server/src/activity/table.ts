@@ -104,6 +104,7 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'PUT /api/tasks/:id/assignees': task(),
   'PATCH /api/tasks/:id/progress': task(),
   'POST /api/tasks/:id/dependencies': dependency(dependencyKey),
+  'PATCH /api/tasks/:id/dependencies/:predecessorId': dependency(dependencyKey),
   'DELETE /api/tasks/:id/dependencies/:predecessorId': dependency(dependencyKey),
 
   'POST /api/tasks/:id/steps': step({ target: responseId }),

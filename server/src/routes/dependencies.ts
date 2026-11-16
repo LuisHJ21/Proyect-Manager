@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { dependencySchema } from '@pm/shared';
+import { dependencySchema, updateDependencySchema } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { findDependencyCycle } from '../domain/dependencies';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
@@ -24,7 +24,7 @@ export function dependencyRoutes(app: App) {
   app.post('/api/tasks/:id/dependencies', async (c) => {
     const { prisma } = c.var.deps;
     const successor = await requireTaskPm(c, c.req.param('id'));
-    const { predecessorId } = dependencySchema.parse(await readBody(c));
+    const { predecessorId, type, lagDays } = dependencySchema.parse(await readBody(c));
     await assertNotSummary(prisma, successor.id);
     await assertNotSummary(prisma, predecessorId);
 
@@ -48,8 +48,18 @@ export function dependencyRoutes(app: App) {
       );
     }
 
-    await prisma.taskDependency.create({ data: { predecessorId, successorId: successor.id } });
+    await prisma.taskDependency.create({ data: { predecessorId, successorId: successor.id, type, lagDays } });
     return c.json(await loadDto(c.var.deps.prisma, successor.id), 201);
+  });
+
+  app.patch('/api/tasks/:id/dependencies/:predecessorId', async (c) => {
+    const { prisma } = c.var.deps;
+    const successor = await requireTaskPm(c, c.req.param('id'));
+    const where = { predecessorId_successorId: { predecessorId: c.req.param('predecessorId'), successorId: successor.id } };
+    if (!(await prisma.taskDependency.findUnique({ where }))) throw notFound('Dependencia no encontrada');
+    const input = updateDependencySchema.parse(await readBody(c));
+    await prisma.taskDependency.update({ where, data: input });
+    return c.json(await loadDto(c.var.deps.prisma, successor.id));
   });
 
   app.delete('/api/tasks/:id/dependencies/:predecessorId', async (c) => {

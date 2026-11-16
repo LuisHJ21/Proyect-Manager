@@ -110,13 +110,38 @@ describe('dependencias', () => {
     const b = await ctx.makeTask(project.id, { startDate: '2026-12-05' });
     const res = await link(a, b);
     expect(res.statusCode).toBe(201);
-    expect(res.json().warnings).toContain('starts_before_predecessor_due');
+    expect(res.json().warnings).toContain('date_conflict');
   });
 
-  it('empezar el mismo día de la fecha límite no advierte', async () => {
+  it('fin a inicio: empezar el mismo día del fin advierte; al día siguiente no', async () => {
     const a = await ctx.makeTask(project.id, { dueDate: '2026-12-10' });
     const b = await ctx.makeTask(project.id, { startDate: '2026-12-10' });
-    expect((await link(a, b)).json().warnings).toEqual([]);
+    expect((await link(a, b)).json().warnings).toContain('date_conflict');
+    const c2 = await ctx.makeTask(project.id, { startDate: '2026-12-11' });
+    expect((await link(a, c2)).json().warnings).toEqual([]);
+  });
+
+  it('tipo y desfase: se guardan, se editan y se validan', async () => {
+    const a = await ctx.makeTask(project.id, { startDate: '2026-12-01', dueDate: '2026-12-10' });
+    const b = await ctx.makeTask(project.id, { startDate: '2026-12-03', dueDate: '2026-12-20' });
+    const res = await ctx.as(pm).post(`/api/tasks/${b.id}/dependencies`, { predecessorId: a.id, type: 'SS', lagDays: 2 });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().predecessors).toEqual([{ id: a.id, type: 'SS', lagDays: 2 }]);
+    expect(res.json().warnings).not.toContain('date_conflict');
+    const changed = await ctx.as(pm).patch(`/api/tasks/${b.id}/dependencies/${a.id}`, { type: 'FF', lagDays: 0 });
+    expect(changed.statusCode).toBe(200);
+    expect(changed.json().predecessors).toEqual([{ id: a.id, type: 'FF', lagDays: 0 }]);
+    expect((await ctx.as(ana).patch(`/api/tasks/${b.id}/dependencies/${a.id}`, { lagDays: 1 })).statusCode).toBe(403);
+    expect((await ctx.as(pm).patch(`/api/tasks/${b.id}/dependencies/${a.id}`, { lagDays: 400 })).statusCode).toBe(400);
+  });
+
+  it('inicio a inicio: con la predecesora en curso, la sucesora puede empezar', async () => {
+    const a = await ctx.makeTask(project.id, { assignees: [ana] });
+    const b = await ctx.makeTask(project.id, { assignees: [ana] });
+    await ctx.as(pm).post(`/api/tasks/${b.id}/dependencies`, { predecessorId: a.id, type: 'SS' });
+    expect((await progress(ana, b, { status: 'IN_PROGRESS' })).statusCode).toBe(409);
+    await progress(ana, a, { status: 'IN_PROGRESS' });
+    expect((await progress(ana, b, { status: 'IN_PROGRESS' })).statusCode).toBe(200);
   });
 
   it('quitar la dependencia permite avanzar', async () => {

@@ -251,6 +251,9 @@ model TaskAssignee {
 model TaskDependency {
   predecessorId String
   successorId   String
+  /** FS, SS, FF o SF. */
+  type          String   @default("FS")
+  lagDays       Int      @default(0)
   createdAt     DateTime @default(now())
 
   predecessor Task @relation("predecessor", fields: [predecessorId], references: [id], onDelete: Cascade)

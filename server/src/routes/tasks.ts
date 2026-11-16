@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import {
   ACTIVE_PROJECT_STATUS,
+  type DependencyType,
   assigneesSchema,
   commentSchema,
   createTaskSchema,
@@ -276,14 +277,18 @@ export function taskRoutes(app: App) {
           details: { pending: pendingSteps },
         });
       }
-      const pending = await tx.taskDependency.findMany({
-        where: { successorId: task.id, predecessor: { status: { not: 'DONE' } } },
-        include: { predecessor: { select: { id: true, title: true } } },
-      });
-      if (checkProgressChange(current, data, pending.length) === 'blocked') {
+      // Solo bloquean una fin a inicio sin terminar y una inicio a inicio sin empezar.
+      const pending = (
+        await tx.taskDependency.findMany({
+          where: { successorId: task.id, predecessor: { status: { not: 'DONE' } } },
+          include: { predecessor: { select: { id: true, title: true, status: true } } },
+        })
+      ).filter((d) => d.type === 'FS' || (d.type === 'SS' && d.predecessor.status === 'TODO'));
+      const blocking = pending.map((d) => ({ type: d.type as DependencyType, status: d.predecessor.status }));
+      if (checkProgressChange(current, data, blocking) === 'blocked') {
         const titles = pending.map((d) => d.predecessor.title).join(', ');
         throw new AppError(409, 'predecessors_pending', `Antes deben terminar: ${titles}`, {
-          details: { pending: pending.map((d) => d.predecessor) },
+          details: { pending: pending.map((d) => ({ id: d.predecessor.id, title: d.predecessor.title })) },
         });
       }
       await tx.task.update({ where: { id: task.id }, data });

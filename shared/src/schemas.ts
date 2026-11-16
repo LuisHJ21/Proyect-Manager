@@ -7,6 +7,7 @@ import {
   LESSON_CATEGORY,
   LESSON_TYPE,
   DELIVERABLE_STATUS,
+  DEPENDENCY_TYPE,
   EXPENSE_CATEGORY,
   INCIDENT_STATUS,
   LEVEL,
@@ -331,7 +332,13 @@ const hoursField = z
   .multipleOf(0.25, 'Usa cuartos de hora: 0,25, 0,5, 0,75…');
 export const timeEntrySchema = z.object({ date: calendarDateSchema, hours: hoursField, note: noteText().default('') });
 export const updateTimeEntrySchema = z.object({ date: calendarDateSchema.optional(), hours: hoursField.optional(), note: noteText().optional() });
-export const dependencySchema = z.object({ predecessorId: required('Selecciona una tarea') });
+const lagDays = z.number({ message: 'Usa un número entero de días' }).int('Usa un número entero de días').min(-365, 'Usa de −365 a 365 días').max(365, 'Usa de −365 a 365 días');
+export const dependencySchema = z.object({
+  predecessorId: required('Selecciona una tarea'),
+  type: z.enum(DEPENDENCY_TYPE).default('FS'),
+  lagDays: lagDays.default(0),
+});
+export const updateDependencySchema = z.object({ type: z.enum(DEPENDENCY_TYPE).optional(), lagDays: lagDays.optional() });
 
 export const baselineSchema = z.object({
   reason: noteText().trim().default(''),

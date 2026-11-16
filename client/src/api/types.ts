@@ -48,6 +48,7 @@ export type Project = {
   contingencyReserveCents?: number;
   managementReserveCents?: number;
   currency?: string;
+  statusReportFrequency?: import('@pm/shared').StatusReportFrequency;
   health?: Health | null;
   overdueTasks?: number;
   highRisks?: number;
@@ -63,6 +64,7 @@ export type Dashboard = {
     | { kind: 'incident'; id: string; number: number; title: string; projectId: string; projectName: string; priority: Priority; dueDate: string | null; overdue: boolean; score?: undefined }
     | { kind: 'deliverable'; id: string; number: number; title: string; projectId: string; projectName: string; dueDate: string; score?: undefined }
     | { kind: 'change'; id: string; number: number; title: string; projectId: string; projectName: string; dueDate?: undefined; score?: undefined }
+    | { kind: 'report'; id: string; title: string; projectId: string; projectName: string; number?: undefined; dueDate?: undefined; score?: undefined }
   )[];
   workload: { userId: string; name: string; openTasks: number; overdueTasks: number; weeks?: WorkloadWeek[] }[];
   upcomingMilestones: { id: string; name: string; dueDate: string; projectId: string; projectName: string }[];
@@ -433,3 +435,29 @@ export type BudgetCategories = {
 export type ScheduleTask = { id: string; earlyStart: string; earlyFinish: string; lateStart: string; lateFinish: string; totalFloat: number; critical: boolean };
 export type Schedule = { tasks: ScheduleTask[]; critical: string[]; unscheduled: string[] };
 export type RescheduleChange = { id: string; from: { startDate: string; dueDate: string }; to: { startDate: string; dueDate: string } };
+
+type MilestoneLine = { name: string; dueDate: string };
+/** Informe de estado congelado. `budget` y los montos de `performance` solo llegan al PM. */
+export type StatusReportSnapshot = {
+  health: Health | null;
+  progress: { percent: number; overdueTasks: number; blockedTasks: number; doneTasks: number; totalTasks: number };
+  performance: {
+    cpi: number | null;
+    spi: number | null;
+    eacMethod: 'CPI' | 'ATYPICAL' | 'BUDGET';
+    pvCents?: number;
+    evCents?: number;
+    acCents?: number;
+    eacCents?: number;
+    vacCents?: number;
+  } | null;
+  budget?: { plannedCents: number; actualCents: number; varianceCents: number; currency: string };
+  milestones: { reached: MilestoneLine[]; upcoming: MilestoneLine[]; overdue: MilestoneLine[] };
+  risks: { openCount: number; top: { description: string; score: number; high: boolean; status: string }[] };
+  incidents: { open: number; openedInPeriod: number; resolvedInPeriod: number };
+  changes: { pending: number; approvedInPeriod: number; rejectedInPeriod: number; appliedInPeriod: number };
+};
+export type StatusReportSummary = { id: string; number: number; periodStart: string; periodEnd: string; issuedAt: string; issuedBy: PersonRef };
+export type StatusReport = StatusReportSummary & { comment: string; nextSteps: string; report: StatusReportSnapshot };
+export type StatusReportList = { items: StatusReportSummary[]; due: boolean };
+export type StatusReportDraft = { periodStart: string; periodEnd: string; report: StatusReportSnapshot };

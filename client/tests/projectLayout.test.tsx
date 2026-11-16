@@ -37,7 +37,7 @@ describe('pestañas del proyecto', () => {
   it('el observador ve solo las pestañas de lectura de su perfil', async () => {
     mockApi({ ...signedInAs(observer), ...summaryRoutes });
     renderApp('/proyectos/p1/resumen');
-    expect(await tabNames()).toEqual(['Resumen', 'Acta', 'Tareas', 'Anexos', 'Lecciones', 'Entregables']);
+    expect(await tabNames()).toEqual(['Resumen', 'Informes', 'Acta', 'Tareas', 'Anexos', 'Lecciones', 'Entregables']);
   });
 
   it('al PM sí se las muestra', async () => {

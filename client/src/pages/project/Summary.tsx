@@ -13,7 +13,9 @@ import { RichTextView } from '../../components/richText/RichTextView';
 import { useToast } from '../../components/Toast';
 import { Button, Card, inputClass } from '../../components/ui';
 import { LABELS } from '@pm/shared';
+import { useAccess } from '../../auth/useAccess';
 import { projectKey, useProject } from './ProjectLayout';
+import { LatestReportLink, statusReportsKey } from './StatusReports';
 
 function DeleteProjectDialog({ project, onClose }: { project: Project; onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -51,6 +53,7 @@ export function SummaryPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { canRead } = useAccess();
   const indicators = useQuery({
     queryKey: ['project', project.id, 'indicators'],
     queryFn: () => api<Indicators>(`/api/projects/${project.id}/indicators`),
@@ -59,6 +62,7 @@ export function SummaryPage() {
   return (
     <div className="space-y-6">
       <IndicatorCards query={indicators} currency={project.currency} />
+      {canRead('reports') && <LatestReportLink projectId={project.id} />}
       <Card
         title="Descripción"
         actions={
@@ -103,6 +107,8 @@ export function SummaryPage() {
             void queryClient.invalidateQueries({ queryKey: projectKey(project.id) });
             void queryClient.invalidateQueries({ queryKey: ['projects'] });
             void queryClient.invalidateQueries({ queryKey: ['project', project.id, 'indicators'] });
+            void queryClient.invalidateQueries({ queryKey: statusReportsKey(project.id) });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             setEditing(false);
           }}
         />

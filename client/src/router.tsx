@@ -12,6 +12,7 @@ import { ProjectListPage } from './pages/project/ProjectList';
 import { ChangeRequestsPage } from './pages/project/ChangeRequests';
 import { DeliverablesPage } from './pages/project/Deliverables';
 import { ClosurePage } from './pages/project/Closure';
+import { StatusReportPage, StatusReportsPage } from './pages/project/StatusReports';
 import { LessonsPage } from './pages/project/Lessons';
 import { ActivityPage } from './pages/project/Activity';
 import { LessonsLibraryPage } from './pages/Lessons';
@@ -67,6 +68,10 @@ export function AppRoutes() {
             </Route>
             <Route element={<ProjectSection section="closure" />}>
               <Route path="cierre" element={<ClosurePage />} />
+            </Route>
+            <Route element={<ProjectSection section="reports" />}>
+              <Route path="informes" element={<StatusReportsPage />} />
+              <Route path="informes/:reportId" element={<StatusReportPage />} />
             </Route>
           </Route>
           <Route path="/calendario" element={<CalendarPage />} />

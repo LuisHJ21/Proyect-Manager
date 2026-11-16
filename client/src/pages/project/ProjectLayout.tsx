@@ -22,6 +22,7 @@ export const useProject = () => useOutletContext<ProjectContext>();
 /** Cada pestaña muestra una sección de la tabla de capacidades: aparece si el perfil puede leerla. */
 const TABS: { to: string; label: string; section: Section }[] = [
   { to: 'resumen', label: 'Resumen', section: 'project' },
+  { to: 'informes', label: 'Informes', section: 'reports' },
   { to: 'acta', label: 'Acta', section: 'planning' },
   { to: 'tareas', label: 'Tareas', section: 'tasks' },
   { to: 'anexos', label: 'Anexos', section: 'attachments' },

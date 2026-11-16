@@ -1,4 +1,4 @@
-import { ACTIVE_PROJECT_STATUS, APPROACH, LABELS, type Approach, type ProjectStatus } from '@pm/shared';
+import { ACTIVE_PROJECT_STATUS, APPROACH, LABELS, STATUS_REPORT_FREQUENCY, type Approach, type ProjectStatus, type StatusReportFrequency } from '@pm/shared';
 import { useState, type FormEvent } from 'react';
 import { api } from '../../api/client';
 import type { Project } from '../../api/types';
@@ -19,6 +19,7 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
   const [contingency, setContingency] = useState<number | null>(project?.contingencyReserveCents ?? 0);
   const [management, setManagement] = useState<number | null>(project?.managementReserveCents ?? 0);
   const [currency, setCurrency] = useState(project?.currency ?? 'USD');
+  const [frequency, setFrequency] = useState<StatusReportFrequency>(project?.statusReportFrequency ?? 'NONE');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
@@ -43,6 +44,7 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
       contingencyReserveCents: contingency,
       managementReserveCents: management,
       currency,
+      statusReportFrequency: frequency,
     };
     try {
       const saved = project
@@ -107,6 +109,15 @@ export function ProjectForm({ project, onSaved, onClose }: { project?: Project; 
         </FormField>
         <FormField label="Moneda" error={errors.fields.currency} hint="Código de 3 letras, por ejemplo USD o MXN">
           <input className={inputClass} value={currency} onChange={(e) => setCurrency(e.target.value)} />
+        </FormField>
+        <FormField label="Frecuencia del informe de estado" error={errors.fields.statusReportFrequency} hint="El panel avisa cuando toca emitirlo.">
+          <select className={inputClass} value={frequency} onChange={(e) => setFrequency(e.target.value as StatusReportFrequency)}>
+            {STATUS_REPORT_FREQUENCY.map((value) => (
+              <option key={value} value={value}>
+                {LABELS.reportFrequency[value]}
+              </option>
+            ))}
+          </select>
         </FormField>
         <div className="flex justify-end gap-2 sm:col-span-2">
           <Button variant="secondary" onClick={onClose}>

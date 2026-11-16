@@ -15,6 +15,7 @@ import {
 import type { App } from '../http';
 import { fieldError } from '../errors';
 import { assertOwnerCanOwn } from '../domain/owners';
+import { isReadyToReach } from '../domain/milestones';
 import { isWithinProject, outsideProjectMessage } from '../domain/projectDates';
 import { registerProjectCrud } from './projectCrud';
 
@@ -33,6 +34,8 @@ export function registerRoutes(app: App) {
     createSchema: createMilestoneSchema,
     updateSchema: updateMilestoneSchema,
     section: 'planning',
+    include: { tasks: { select: { status: true } }, deliverables: { select: { status: true } } },
+    toDto: ({ tasks, deliverables, ...milestone }) => ({ ...milestone, readyToReach: isReadyToReach({ status: milestone.status, tasks, deliverables }) }),
     // Como en las tareas: solo se comprueba la fecha nueva, así un hito que ya estaba fuera se puede renombrar.
     validate: async (milestone, project, _prisma, current) => {
       if (current && milestone.dueDate === current.dueDate) return;

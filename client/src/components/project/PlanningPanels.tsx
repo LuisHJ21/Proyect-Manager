@@ -70,7 +70,12 @@ export function MilestonesPanel({ projectId, canEdit }: { projectId: string; can
         { header: 'Fecha límite', cell: (item) => item.dueDate },
         {
           header: 'Estado',
-          cell: (item) => <Badge tone={item.status === 'REACHED' ? 'success' : 'neutral'}>{LABELS.milestoneStatus[item.status]}</Badge>,
+          cell: (item) => (
+            <>
+              <Badge tone={item.status === 'REACHED' ? 'success' : 'neutral'}>{LABELS.milestoneStatus[item.status]}</Badge>
+              {item.readyToReach && <p className="mt-1 text-xs text-ink-soft">Listo para marcar como alcanzado</p>}
+            </>
+          ),
         },
       ]}
       fields={[

@@ -82,7 +82,7 @@ export type Charter = {
 };
 
 export type Objective = { id: string; description: string; metric: string; target: string; status: ObjectiveStatus };
-export type Milestone = { id: string; name: string; dueDate: string; status: MilestoneStatus };
+export type Milestone = { id: string; name: string; dueDate: string; status: MilestoneStatus; readyToReach: boolean };
 export type Stakeholder = {
   id: string;
   name: string;

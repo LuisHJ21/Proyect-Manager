@@ -66,4 +66,17 @@ describe('fechas de hito dentro del proyecto', () => {
     const res = await ctx.as(pm).patch(`/api/projects/${project.id}`, { endDate: '2026-06-20' });
     expect(res.statusCode).toBe(200);
   });
+
+  it('la lista sugiere alcanzar un hito con sus tareas terminadas, sin exponer las relaciones', async () => {
+    const ready = await milestone('2026-03-01');
+    const pending = await milestone('2026-04-01');
+    await ctx.prisma.task.create({ data: { projectId: project.id, title: 'A', status: 'DONE', progress: 100, milestoneId: ready.id } });
+    await ctx.prisma.task.create({ data: { projectId: project.id, title: 'B', milestoneId: pending.id } });
+    const list = (await ctx.as(pm).get(url())).json();
+    const byId = new Map(list.map((x: { id: string }) => [x.id, x]));
+    expect(byId.get(ready.id)).toMatchObject({ readyToReach: true });
+    expect(byId.get(pending.id)).toMatchObject({ readyToReach: false });
+    expect(byId.get(ready.id)).not.toHaveProperty('tasks');
+    expect(byId.get(ready.id)).not.toHaveProperty('deliverables');
+  });
 });

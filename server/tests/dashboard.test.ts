@@ -54,8 +54,8 @@ describe('GET /api/dashboard: carga semanal', () => {
     const { workload } = (await ctx.as(pm).get('/api/dashboard')).json();
     const entry = workload.find((w: { userId: string }) => w.userId === ana.id);
     expect(entry.weeks).toHaveLength(4);
-    expect(entry.weeks[0]).toEqual({ start: '2026-11-16', assignedHours: 60, capacityHours: 50, overloaded: true });
-    expect(entry.weeks[1]).toEqual({ start: '2026-11-23', assignedHours: 0, capacityHours: 50, overloaded: false });
+    expect(entry.weeks[0]).toEqual({ start: '2026-11-16', assignedHours: 60, capacityHours: 50, overloaded: true, byProject: [{ projectId: a.id, name: 'A', hours: 60 }] });
+    expect(entry.weeks[1]).toEqual({ start: '2026-11-23', assignedHours: 0, capacityHours: 50, overloaded: false, byProject: [] });
   });
 });
 

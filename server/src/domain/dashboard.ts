@@ -27,8 +27,8 @@ export type DashboardInput = {
   milestones: { id: string; name: string; dueDate: string; status: string; projectId: string }[];
   incidents?: { id: string; number: number; title: string; projectId: string; priority: string; status: string; dueDate: string | null }[];
   deliverables?: { id: string; number: number; name: string; projectId: string; status: string; dueDate: string | null }[];
-  /** Capacidad semanal de cada persona en cada proyecto activo; se suma entre proyectos. */
-  capacities?: { userId: string; hours: number }[];
+  /** Capacidad semanal de cada persona en cada proyecto activo; se suma entre proyectos que no están en pausa. */
+  capacities?: { userId: string; projectId: string; hours: number }[];
   /** Solicitudes aprobadas que aún no se aplicaron. */
   changes?: { id: string; number: number; title: string; projectId: string }[];
 };
@@ -112,23 +112,39 @@ export function buildDashboard(input: DashboardInput, today: string) {
       .map((r) => ({ kind: 'risk' as const, id: r.id, title: toPlainText(r.description), projectId: r.projectId, projectName: projectName(r.projectId), score: r.probability * r.impact })),
   ].slice(0, MAX_ATTENTION_ITEMS);
 
-  // Semana actual y las 3 siguientes: horas asignadas frente a capacidad.
+  // Semana actual y las 3 siguientes: horas asignadas frente a capacidad, desglosadas por proyecto.
+  // Un proyecto en pausa no suma horas ni capacidad (etapa 8).
+  const working = new Set(projects.filter((p) => p.status !== 'PAUSED').map((p) => p.id));
+  const workTasks = tasks.filter((t) => working.has(t.projectId));
   const weeks = [0, 7, 14, 21].map((offset) => addDays(weekStart(today), offset));
-  const hours = weeklyLoad(
-    tasks.map((t) => ({ ...t, estimatedHours: t.estimatedHours ?? null, assigneeIds: t.assignees.filter((a) => a.active).map((a) => a.id) })),
-    weeks,
+  const round = (h: number) => Math.round(h * 10) / 10;
+  const hoursByProject = new Map(
+    [...working].map((projectId) => [
+      projectId,
+      weeklyLoad(
+        workTasks
+          .filter((t) => t.projectId === projectId)
+          .map((t) => ({ ...t, estimatedHours: t.estimatedHours ?? null, assigneeIds: t.assignees.filter((a) => a.active).map((a) => a.id) })),
+        weeks,
+      ),
+    ]),
   );
   const capacity = new Map<string, number>();
-  for (const c of input.capacities ?? []) capacity.set(c.userId, (capacity.get(c.userId) ?? 0) + c.hours);
+  for (const c of input.capacities ?? []) if (working.has(c.projectId)) capacity.set(c.userId, (capacity.get(c.userId) ?? 0) + c.hours);
   const weeksOf = (userId: string) =>
     weeks.map((start, i) => {
-      const assignedHours = Math.round((hours.get(userId)?.[i] ?? 0) * 10) / 10;
+      const byProject = [...hoursByProject]
+        .map(([projectId, load]) => ({ projectId, name: projectName(projectId), raw: load.get(userId)?.[i] ?? 0 }))
+        .filter((p) => p.raw > 0)
+        .sort((a, b) => b.raw - a.raw)
+        .map(({ projectId, name, raw }) => ({ projectId, name, hours: round(raw) }));
+      const assignedHours = round([...hoursByProject.values()].reduce((sum, load) => sum + (load.get(userId)?.[i] ?? 0), 0));
       const capacityHours = capacity.get(userId) ?? 0;
-      return { start, assignedHours, capacityHours, overloaded: assignedHours > capacityHours };
+      return { start, assignedHours, capacityHours, overloaded: assignedHours > capacityHours, byProject };
     });
 
   const load = new Map<string, { userId: string; name: string; openTasks: number; overdueTasks: number }>();
-  for (const task of tasks) {
+  for (const task of workTasks) {
     if (task.status === 'DONE') continue;
     for (const person of task.assignees) {
       if (!person.active) continue;

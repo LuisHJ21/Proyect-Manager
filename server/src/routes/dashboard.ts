@@ -62,7 +62,7 @@ export function dashboardRoutes(app: App) {
         incidents,
         deliverables,
         changes,
-        capacities: projects.flatMap((p) => p.members.map((m) => ({ userId: m.userId, hours: m.weeklyCapacityHours }))),
+        capacities: projects.flatMap((p) => p.members.map((m) => ({ userId: m.userId, projectId: p.id, hours: m.weeklyCapacityHours }))),
       },
       today,
     ));

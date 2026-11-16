@@ -233,3 +233,40 @@ describe('entregables en Requiere atención', () => {
     expect(result.attention.map((a) => a.kind)).toEqual(['task', 'incident', 'deliverable', 'risk']);
   });
 });
+
+describe('carga semanal por proyecto (etapa 8)', () => {
+  const today = '2026-11-16';
+  const ana = { id: 'ana', name: 'Ana', role: 'COLLABORATOR', active: true };
+  const hours = (id: string, projectId: string, estimatedHours: number) =>
+    task(id, projectId, { startDate: '2026-11-16', dueDate: '2026-11-20', estimatedHours, assignees: [ana] });
+  const input = (bStatus: string): DashboardInput => ({
+    ...empty,
+    projects: [project('A', { name: 'Portal' }), project('B', { name: 'Obra', status: bStatus })],
+    tasks: [hours('t1', 'A', 10), hours('t2', 'B', 6)],
+    capacities: [
+      { userId: 'ana', projectId: 'A', hours: 20 },
+      { userId: 'ana', projectId: 'B', hours: 15 },
+    ],
+  });
+
+  it('desglosa las horas de cada semana por proyecto', () => {
+    const [entry] = buildDashboard(input('EXECUTING'), today).workload;
+    expect(entry!.weeks![0]).toEqual({
+      start: '2026-11-16',
+      assignedHours: 16,
+      capacityHours: 35,
+      overloaded: false,
+      byProject: [
+        { projectId: 'A', name: 'Portal', hours: 10 },
+        { projectId: 'B', name: 'Obra', hours: 6 },
+      ],
+    });
+    expect(entry!.weeks![1]!.byProject).toEqual([]);
+  });
+
+  it('un proyecto en pausa no suma horas ni capacidad', () => {
+    const [entry] = buildDashboard(input('PAUSED'), today).workload;
+    expect(entry!.weeks![0]).toEqual({ start: '2026-11-16', assignedHours: 10, capacityHours: 20, overloaded: false, byProject: [{ projectId: 'A', name: 'Portal', hours: 10 }] });
+    expect(entry!.openTasks).toBe(1);
+  });
+});

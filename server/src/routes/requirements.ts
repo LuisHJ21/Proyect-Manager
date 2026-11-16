@@ -1,8 +1,9 @@
-import { createRequirementSchema, updateRequirementSchema } from '@pm/shared';
+import { createRequirementSchema, toPlainText, updateRequirementSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
 import { getProjectAccess } from '../auth/access';
-import { suggestMet } from '../domain/traceability';
+import { buildTraceability, suggestMet } from '../domain/traceability';
+import { leafWhere } from '../domain/wbs';
 import { editConflict, fieldError, forbidden, notFound } from '../errors';
 import { sanitizeRichText } from '../richText';
 
@@ -60,6 +61,25 @@ export function requirementRoutes(app: App) {
     const { project, isPm } = await access(c, 'read');
     const items = await c.var.deps.prisma.requirement.findMany({ where: { projectId: project.id }, include: requirementInclude, orderBy: { number: 'asc' } });
     return c.json(items.map((r) => toRequirementDto(r, isPm)));
+  });
+
+  /** Matriz de trazabilidad; las tareas que cuentan son hojas de la EDT. */
+  app.get('/api/projects/:id/traceability', async (c) => {
+    const { prisma } = c.var.deps;
+    const { project } = await access(c, 'read');
+    const [requirements, deliverables] = await Promise.all([
+      prisma.requirement.findMany({ where: { projectId: project.id }, include: { deliverables: { select: { deliverableId: true } } } }),
+      prisma.deliverable.findMany({
+        where: { projectId: project.id },
+        select: { id: true, number: true, name: true, status: true, criteria: { select: { met: true } }, tasks: { where: leafWhere, select: { status: true } } },
+      }),
+    ]);
+    return c.json(
+      buildTraceability({
+        requirements: requirements.map((r) => ({ id: r.id, number: r.number, description: toPlainText(r.description), status: r.status, priority: r.priority, deliverableIds: r.deliverables.map((d) => d.deliverableId) })),
+        deliverables,
+      }),
+    );
   });
 
   app.post(base, async (c) => {

@@ -92,6 +92,29 @@ describe('requisitos', () => {
     expect((await ctx.as(pm).patch(`${url()}/${created.id}`, { priority: 'HIGH', version: 1 })).statusCode).toBe(409);
   });
 
+  it('la matriz cuenta hojas y criterios, y la lee el observador', async () => {
+    const parent = await ctx.makeTask(project.id, { title: 'Fase' });
+    await ctx.prisma.task.update({ where: { id: parent.id }, data: { deliverableId: portal.id } });
+    const leaf = await ctx.makeTask(project.id, { title: 'Hoja', status: 'DONE' });
+    await ctx.prisma.task.update({ where: { id: leaf.id }, data: { deliverableId: portal.id, parentId: parent.id } });
+    await ctx.prisma.deliverableCriterion.create({ data: { deliverableId: portal.id, text: 'Funciona', met: true, position: 0 } });
+    await ctx.as(pm).post(url(), { description: '<p>Acceso</p>', deliverableIds: [portal.id] });
+    const res = await ctx.as(obs).get(`/api/projects/${project.id}/traceability`);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      requirements: [expect.objectContaining({ number: 1, description: 'Acceso', deliverables: [expect.objectContaining({ id: portal.id, tasks: { done: 1, total: 1 }, criteria: { met: 1, total: 1 } })] })],
+      orphanDeliverables: [{ id: manual.id, number: 2, name: 'Manual' }],
+    });
+  });
+
+  it('borrar un entregable deja el requisito sin entregable', async () => {
+    await ctx.as(pm).post(url(), { description: 'Acceso', deliverableIds: [portal.id] });
+    expect((await ctx.as(pm).delete(`/api/projects/${project.id}/deliverables/${portal.id}`)).statusCode).toBe(200);
+    const matrix = (await ctx.as(pm).get(`/api/projects/${project.id}/traceability`)).json();
+    expect(matrix.requirements[0].deliverables).toEqual([]);
+    expect((await ctx.as(pm).get(url())).json()[0].deliverables).toEqual([]);
+  });
+
   it('la descripción se sanea y borrar quita el requisito', async () => {
     const created = (await ctx.as(pm).post(url(), { description: '<p>Hola</p><script>x</script>' })).json();
     expect(created.description).not.toContain('<script>');

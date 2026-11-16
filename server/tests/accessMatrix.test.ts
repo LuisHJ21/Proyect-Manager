@@ -142,6 +142,7 @@ const ROUTE_SECTION: Record<string, Section> = {
   'POST /api/projects/:id/meetings/:meetingId/agreements/:agreementId/convert': 'meetings',
 
   'GET /api/projects/:id/requirements': 'requirements',
+  'GET /api/projects/:id/traceability': 'requirements',
   'POST /api/projects/:id/requirements': 'requirements',
   'PATCH /api/projects/:id/requirements/:requirementId': 'requirements',
   'DELETE /api/projects/:id/requirements/:requirementId': 'requirements',

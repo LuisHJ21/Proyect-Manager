@@ -48,6 +48,26 @@ describe('navegación por rol', () => {
     expect(screen.queryByRole('button', { name: 'Nuevo proyecto' })).not.toBeInTheDocument();
   });
 
+  it('dentro de un proyecto el menú general se compacta: mismos enlaces, sin proyectos activos ni nuevo proyecto', async () => {
+    mockApi({
+      ...signedInAs(pmUser),
+      'GET /api/projects': [project('p1', 'Portal')],
+      'GET /api/me/tasks': [],
+      'GET /api/projects/p1': project('p1', 'Portal'),
+      'GET /api/projects/p1/members': [],
+      'GET /api/projects/p1/indicators': { progress: 0, overdueTasks: 0, blockedTasks: 0, upcomingMilestones: [] },
+    });
+    renderApp('/proyectos/p1/resumen');
+    const links = await nav();
+    for (const name of ['Inicio', 'Calendario', 'Proyectos', 'Usuarios']) {
+      expect(links.getByRole('link', { name })).toBeInTheDocument();
+    }
+    await screen.findByRole('navigation', { name: 'Secciones del proyecto' });
+    expect(screen.queryByText('Proyectos activos')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Nuevo proyecto' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
+  });
+
   it('el observador ve Proyectos, Calendario y Lecciones', async () => {
     mockApi({ ...signedInAs(observer), 'GET /api/projects': [], 'GET /api/me/tasks': [] });
     renderApp('/proyectos');

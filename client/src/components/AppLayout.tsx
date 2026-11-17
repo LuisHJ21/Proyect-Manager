@@ -2,7 +2,7 @@ import { LABELS } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, CheckSquare, FolderKanban, House, KeyRound, LayoutDashboard, Lightbulb, LogOut, Plus, Users } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useMatch, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Project, Task } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
@@ -121,6 +121,44 @@ function Sidebar({ links, openTasks, projects, showBell }: { links: Destination[
   );
 }
 
+/** Dentro de un proyecto: solo iconos, para dejar sitio al menú del proyecto. */
+function CompactSidebar({ links, openTasks, showBell }: { links: Destination[]; openTasks: number; showBell: boolean }) {
+  const { logout } = useAuth();
+  const railLink = ({ isActive }: { isActive: boolean }) =>
+    `relative flex h-11 w-11 items-center justify-center rounded-lg transition-colors duration-150 ${isActive ? 'bg-active text-link' : 'text-ink-nav hover:bg-raised'}`;
+  return (
+    <aside className="sticky top-0 flex h-screen w-16 shrink-0 flex-col items-center gap-4 border-r border-line bg-sidebar py-5">
+      <Link to="/" aria-label="Gestor PMBOK" title="Gestor PMBOK" className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
+        <LayoutDashboard size={18} aria-hidden="true" />
+      </Link>
+      <nav aria-label="Principal" className="flex flex-1 flex-col items-center gap-1">
+        {links.map(({ to, label, Icon }) => {
+          const name = to === '/mis-tareas' ? `${label}, ${openTasks} abiertas` : label;
+          return (
+            <NavLink key={to} to={to} className={railLink} aria-label={name} title={name}>
+              <Icon size={20} aria-hidden="true" />
+              {to === '/mis-tareas' && openTasks > 0 && (
+                <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 font-semibold text-white">
+                  {openTasks}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
+      </nav>
+      <div className="flex flex-col items-center gap-1">
+        {showBell && <NotificationBell />}
+        <NavLink to="/cambiar-contrasena" aria-label="Cambiar mi contraseña" title="Cambiar mi contraseña" className={railLink}>
+          <KeyRound size={18} aria-hidden="true" />
+        </NavLink>
+        <button type="button" aria-label="Cerrar sesión" title="Cerrar sesión" onClick={() => void logout()} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-ink-nav hover:bg-raised">
+          <LogOut size={18} aria-hidden="true" />
+        </button>
+      </div>
+    </aside>
+  );
+}
+
 function MobileNav({ links, openTasks }: { links: Destination[]; openTasks: number }) {
   return (
     <nav aria-label="Principal" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-sidebar" style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}>
@@ -148,6 +186,8 @@ export function AppLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
+  // Dentro de un proyecto el menú general se compacta y la franja de «Nuevo proyecto» se oculta.
+  const inProject = useMatch('/proyectos/:id/*') !== null;
 
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<Project[]>('/api/projects') });
   const openTasks = useOpenTaskCount();
@@ -158,7 +198,12 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-page">
-      {!isMobile && <Sidebar links={links} openTasks={openTasks} projects={activeProjects} showBell={showBell} />}
+      {!isMobile &&
+        (inProject ? (
+          <CompactSidebar links={links} openTasks={openTasks} showBell={showBell} />
+        ) : (
+          <Sidebar links={links} openTasks={openTasks} projects={activeProjects} showBell={showBell} />
+        ))}
       <div className="flex min-w-0 flex-1 flex-col">
         {isMobile && (
           <header className="flex items-center justify-between gap-3 border-b border-line bg-sidebar px-4 py-3">
@@ -175,7 +220,7 @@ export function AppLayout() {
             </div>
           </header>
         )}
-        {isPm && (
+        {isPm && !inProject && (
           <div className="flex justify-end border-b border-line px-4 py-3 md:px-8">
             <Button onClick={() => setCreating(true)}>
               <Plus size={16} aria-hidden="true" />

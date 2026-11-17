@@ -86,45 +86,50 @@ export function SummaryPage() {
   return (
     <div className="space-y-6">
       <IndicatorCards query={indicators} currency={project.currency} />
-      {canRead('reports') && <LatestReportLink projectId={project.id} />}
-      <MilestoneTrend projectId={project.id} />
-      <Card
-        title="Descripción"
-        actions={
-          isPm ? (
-            <div className="flex gap-2">
-              {!readOnly && (
-                <Button variant="secondary" onClick={() => setEditing(true)}>
-                  Editar proyecto
-                </Button>
-              )}
-              <Button variant="ghost" onClick={() => setDeleting(true)}>
-                Eliminar proyecto
-              </Button>
-            </div>
-          ) : undefined
-        }
-      >
-        <RichTextView html={project.description} empty="Sin descripción." />
-        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-          <div>
-            <dt className="text-xs text-ink-soft">Enfoque de desarrollo</dt>
-            <dd className="text-ink">{LABELS.approach[project.approach]}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-ink-soft">Inicio</dt>
-            <dd className="text-ink">{project.startDate ?? '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-ink-soft">Fin</dt>
-            <dd className="text-ink">{project.endDate ?? '—'}</dd>
-          </div>
-        </dl>
-      </Card>
-      <ObjectivesPanel projectId={project.id} canEdit={isPm && !readOnly} />
-      <MilestonesPanel projectId={project.id} canEdit={isPm && !readOnly} />
-      <MembersPanel projectId={project.id} canEdit={isPm && !readOnly} />
-      {isPm && <PauseHistory projectId={project.id} />}
+      {/* Pantallas anchas: dos columnas; angostas, una sola. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]">
+        <div role="region" aria-label="Columna principal" className="min-w-0 space-y-6">
+          <MilestoneTrend projectId={project.id} />
+          <MilestonesPanel projectId={project.id} canEdit={isPm && !readOnly} />
+          <ObjectivesPanel projectId={project.id} canEdit={isPm && !readOnly} />
+        </div>
+        <div role="region" aria-label="Columna lateral" className="min-w-0 space-y-6">
+          <Card
+            title="Acerca del proyecto"
+            actions={
+              isPm ? (
+                <div className="flex flex-wrap gap-2">
+                  {!readOnly && (
+                    <Button variant="secondary" onClick={() => setEditing(true)}>
+                      Editar proyecto
+                    </Button>
+                  )}
+                  <Button variant="ghost" onClick={() => setDeleting(true)}>
+                    Eliminar proyecto
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          >
+            <RichTextView html={project.description} empty="Sin descripción." />
+            <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+              <dt className="text-ink-soft">Enfoque</dt>
+              <dd className="text-ink">{LABELS.approach[project.approach]}</dd>
+              <dt className="text-ink-soft">Inicio</dt>
+              <dd className="text-ink">{project.startDate ?? '—'}</dd>
+              <dt className="text-ink-soft">Fin</dt>
+              <dd className="text-ink">{project.endDate ?? '—'}</dd>
+            </dl>
+            {canRead('reports') && (
+              <div className="mt-4">
+                <LatestReportLink projectId={project.id} />
+              </div>
+            )}
+          </Card>
+          <MembersPanel projectId={project.id} canEdit={isPm && !readOnly} />
+          {isPm && <PauseHistory projectId={project.id} />}
+        </div>
+      </div>
       {editing && (
         <ProjectForm
           project={project}

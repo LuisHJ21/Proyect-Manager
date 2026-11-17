@@ -81,6 +81,18 @@ describe('pestañas del proyecto', () => {
     expect(screen.queryByText('Presupuesto gastado')).not.toBeInTheDocument();
   });
 
+  it('el resumen reparte los bloques en una columna principal y una lateral', async () => {
+    mockApi({ ...signedInAs(collaborator), ...summaryRoutes });
+    renderApp('/proyectos/p1/resumen');
+    const main = within(await screen.findByRole('region', { name: 'Columna principal' }));
+    const side = within(screen.getByRole('region', { name: 'Columna lateral' }));
+    expect(main.getByRole('heading', { name: 'Hitos' })).toBeInTheDocument();
+    expect(main.getByRole('heading', { name: 'Objetivos' })).toBeInTheDocument();
+    expect(side.getByRole('heading', { name: 'Acerca del proyecto' })).toBeInTheDocument();
+    expect(side.getByText('Sitio nuevo')).toBeInTheDocument();
+    expect(side.getByRole('heading', { name: 'Equipo' })).toBeInTheDocument();
+  });
+
   it('la descripción del proyecto se ve con formato', async () => {
     mockApi({ ...signedInAs(collaborator), ...summaryRoutes, 'GET /api/projects/p1': { ...project, description: '<p><em>Sitio</em> nuevo</p>' } });
     renderApp('/proyectos/p1/resumen');

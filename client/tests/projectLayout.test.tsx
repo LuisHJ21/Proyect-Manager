@@ -26,18 +26,18 @@ describe('pestañas del proyecto', () => {
   const tabNames = async () =>
     within(await screen.findByRole('navigation', { name: 'Secciones del proyecto' }))
       .getAllByRole('link')
-      .map((link) => link.textContent);
+      .map((link) => link.querySelector('[data-nav-label]')?.textContent);
 
   it('el colaborador ve sus pestañas, entregables y riesgos incluidos', async () => {
     mockApi({ ...signedInAs(collaborator), ...summaryRoutes });
     renderApp('/proyectos/p1/resumen');
-    expect(await tabNames()).toEqual(['Resumen', 'Acta', 'Tareas', 'Anexos', 'Incidentes', 'Lecciones', 'Reuniones', 'Riesgos', 'Control de cambios', 'Entregables', 'Requisitos']);
+    expect(await tabNames()).toEqual(['Resumen', 'Acta', 'Requisitos', 'Tareas', 'Entregables', 'Riesgos', 'Incidentes', 'Control de cambios', 'Reuniones', 'Lecciones', 'Anexos']);
   });
 
   it('el observador ve solo las pestañas de lectura de su perfil', async () => {
     mockApi({ ...signedInAs(observer), ...summaryRoutes });
     renderApp('/proyectos/p1/resumen');
-    expect(await tabNames()).toEqual(['Resumen', 'Informes', 'Acta', 'Tareas', 'Anexos', 'Lecciones', 'Entregables', 'Requisitos']);
+    expect(await tabNames()).toEqual(['Resumen', 'Informes', 'Acta', 'Requisitos', 'Tareas', 'Entregables', 'Lecciones', 'Anexos']);
   });
 
   it('al PM sí se las muestra', async () => {
@@ -47,6 +47,18 @@ describe('pestañas del proyecto', () => {
     for (const name of ['Interesados', 'Riesgos', 'Presupuesto']) {
       expect(within(tabs).getByRole('link', { name })).toBeInTheDocument();
     }
+  });
+
+  it('el menú agrupa las secciones y marca las tareas vencidas sin cambiar el nombre del enlace', async () => {
+    mockApi({ ...signedInAs(pmUser), ...summaryRoutes, 'GET /api/users': [] });
+    renderApp('/proyectos/p1/resumen');
+    const nav = within(await screen.findByRole('navigation', { name: 'Secciones del proyecto' }));
+    for (const group of ['Visión general', 'Planificación', 'Control', 'Personas', 'Cierre']) {
+      expect(nav.getByText(group, { selector: 'p' })).toBeInTheDocument();
+    }
+    const tasks = nav.getByRole('link', { name: 'Tareas' });
+    await waitFor(() => expect(tasks).toHaveTextContent('2'));
+    expect(nav.getByRole('link', { name: 'Resumen' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('el observador que abre /riesgos vuelve al resumen, sin pedir datos ocultos', async () => {

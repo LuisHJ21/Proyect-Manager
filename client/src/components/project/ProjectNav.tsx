@@ -103,7 +103,7 @@ export function ProjectNav({ canRead, overdueTasks, compact }: Props) {
   }
 
   return (
-    <nav aria-label="Secciones del proyecto" data-print-hide className="sticky top-4 flex flex-col gap-5">
+    <nav aria-label="Secciones del proyecto" data-print-hide className="sticky top-4 flex max-h-[calc(100vh-2rem)] flex-col gap-5 overflow-y-auto pb-2">
       {groups.map((group) => (
         <div key={group.title} className="flex flex-col gap-0.5">
           <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-ink-soft uppercase">{group.title}</p>

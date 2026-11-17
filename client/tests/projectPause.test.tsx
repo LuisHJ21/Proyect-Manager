@@ -96,6 +96,24 @@ describe('pausar y reanudar un proyecto', () => {
     await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/projects/p1/resume')?.body).toEqual({ days: 3, createBaseline: true }));
   });
 
+  it('si la línea base no se puede crear lo dice y reanuda sin ella', async () => {
+    const api = mockApi({
+      ...routes(pmUser, paused),
+      'GET /api/projects/p1/resume-preview': { ...preview(15), baselineProblem: 'Todas las tareas con costo necesitan fecha de inicio y de fin' },
+      'POST /api/projects/p1/resume': running,
+    });
+    renderApp('/proyectos/p1/resumen');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Reanudar proyecto' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Reanudar proyecto' }));
+    expect(await dialog.findByText(/No se puede crear una nueva línea base: Todas las tareas con costo necesitan fecha de inicio y de fin/)).toBeInTheDocument();
+    const box = dialog.getByRole('checkbox', { name: 'Crear una nueva línea base' });
+    expect(box).not.toBeChecked();
+    expect(box).toBeDisabled();
+    await user.click(dialog.getByRole('button', { name: 'Reanudar' }));
+    await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/projects/p1/resume')?.body).toEqual({ days: 15, createBaseline: false }));
+  });
+
   it('editar un proyecto en pausa no envía el estado', async () => {
     const api = mockApi({ ...routes(pmUser, paused), 'PATCH /api/projects/p1': paused });
     renderApp('/proyectos/p1/resumen');

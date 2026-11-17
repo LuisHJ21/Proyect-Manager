@@ -78,6 +78,8 @@ export type ResumePreview = {
   proposedDays: number;
   days: number;
   hasBaseline: boolean;
+  /** Por qué no se puede crear la nueva línea base; null si se puede. */
+  baselineProblem?: string | null;
   changes: {
     tasks: { id: string; name: string; from: Dates; to: Dates }[];
     milestones: { id: string; name: string; from: string; to: string }[];

@@ -7,7 +7,7 @@ import { isActiveProject } from '../domain/health';
 import { pauseImpact, planShift, proposedResumeDays } from '../domain/pause';
 import { leafWhere } from '../domain/wbs';
 import { AppError, fieldError, forbidden } from '../errors';
-import { createBaseline } from './performance';
+import { baselineProblem, createBaseline } from './performance';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -118,7 +118,9 @@ export function projectPauseRoutes(app: App) {
     const proposedDays = proposedResumeDays(pause?.pausedOn ?? null, c.var.deps.today());
     const days = query.days ?? proposedDays;
     const [input, baselines] = await Promise.all([loadShiftInput(prisma, project), prisma.baseline.count({ where: { projectId: project.id } })]);
-    return c.json({ proposedDays, days, changes: planShift(input, days), hasBaseline: baselines > 0 });
+    // Si la nueva línea base fallaría, se avisa antes: si no, la reanudación entera se revertiría.
+    const problem = baselines > 0 ? await baselineProblem(prisma, project.id) : null;
+    return c.json({ proposedDays, days, changes: planShift(input, days), hasBaseline: baselines > 0, baselineProblem: problem });
   });
 
   app.post('/api/projects/:id/resume', async (c) => {
@@ -143,7 +145,7 @@ export function projectPauseRoutes(app: App) {
       else await tx.projectPause.create({ data: { projectId: project.id, pausedOn: null, reason: '', previousStatus, ...closing } });
       const current = await tx.project.findUniqueOrThrow({ where: { id: project.id } });
       if (withBaseline && (await tx.baseline.count({ where: { projectId: project.id } })) > 0) {
-        await createBaseline(tx, current, user.id, { reason: `Reanudación tras pausa: ${pause?.reason ?? ''}`.trim(), changeRequestId: null });
+        await createBaseline(tx, current, user.id, { reason: pause?.reason ? `Reanudación tras pausa: ${pause.reason}` : 'Reanudación tras pausa', changeRequestId: null });
       }
       return current;
     });

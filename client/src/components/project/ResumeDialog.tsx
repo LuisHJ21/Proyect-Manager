@@ -40,7 +40,7 @@ export function ResumeDialog({ project, onClose }: { project: Project; onClose: 
     try {
       await api(`/api/projects/${project.id}/resume`, {
         method: 'POST',
-        body: { days: Number(days ?? 0), createBaseline: Boolean(preview.data?.hasBaseline && withBaseline) },
+        body: { days: Number(days ?? 0), createBaseline: Boolean(canBaseline && withBaseline) },
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['project', project.id] }),
@@ -56,6 +56,8 @@ export function ResumeDialog({ project, onClose }: { project: Project; onClose: 
   };
 
   const changes = preview.data?.changes;
+  const blocker = preview.data?.baselineProblem ?? null;
+  const canBaseline = Boolean(preview.data?.hasBaseline) && !blocker;
   const total = changes ? changes.tasks.length + changes.milestones.length + (changes.endDate ? 1 : 0) : 0;
 
   return (
@@ -102,10 +104,13 @@ export function ResumeDialog({ project, onClose }: { project: Project; onClose: 
           </div>
         )}
         {preview.data?.hasBaseline && (
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input type="checkbox" checked={withBaseline} onChange={(e) => setWithBaseline(e.target.checked)} className="h-4 w-4 accent-primary" />
-            Crear una nueva línea base
-          </label>
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" checked={canBaseline && withBaseline} disabled={!canBaseline} onChange={(e) => setWithBaseline(e.target.checked)} className="h-4 w-4 accent-primary" />
+              Crear una nueva línea base
+            </label>
+            {blocker && <p className="text-xs text-warn-fg">{`No se puede crear una nueva línea base: ${blocker}. Puedes reanudar sin ella y fijarla después en Desempeño.`}</p>}
+          </div>
         )}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>

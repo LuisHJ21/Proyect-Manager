@@ -102,6 +102,19 @@ describe('pausa y reanudación de un proyecto', () => {
     expect(await ctx.prisma.activityLog.count({ where: { projectId: project.id, action: 'resumed' } })).toBe(1);
   });
 
+  it('la vista previa avisa cuando la nueva línea base no se puede crear', async () => {
+    const costed = await ctx.makeTask(project.id, { status: 'TODO', startDate: '2026-11-01', dueDate: '2026-11-05' });
+    await ctx.prisma.task.update({ where: { id: costed.id }, data: { plannedCostCents: 100000 } });
+    expect((await ctx.as(pm).post(`${base()}/baselines`, { reason: 'Inicial' })).statusCode).toBe(201);
+    const undated = await ctx.makeTask(project.id, { title: 'Sin fechas' });
+    await ctx.prisma.task.update({ where: { id: undated.id }, data: { plannedCostCents: 5000 } });
+    await pause();
+    const preview = (await ctx.as(pm).get(`${base()}/resume-preview`)).json();
+    expect(preview).toMatchObject({ hasBaseline: true, baselineProblem: 'Todas las tareas con costo necesitan fecha de inicio y de fin' });
+    await ctx.prisma.task.update({ where: { id: undated.id }, data: { startDate: '2026-11-01', dueDate: '2026-11-02' } });
+    expect((await ctx.as(pm).get(`${base()}/resume-preview`)).json().baselineProblem).toBeNull();
+  });
+
   it('reanudar dos veces no corre el cronograma dos veces', async () => {
     const todo = await ctx.makeTask(project.id, { status: 'TODO', startDate: '2026-11-01', dueDate: '2026-11-05' });
     await pause();

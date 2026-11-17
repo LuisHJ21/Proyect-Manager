@@ -80,6 +80,16 @@ const toBaselineDto = (b: BaselineWithRelations) => ({
   changeRequest: b.changeRequest,
 });
 
+const BASELINE_EMPTY = 'Pon un costo planeado al menos a una tarea antes de fijar la línea base';
+const BASELINE_MISSING_DATES = 'Todas las tareas con costo necesitan fecha de inicio y de fin';
+
+/** Por qué no se podría fijar una línea base ahora, o null si se puede (lo usa la vista previa de reanudar). */
+export async function baselineProblem(db: Prisma.TransactionClient, projectId: string): Promise<string | null> {
+  const tasks = await db.task.findMany({ where: { projectId, plannedCostCents: { gt: 0 }, ...leafWhere }, select: { startDate: true, dueDate: true } });
+  if (tasks.length === 0) return BASELINE_EMPTY;
+  return tasks.some((t) => !t.startDate || !t.dueDate) ? BASELINE_MISSING_DATES : null;
+}
+
 /**
  * Fija una nueva línea base con las tareas que tienen costo. La usan `POST /baselines` y aplicar un
  * cambio, dentro de su transacción. Quien llama comprueba que la solicitud citada sea válida.
@@ -91,10 +101,10 @@ export async function createBaseline(
   input: { reason: string; changeRequestId: string | null },
 ) {
   const tasks = await tx.task.findMany({ where: { projectId: project.id, plannedCostCents: { gt: 0 }, ...leafWhere }, orderBy: { createdAt: 'asc' } });
-  if (tasks.length === 0) throw new AppError(400, 'baseline_empty', 'Pon un costo planeado al menos a una tarea antes de fijar la línea base');
+  if (tasks.length === 0) throw new AppError(400, 'baseline_empty', BASELINE_EMPTY);
   const missing = tasks.filter((t) => !t.startDate || !t.dueDate);
   if (missing.length > 0) {
-    throw new AppError(400, 'baseline_missing_dates', 'Todas las tareas con costo necesitan fecha de inicio y de fin', {
+    throw new AppError(400, 'baseline_missing_dates', BASELINE_MISSING_DATES, {
       details: { tasks: missing.map((t) => ({ id: t.id, title: t.title })) },
     });
   }

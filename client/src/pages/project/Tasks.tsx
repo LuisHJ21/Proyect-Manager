@@ -32,12 +32,12 @@ function readView(param: string | null) {
   return VIEWS.find((v) => v.id === param)?.id ?? 'lista';
 }
 
-export function TasksPage() {
+export function TasksPage({ forcedView }: { forcedView?: 'edt' | 'cronograma' }) {
   const { project, isPm, readOnly } = useProject();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const view = readView(params.get('vista'));
+  const view = forcedView ?? readView(params.get('vista'));
   const [filter, setFilter] = useState<QuickFilter>('all');
 
   const tasks = useQuery({ queryKey: tasksKey(project.id), queryFn: () => api<Task[]>(`/api/projects/${project.id}/tasks`) });
@@ -63,12 +63,14 @@ export function TasksPage() {
     { id: 'high', label: 'Prioridad alta' },
     { id: 'week', label: 'Vencen esta semana' },
   ];
-  const showFilters = view !== 'cronograma';
+  const showFilters = view !== 'cronograma' && view !== 'edt';
   const visible = showFilters ? applyQuickFilter(tasks.data ?? [], filter, { userId: user?.id, today: localToday(new Date()) }) : (tasks.data ?? []);
 
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
+        {forcedView && <div className="w-full"><h2 className="text-2xl font-semibold text-ink">{forcedView === 'edt' ? 'Estructura de desglose del trabajo' : 'Cronograma'}</h2><p className="mt-1 text-sm text-ink-soft">{forcedView === 'edt' ? 'Explora las tareas por niveles y abre cada actividad desde su nodo.' : 'Consulta las fechas, dependencias e hitos del proyecto.'}</p></div>}
+        {!forcedView && <div className="max-w-full overflow-x-auto">
         <div role="group" aria-label="Vista de tareas" className="inline-flex rounded-lg border border-control bg-surface p-0.5">
           {VIEWS.map((option) => (
             <button
@@ -82,6 +84,7 @@ export function TasksPage() {
             </button>
           ))}
         </div>
+        </div>}
         {showFilters &&
           filters.map((option) => (
             <button

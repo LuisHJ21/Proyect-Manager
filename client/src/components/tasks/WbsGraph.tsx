@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
+import { LABELS } from '@pm/shared';
 import type { Task } from '../../api/types';
-import { Badge, EmptyState } from '../ui';
+import { Badge, EmptyState, ProgressBar } from '../ui';
 import { taskPath } from './TaskCard';
 
 /** Muestra la jerarquía guardada en la EDT; cada rama conserva su orden. */
@@ -23,8 +24,9 @@ export function WbsGraph({ tasks }: { tasks: Task[] }) {
             {task.title}
           </Link>
           {task.isSummary && <Badge>{task.childCount} subtareas</Badge>}
+          <span className="ml-auto"><Badge tone={task.status === 'DONE' ? 'success' : task.status === 'BLOCKED' ? 'danger' : 'info'}>{LABELS.taskStatus[task.status]}</Badge></span>
         </div>
-        <p className="mt-2 text-xs text-ink-soft">{task.progress} % completado</p>
+        <div className="mt-3 flex items-center gap-3"><div className="min-w-0 flex-1"><ProgressBar value={task.progress} label={`Avance de ${task.title}`} /></div><span className="shrink-0 text-xs font-semibold text-ink-soft">{task.progress} %</span></div>
       </div>
       {(children.get(task.id)?.length ?? 0) > 0 && (
         <ul className="ml-2 space-y-3 border-l border-line pt-3 sm:ml-4">

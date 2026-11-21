@@ -2,7 +2,7 @@ import { CLOSED_PROJECT_STATUS, LABELS, localToday, type Section } from '@pm/sha
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Link, Navigate, Outlet, useOutletContext, useParams } from 'react-router-dom';
+import { Link, Navigate, Outlet, useLocation, useOutletContext, useParams } from 'react-router-dom';
 import { api, ApiError, errorMessage, isBlockingError } from '../../api/client';
 import type { Indicators, Member, Project } from '../../api/types';
 import { useAuth } from '../../auth/AuthProvider';
@@ -12,7 +12,7 @@ import { PauseDialog } from '../../components/project/PauseDialog';
 import { ResumeDialog } from '../../components/project/ResumeDialog';
 import { ErrorState, Loading } from '../../components/ErrorState';
 import { membersKey } from '../../components/project/MembersPanel';
-import { ProjectNav } from '../../components/project/ProjectNav';
+import { PROJECT_GROUPS, ProjectNav } from '../../components/project/ProjectNav';
 import { useIsMobile } from '../../lib/useIsMobile';
 import { TaskForm } from '../../components/tasks/TaskForm';
 import { AvatarStack, Badge, Button } from '../../components/ui';
@@ -27,6 +27,7 @@ export const projectKey = (id: string) => ['project', id, 'detail'];
 
 export function ProjectLayout() {
   const { id = '' } = useParams();
+  const location = useLocation();
   const { isPm } = useAuth();
   const { canRead } = useAccess();
   const project = useQuery({ queryKey: projectKey(id), queryFn: () => api<Project>(`/api/projects/${id}`) });
@@ -54,6 +55,8 @@ export function ProjectLayout() {
   const current = project.data!;
   const readOnly = (CLOSED_PROJECT_STATUS as readonly string[]).includes(current.status);
   const closedLabel = current.status === 'CANCELLED' ? 'Proyecto cancelado' : 'Proyecto cerrado';
+  const section = location.pathname.split('/').at(-1);
+  const sectionLabel = PROJECT_GROUPS.flatMap((group) => group.items).find((item) => item.to === section)?.label ?? (location.pathname.includes('/tareas/') ? 'Tarea' : null);
 
   return (
     <div className="flex flex-col gap-8 md:flex-row md:items-start">
@@ -69,7 +72,7 @@ export function ProjectLayout() {
               <Link to="/proyectos" className="hover:text-ink hover:underline">
                 Proyectos
               </Link>{' '}
-              / {current.name}
+              / {current.name}{sectionLabel && <> / {sectionLabel}</>}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <h1 className="min-w-0 text-[26px] font-semibold text-ink [overflow-wrap:anywhere]">{current.name}</h1>

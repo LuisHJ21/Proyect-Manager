@@ -27,7 +27,7 @@ export const inputClass =
 
 export function Card({ title, actions, children, className = '' }: { title?: string; actions?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`min-w-0 rounded-xl border border-line bg-surface p-5 ${className}`}>
+    <section className={`min-w-0 rounded-xl border border-line bg-surface p-5 shadow-sm ${className}`}>
       {(title || actions) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           {title && <h2 className="text-lg font-semibold text-ink">{title}</h2>}

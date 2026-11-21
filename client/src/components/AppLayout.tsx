@@ -1,6 +1,6 @@
 import { LABELS } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, CheckSquare, FolderKanban, House, KeyRound, LayoutDashboard, Lightbulb, LogOut, Plus, Users } from 'lucide-react';
+import { CalendarDays, CheckSquare, FolderKanban, House, KeyRound, LayoutDashboard, Lightbulb, LogOut, MoreHorizontal, Plus, Users } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { Link, NavLink, Outlet, useMatch, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -160,14 +160,23 @@ function CompactSidebar({ links, openTasks, showBell }: { links: Destination[]; 
 }
 
 function MobileNav({ links, openTasks }: { links: Destination[]; openTasks: number }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const primary = links.filter((link) => ['/panel', '/proyectos', '/mis-tareas', '/calendario'].includes(link.to));
+  const more = links.filter((link) => !primary.includes(link));
   return (
-    <nav aria-label="Principal" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-sidebar" style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}>
-      {links.map(({ to, label, Icon }) => {
+    <nav aria-label="Principal" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-sidebar">
+      {moreOpen && <div className="absolute inset-x-0 bottom-full border-t border-line bg-sidebar p-3 shadow-lg">
+        <p className="mb-2 px-2 text-xs font-semibold text-ink-soft">Más secciones</p>
+        {more.map(({ to, label, Icon }) => <NavLink key={to} to={to} onClick={() => setMoreOpen(false)} className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm text-ink-nav hover:bg-raised"><Icon size={18} aria-hidden="true" />{label}</NavLink>)}
+      </div>}
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${primary.length + (more.length ? 1 : 0)}, minmax(0, 1fr))` }}>
+      {primary.map(({ to, label, Icon }) => {
         const isMyTasks = to === '/mis-tareas';
         return (
           <NavLink
             key={to}
             to={to}
+            onClick={() => setMoreOpen(false)}
             aria-label={isMyTasks ? `${label}, ${openTasks} abiertas` : undefined}
             className={({ isActive }) => `flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium ${isActive ? 'text-link' : 'text-ink-soft'}`}
           >
@@ -176,6 +185,8 @@ function MobileNav({ links, openTasks }: { links: Destination[]; openTasks: numb
           </NavLink>
         );
       })}
+      {more.length > 0 && <button type="button" aria-expanded={moreOpen} aria-label="Más secciones" onClick={() => setMoreOpen((open) => !open)} className="flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-soft"><MoreHorizontal size={20} aria-hidden="true" /><span>Más</span></button>}
+      </div>
     </nav>
   );
 }

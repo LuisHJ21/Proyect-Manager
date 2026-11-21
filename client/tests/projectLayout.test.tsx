@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiError, collaborator, mockApi, observer, pmUser, renderApp, setRichText, signedInAs } from './helpers';
 
 const project = {
@@ -23,6 +23,7 @@ const summaryRoutes = {
 };
 
 describe('pestañas del proyecto', () => {
+  afterEach(() => vi.unstubAllGlobals());
   const tabNames = async () =>
     within(await screen.findByRole('navigation', { name: 'Secciones del proyecto' }))
       .getAllByRole('link')
@@ -31,13 +32,13 @@ describe('pestañas del proyecto', () => {
   it('el colaborador ve sus pestañas, entregables y riesgos incluidos', async () => {
     mockApi({ ...signedInAs(collaborator), ...summaryRoutes });
     renderApp('/proyectos/p1/resumen');
-    expect(await tabNames()).toEqual(['Resumen', 'Acta', 'Requisitos', 'Tareas', 'Hitos', 'Entregables', 'Riesgos', 'Incidentes', 'Control de cambios', 'Reuniones', 'Lecciones', 'Anexos']);
+    expect(await tabNames()).toEqual(['Resumen', 'EDT', 'Cronograma', 'Hitos', 'Acta', 'Requisitos', 'Tareas', 'Entregables', 'Incidentes', 'Riesgos', 'Control de cambios', 'Reuniones', 'Lecciones', 'Anexos']);
   });
 
   it('el observador ve solo las pestañas de lectura de su perfil', async () => {
     mockApi({ ...signedInAs(observer), ...summaryRoutes });
     renderApp('/proyectos/p1/resumen');
-    expect(await tabNames()).toEqual(['Resumen', 'Informes', 'Acta', 'Requisitos', 'Tareas', 'Hitos', 'Entregables', 'Lecciones', 'Anexos']);
+    expect(await tabNames()).toEqual(['Resumen', 'EDT', 'Cronograma', 'Hitos', 'Acta', 'Requisitos', 'Tareas', 'Entregables', 'Informes', 'Lecciones', 'Anexos']);
   });
 
   it('al PM sí se las muestra', async () => {
@@ -53,12 +54,23 @@ describe('pestañas del proyecto', () => {
     mockApi({ ...signedInAs(pmUser), ...summaryRoutes, 'GET /api/users': [] });
     renderApp('/proyectos/p1/resumen');
     const nav = within(await screen.findByRole('navigation', { name: 'Secciones del proyecto' }));
-    for (const group of ['Visión general', 'Planificación', 'Control', 'Personas', 'Cierre']) {
+    for (const group of ['Planificación', 'Ejecución', 'Control', 'Personas', 'Cierre']) {
       expect(nav.getByText(group, { selector: 'p' })).toBeInTheDocument();
     }
     const tasks = nav.getByRole('link', { name: 'Tareas' });
     await waitFor(() => expect(tasks).toHaveTextContent('2'));
     expect(nav.getByRole('link', { name: 'Resumen' })).toHaveAttribute('aria-current', 'page');
+    expect(nav.getByRole('link', { name: 'EDT' })).toHaveAttribute('href', '/proyectos/p1/edt');
+  });
+
+  it('en móvil permite abrir la EDT desde un selector de secciones', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} }));
+    mockApi({ ...signedInAs(pmUser), ...summaryRoutes, 'GET /api/projects/p1/tasks': [] });
+    renderApp('/proyectos/p1/resumen');
+    const selector = await screen.findByRole('combobox', { name: 'Sección del proyecto' });
+    await userEvent.setup().selectOptions(selector, 'edt');
+    expect(await screen.findByRole('heading', { name: 'Estructura de desglose del trabajo' })).toBeInTheDocument();
+    expect(selector).toHaveValue('edt');
   });
 
   it('el observador que abre /riesgos vuelve al resumen, sin pedir datos ocultos', async () => {

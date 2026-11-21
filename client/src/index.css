@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  --color-page: #0f1117;
-  --color-sidebar: #0a0c11;
-  --color-surface: #181b23;
-  --color-raised: #232732;
-  --color-line: #2a2f3a;
-  --color-control: #3f4552;
+  --color-page: #0c1425;
+  --color-sidebar: #101a30;
+  --color-surface: #17233b;
+  --color-raised: #202f4d;
+  --color-line: #334360;
+  --color-control: #53627c;
   --color-ink: #f4f4f5;
   --color-ink-nav: #d4d4d8;
   --color-ink-soft: #a1a1aa;
-  --color-primary: #3b5bdb;
-  --color-primary-hover: #2f4ac0;
-  --color-link: #a9bbff;
-  --color-active: #1e2747;
+  --color-primary: #625ee1;
+  --color-primary-hover: #7874f0;
+  --color-link: #c5c7ff;
+  --color-active: #343d73;
   --color-risk-bg: #451a03;
   --color-risk-fg: #fdba8c;
   --color-warn-bg: #422006;
   --color-warn-fg: #fde68a;
   --color-ok-bg: #064e3b;
   --color-ok-fg: #a7f3d0;
-  --color-info-bg: #1e2747;
-  --color-info-fg: #a9bbff;
+  --color-info-bg: #263765;
+  --color-info-fg: #c5c7ff;
   --color-danger: #b91c1c;
   --color-danger-hover: #991b1b;
   /* Series de la curva S: paleta categórica validada sobre --color-surface (CVD ΔE 9,4, contraste ≥ 3:1). */

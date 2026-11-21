@@ -42,6 +42,8 @@ export function AppRoutes() {
             <Route path="resumen" element={<SummaryPage />} />
             <Route path="acta" element={<CharterPage />} />
             <Route path="tareas" element={<TasksPage />} />
+            <Route path="edt" element={<TasksPage forcedView="edt" />} />
+            <Route path="cronograma" element={<TasksPage forcedView="cronograma" />} />
             <Route path="hitos" element={<MilestonesPage />} />
             <Route path="tareas/:taskId" element={<TaskDetailPage />} />
             <Route path="anexos" element={<AttachmentsPage />} />

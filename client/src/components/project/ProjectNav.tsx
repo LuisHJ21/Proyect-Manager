@@ -3,11 +3,13 @@ import {
   Activity,
   ArrowLeftRight,
   CalendarClock,
+  CalendarDays,
   ChartLine,
   FileText,
   Flag,
   House,
   Lightbulb,
+  Network,
   ListChecks,
   Package,
   Paperclip,
@@ -19,38 +21,40 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 type Item = { to: string; label: string; section: Section; Icon: LucideIcon };
 
 /** Las secciones del proyecto agrupadas por área (rediseño de la navegación). */
 export const PROJECT_GROUPS: { title: string; items: Item[] }[] = [
   {
-    title: 'Visión general',
+    title: 'Planificación',
     items: [
       { to: 'resumen', label: 'Resumen', section: 'project', Icon: House },
-      { to: 'informes', label: 'Informes', section: 'reports', Icon: FileText },
-      { to: 'actividad', label: 'Actividad', section: 'activity', Icon: Activity },
+      { to: 'edt', label: 'EDT', section: 'tasks', Icon: Network },
+      { to: 'cronograma', label: 'Cronograma', section: 'tasks', Icon: CalendarDays },
+      { to: 'hitos', label: 'Hitos', section: 'planning', Icon: Flag },
+      { to: 'acta', label: 'Acta', section: 'planning', Icon: ScrollText },
+      { to: 'requisitos', label: 'Requisitos', section: 'requirements', Icon: ListChecks },
     ],
   },
   {
-    title: 'Planificación',
+    title: 'Ejecución',
     items: [
-      { to: 'acta', label: 'Acta', section: 'planning', Icon: ScrollText },
-      { to: 'requisitos', label: 'Requisitos', section: 'requirements', Icon: ListChecks },
       { to: 'tareas', label: 'Tareas', section: 'tasks', Icon: SquareCheckBig },
-      { to: 'hitos', label: 'Hitos', section: 'planning', Icon: Flag },
       { to: 'entregables', label: 'Entregables', section: 'deliverables', Icon: Package },
+      { to: 'incidentes', label: 'Incidentes', section: 'incidents', Icon: Zap },
     ],
   },
   {
     title: 'Control',
     items: [
       { to: 'riesgos', label: 'Riesgos', section: 'risks', Icon: ShieldAlert },
-      { to: 'incidentes', label: 'Incidentes', section: 'incidents', Icon: Zap },
       { to: 'cambios', label: 'Control de cambios', section: 'changes', Icon: ArrowLeftRight },
       { to: 'presupuesto', label: 'Presupuesto', section: 'budget', Icon: Wallet },
       { to: 'desempeno', label: 'Desempeño', section: 'performance', Icon: ChartLine },
+      { to: 'informes', label: 'Informes', section: 'reports', Icon: FileText },
+      { to: 'actividad', label: 'Actividad', section: 'activity', Icon: Activity },
     ],
   },
   {
@@ -72,9 +76,13 @@ export const PROJECT_GROUPS: { title: string; items: Item[] }[] = [
 
 type Props = { canRead: (section: Section) => boolean; overdueTasks: number; compact: boolean };
 
-/** Escritorio: columna con grupos. Móvil (`compact`): una fila con desplazamiento horizontal. */
+/** Escritorio: grupos; móvil: selector de sección que cabe en el ancho disponible. */
 export function ProjectNav({ canRead, overdueTasks, compact }: Props) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const groups = PROJECT_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => canRead(i.section)) })).filter((g) => g.items.length > 0);
+  const current = location.pathname.split('/').at(-1) ?? 'resumen';
+  const selected = groups.flatMap((g) => g.items).some((item) => item.to === current) ? current : location.pathname.includes('/tareas/') ? 'tareas' : 'resumen';
   const badge = (item: Item) =>
     item.to === 'tareas' && overdueTasks > 0 ? (
       <span aria-hidden="true" title={`${overdueTasks} vencidas`} className="ml-auto min-w-6 rounded-full bg-risk-bg px-2 py-0.5 text-center text-xs font-semibold text-risk-fg">
@@ -84,21 +92,13 @@ export function ProjectNav({ canRead, overdueTasks, compact }: Props) {
 
   if (compact) {
     return (
-      <nav aria-label="Secciones del proyecto" data-print-hide className="-mx-4 mb-4 overflow-x-auto border-b border-line px-4">
-        <div className="flex w-max gap-1">
-          {groups.flatMap((g) => g.items).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `-mb-px flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium whitespace-nowrap ${isActive ? 'border-link text-link' : 'border-transparent text-ink-soft'}`
-              }
-            >
-              <span data-nav-label>{item.label}</span>
-              {badge(item)}
-            </NavLink>
-          ))}
-        </div>
+      <nav aria-label="Secciones del proyecto" data-print-hide className="mb-5">
+        <label htmlFor="project-section" className="mb-1.5 block text-xs font-semibold text-ink-soft">Sección del proyecto</label>
+        <select id="project-section" className="min-h-11 w-full rounded-lg border border-control bg-surface px-3 text-sm font-semibold text-ink" value={selected} onChange={(event) => navigate(event.target.value)}>
+          {groups.map((group) => <optgroup key={group.title} label={group.title}>
+            {group.items.map((item) => <option key={item.to} value={item.to}>{item.label}</option>)}
+          </optgroup>)}
+        </select>
       </nav>
     );
   }

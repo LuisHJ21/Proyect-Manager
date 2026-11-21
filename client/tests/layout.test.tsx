@@ -142,7 +142,10 @@ describe('navegación móvil', () => {
     renderApp('/proyectos');
     const links = await nav();
     expect(await links.findByRole('link', { name: 'Mis tareas, 0 abiertas' })).toBeInTheDocument();
-    expect(links.getAllByRole('link')).toHaveLength(6);
+    expect(links.getAllByRole('link')).toHaveLength(4);
+    await userEvent.setup().click(links.getByRole('button', { name: 'Más secciones' }));
+    expect(links.getByRole('link', { name: 'Lecciones' })).toBeInTheDocument();
+    expect(links.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
   });
 
   it('ofrece cambiar la contraseña y cerrar sesión', async () => {

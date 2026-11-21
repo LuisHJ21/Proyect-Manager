@@ -111,9 +111,9 @@ function TaskCosts({ projectId, currency, task }: { projectId: string; currency:
 
 function Property({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-line py-3 first:border-t-0 first:pt-0 last:pb-0">
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-line py-3 first:border-t-0 first:pt-0 last:pb-0">
       <dt className="text-ink-soft">{label}</dt>
-      <dd className="text-right font-medium text-ink">{children}</dd>
+      <dd className="min-w-0 text-right font-medium text-ink [overflow-wrap:anywhere]">{children}</dd>
     </div>
   );
 }
@@ -193,7 +193,7 @@ export function TaskDetailPage() {
                 ))}
               </nav>
             )}
-            <h2 className="text-2xl font-semibold text-ink">
+            <h2 className="text-2xl font-semibold text-ink [overflow-wrap:anywhere]">
               {task.wbsCode} {task.title}
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">

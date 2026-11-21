@@ -100,8 +100,8 @@ export function DependencyPicker({ task, canEdit }: { task: Task; canEdit: boole
           {task.predecessorIds.map((id) => {
             const dep = task.predecessors.find((p) => p.id === id) ?? { id, type: 'FS' as DependencyType, lagDays: 0 };
             return (
-              <li key={id} className="flex items-center justify-between gap-2 text-sm text-ink-nav">
-                <span>
+              <li key={id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-sm text-ink-nav">
+                <span className="min-w-0 [overflow-wrap:anywhere]">
                   {titleOf(id)} <span className="font-mono text-xs text-ink-soft">{dependencyLabel(dep.type, dep.lagDays)}</span>
                 </span>
                 {canEdit && (
@@ -120,8 +120,8 @@ export function DependencyPicker({ task, canEdit }: { task: Task; canEdit: boole
         </ul>
       )}
       {canEdit && (
-        <div className="mt-3 flex items-end gap-2">
-          <div className="flex-1">
+        <div className="mt-3 grid min-w-0 gap-2">
+          <div className="min-w-0">
             <FormField label="Añadir predecesora">
               <select
                 className={inputClass}
@@ -150,9 +150,9 @@ export function DependencyPicker({ task, canEdit }: { task: Task; canEdit: boole
             </select>
           </FormField>
           <FormField label="Desfase">
-            <input className={`${inputClass} w-20`} inputMode="numeric" value={lag} onChange={(e) => setLag(e.target.value)} />
+            <input className={inputClass} inputMode="numeric" value={lag} onChange={(e) => setLag(e.target.value)} />
           </FormField>
-          <Button variant="secondary" disabled={!predecessorId || add.isPending} onClick={() => add.mutate()}>
+          <Button variant="secondary" className="justify-self-start" disabled={!predecessorId || add.isPending} onClick={() => add.mutate()}>
             Añadir dependencia
           </Button>
         </div>

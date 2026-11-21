@@ -163,7 +163,7 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
         </ul>
       )}
       {canEdit && (
-        <form onSubmit={submit} className="mt-4 grid items-end gap-3 border-t border-line pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" noValidate>
+        <form onSubmit={submit} className="mt-4 grid min-w-0 gap-3 border-t border-line pt-4" noValidate>
           <FormField label="Añadir persona" error={errors.fields.userId}>
             <select className={inputClass} value={userId} onChange={(e) => setUserId(e.target.value)}>
               <option value="">Selecciona…</option>
@@ -180,10 +180,10 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
               {roles.data?.map((role) => <option key={role.id} value={role.name}>{role.name}</option>)}
             </select>
           </FormField>
-          <Button type="submit" variant="secondary" disabled={add.isPending} className="sm:col-span-2 sm:justify-self-end">
+          <Button type="submit" variant="secondary" disabled={add.isPending} className="justify-self-start">
             Añadir al equipo
           </Button>
-          <div className="sm:col-span-2">
+          <div>
             <FormMessage message={errors.message} />
           </div>
         </form>

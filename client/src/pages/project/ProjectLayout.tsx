@@ -65,14 +65,14 @@ export function ProjectLayout() {
       <div className="min-w-0 flex-1">
         <header className="mb-6 flex flex-wrap items-end gap-x-4 gap-y-3 border-b border-line pb-5">
           <div className="min-w-0">
-            <p className="text-[13px] text-ink-soft">
+            <p className="text-[13px] text-ink-soft [overflow-wrap:anywhere]">
               <Link to="/proyectos" className="hover:text-ink hover:underline">
                 Proyectos
               </Link>{' '}
               / {current.name}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-3">
-              <h1 className="text-[26px] font-semibold text-ink">{current.name}</h1>
+              <h1 className="min-w-0 text-[26px] font-semibold text-ink [overflow-wrap:anywhere]">{current.name}</h1>
               <Badge>{LABELS.projectStatus[current.status]}</Badge>
             </div>
           </div>

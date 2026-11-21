@@ -59,10 +59,10 @@ function PauseHistory({ projectId }: { projectId: string }) {
       <Card title="Pausas">
         <ul className="divide-y divide-line text-sm">
           {pauses.data.map((p, i) => (
-            <li key={i} className="grid gap-1 py-2 sm:grid-cols-[10rem_1fr_10rem_6rem] sm:gap-3">
+            <li key={i} className="grid min-w-0 gap-1 py-2 xl:grid-cols-[10rem_minmax(0,1fr)_10rem_6rem] xl:gap-3">
               <span className="text-ink-nav">{`${p.pausedOn ? shortDate(p.pausedOn) : '—'} → ${p.resumedOn ? shortDate(p.resumedOn) : 'en curso'}`}</span>
-              <span className="text-ink">{p.reason || '—'}</span>
-              <span className="text-ink-nav">{p.priorityProject?.name ?? '—'}</span>
+              <span className="min-w-0 text-ink [overflow-wrap:anywhere]">{p.reason || '—'}</span>
+              <span className="min-w-0 text-ink-nav [overflow-wrap:anywhere]">{p.priorityProject?.name ?? '—'}</span>
               <span className="text-ink-nav">{p.shiftDays === null ? '—' : `${p.shiftDays} días`}</span>
             </li>
           ))}
@@ -112,7 +112,7 @@ export function SummaryPage() {
             }
           >
             <RichTextView html={project.description} empty="Sin descripción." />
-            <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
               <dt className="text-ink-soft">Enfoque</dt>
               <dd className="text-ink">{LABELS.approach[project.approach]}</dd>
               <dt className="text-ink-soft">Inicio</dt>

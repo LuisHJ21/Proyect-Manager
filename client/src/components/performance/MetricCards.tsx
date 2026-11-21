@@ -6,7 +6,7 @@ import { Badge } from '../ui';
 
 function MetricCard({ label, value, note }: { label: string; value: string; note?: ReactNode }) {
   return (
-    <div data-card className="rounded-lg border border-line bg-surface p-4">
+    <div data-card className="min-w-0 rounded-lg border border-line bg-surface p-4 [overflow-wrap:anywhere]">
       <p className="text-xs font-medium text-ink-soft">{label}</p>
       <p className="mt-1 font-display text-2xl font-semibold text-ink">{value}</p>
       {note && <div className="mt-1.5 text-xs text-ink-soft">{note}</div>}

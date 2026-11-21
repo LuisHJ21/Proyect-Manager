@@ -9,7 +9,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="rounded-lg border border-line p-4">
       <h3 className="mb-2 text-sm font-semibold text-ink">{title}</h3>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">{children}</dl>
+      <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">{children}</dl>
     </section>
   );
 }
@@ -18,7 +18,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
       <dt className="text-ink-soft">{label}</dt>
-      <dd className="text-ink">{children}</dd>
+      <dd className="min-w-0 text-ink [overflow-wrap:anywhere]">{children}</dd>
     </>
   );
 }

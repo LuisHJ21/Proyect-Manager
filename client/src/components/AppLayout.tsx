@@ -48,7 +48,7 @@ function Brand() {
       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
         <LayoutDashboard size={18} aria-hidden="true" />
       </span>
-      <span className="font-display text-lg font-bold">Gestor PMBOK</span>
+      <span className="max-[380px]:hidden font-display text-lg font-bold">Gestor PMBOK</span>
     </Link>
   );
 }
@@ -172,7 +172,7 @@ function MobileNav({ links, openTasks }: { links: Destination[]; openTasks: numb
             className={({ isActive }) => `flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium ${isActive ? 'text-link' : 'text-ink-soft'}`}
           >
             <Icon size={20} aria-hidden="true" />
-            {label}
+            <span className="min-w-0 max-w-full truncate px-0.5">{label}</span>
           </NavLink>
         );
       })}
@@ -206,9 +206,9 @@ export function AppLayout() {
         ))}
       <div className="flex min-w-0 flex-1 flex-col">
         {isMobile && (
-          <header className="flex items-center justify-between gap-3 border-b border-line bg-sidebar px-4 py-3">
+          <header className="flex min-w-0 items-center justify-between gap-2 border-b border-line bg-sidebar px-3 py-3 sm:px-4">
             <Brand />
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               {showBell && <NotificationBell />}
               {user && <Avatar name={user.name} />}
               <NavLink to="/cambiar-contrasena" aria-label="Cambiar mi contraseña" className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-nav hover:bg-raised">

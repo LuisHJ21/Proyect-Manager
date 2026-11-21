@@ -46,8 +46,8 @@ export function LogHoursForm({ projectId, taskId, onDone }: { projectId: string;
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[9rem_6rem_1fr_auto] sm:items-end" noValidate>
-      <div className="sm:col-span-4">
+    <form onSubmit={submit} className="grid min-w-0 gap-3 lg:grid-cols-[9rem_6rem_minmax(0,1fr)_auto] lg:items-end" noValidate>
+      <div className="lg:col-span-4">
         <FormMessage message={errors.message} />
       </div>
       <FormField label="Fecha" error={errors.fields.date}>

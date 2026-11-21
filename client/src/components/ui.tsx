@@ -23,11 +23,11 @@ export function Button({ variant = 'primary', className = '', type = 'button', .
 }
 
 export const inputClass =
-  'block w-full rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-soft focus:border-link focus:outline-2 focus:outline-link aria-[invalid=true]:border-risk-fg';
+  'block min-w-0 w-full rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-soft focus:border-link focus:outline-2 focus:outline-link aria-[invalid=true]:border-risk-fg';
 
 export function Card({ title, actions, children, className = '' }: { title?: string; actions?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-xl border border-line bg-surface p-5 ${className}`}>
+    <section className={`min-w-0 rounded-xl border border-line bg-surface p-5 ${className}`}>
       {(title || actions) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           {title && <h2 className="text-lg font-semibold text-ink">{title}</h2>}
@@ -42,8 +42,8 @@ export function Card({ title, actions, children, className = '' }: { title?: str
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-ink">{title}</h1>
+      <div className="min-w-0">
+        <h1 className="text-3xl font-semibold tracking-tight text-ink [overflow-wrap:anywhere]">{title}</h1>
         {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
       </div>
       {actions}

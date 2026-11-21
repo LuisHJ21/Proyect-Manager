@@ -110,7 +110,7 @@ export function MeetingForm({ projectId, meeting, onClose, onSaved }: { projectI
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-ink">Acuerdos</legend>
           {agreements.map((a, index) => (
-            <div key={a.id ?? `new-${index}`} className="grid gap-2 rounded-md border border-line p-2 sm:grid-cols-[1fr_10rem_9rem_auto]">
+            <div key={a.id ?? `new-${index}`} className="grid min-w-0 gap-2 rounded-md border border-line p-2 lg:grid-cols-[minmax(0,1fr)_10rem_9rem_auto]">
               <input
                 className={inputClass}
                 aria-label={`Acuerdo ${index + 1}`}

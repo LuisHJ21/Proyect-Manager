@@ -8,9 +8,9 @@ import { ProgressBar } from '../ui';
 
 function Stat({ label, value, testId, children, alert }: { label: string; value: ReactNode; testId?: string; children?: ReactNode; alert?: boolean }) {
   return (
-    <div className="rounded-lg border border-line bg-surface p-4">
+    <div className="min-w-0 rounded-lg border border-line bg-surface p-4">
       <p className="text-xs font-medium text-ink-soft">{label}</p>
-      <p data-testid={testId} className={`mt-1 text-2xl font-semibold ${alert ? 'text-risk-fg' : 'text-ink'}`}>
+      <p data-testid={testId} className={`mt-1 text-2xl font-semibold [overflow-wrap:anywhere] ${alert ? 'text-risk-fg' : 'text-ink'}`}>
         {value}
       </p>
       {children}

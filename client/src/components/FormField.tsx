@@ -15,7 +15,7 @@ export function FormField({ label, error, hint, children }: { label: string; err
       })
     : children;
   return (
-    <div>
+    <div className="min-w-0">
       <label htmlFor={id} className="mb-1 block text-sm font-medium text-ink-nav">
         {label}
       </label>

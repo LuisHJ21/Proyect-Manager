@@ -16,14 +16,14 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Rows({ children }: { children: ReactNode }) {
-  return <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">{children}</dl>;
+  return <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">{children}</dl>;
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
       <dt className="text-ink-soft">{label}</dt>
-      <dd className="text-ink">{children}</dd>
+      <dd className="min-w-0 text-ink [overflow-wrap:anywhere]">{children}</dd>
     </>
   );
 }

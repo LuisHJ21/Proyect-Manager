@@ -41,6 +41,8 @@ export function authRoutes(app: App) {
     }
     const passwordHash = await hashPassword(input.password);
     const user = await prisma.$transaction(async (tx) => {
+      // Serializa la creación del primer PM entre instancias.
+      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(0, 1)`;
       if ((await tx.user.count()) > 0) {
         throw new AppError(409, 'setup_complete', 'La configuración inicial ya se realizó');
       }

@@ -31,7 +31,6 @@ describe('pasos de tarea', () => {
     const id = created.json().id;
     expect((await ctx.as(ana).post(url(), { title: 'X' })).statusCode).toBe(403);
     expect((await ctx.as(ana).patch(stepUrl(id), { title: 'X' })).statusCode).toBe(403);
-    expect((await ctx.as(ana).patch(stepUrl(id), { assigneeId: ana.id })).statusCode).toBe(403);
     expect((await ctx.as(ana).delete(stepUrl(id))).statusCode).toBe(403);
     expect((await ctx.as(pm).patch(stepUrl(id), { title: 'Otro' })).json().title).toBe('Otro');
     expect((await ctx.as(pm).delete(stepUrl(id))).statusCode).toBe(200);
@@ -39,8 +38,8 @@ describe('pasos de tarea', () => {
 
   it('asignado y PM marcan; no asignado 403; no miembro 404', async () => {
     const step = await ctx.makeStep(task.id);
-    expect((await ctx.as(ana).patch(stepUrl(step.id), { done: true })).statusCode).toBe(200);
-    expect((await ctx.as(pm).patch(stepUrl(step.id), { done: false })).statusCode).toBe(200);
+    expect((await ctx.as(ana).patch(stepUrl(step.id), { done: true })).json().completedBy).toEqual({ id: ana.id, name: 'Ana' });
+    expect((await ctx.as(pm).patch(stepUrl(step.id), { done: false })).json().completedBy).toBeNull();
     expect((await ctx.as(beto).patch(stepUrl(step.id), { done: true })).statusCode).toBe(403);
     const outsider = await ctx.makeUser({ role: 'COLLABORATOR' });
     expect((await ctx.as(outsider).patch(stepUrl(step.id), { done: true })).statusCode).toBe(404);
@@ -53,11 +52,10 @@ describe('pasos de tarea', () => {
     expect((await ctx.as(pm).delete(stepUrl(step.id))).statusCode).toBe(404);
   });
 
-  it('rechaza una persona que no está asignada a la tarea', async () => {
+  it('ignora una asignación antigua; el paso sigue sin persona', async () => {
     const res = await ctx.as(pm).post(url(), { title: 'Paso', assigneeId: beto.id });
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error.fields.assigneeId).toBeTruthy();
-    expect((await ctx.as(pm).post(url(), { title: 'Paso', assigneeId: ana.id })).json().assignee).toEqual({ id: ana.id, name: 'Ana' });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().completedBy).toBeNull();
   });
 
   it('un título vacío responde 400', async () => {
@@ -151,32 +149,33 @@ describe('pasos de tarea', () => {
     expect((await ctx.as(ana).patch(stepUrl(b.id), { done: false })).statusCode).toBe(200);
   });
 
-  describe('al dejar de estar asignado, el paso queda sin persona', () => {
+  describe('el registro de quién completó el paso permanece', () => {
     let step: { id: string };
-    const owner = async () => (await ctx.prisma.taskStep.findUniqueOrThrow({ where: { id: step.id } })).assigneeId;
+    const completedBy = async () => (await ctx.prisma.taskStep.findUniqueOrThrow({ where: { id: step.id } })).completedById;
     beforeEach(async () => {
-      step = await ctx.makeStep(task.id, { assigneeId: ana.id });
+      step = await ctx.makeStep(task.id);
+      await ctx.as(ana).patch(stepUrl(step.id), { done: true });
     });
 
     it('por PUT de asignados', async () => {
       await ctx.as(pm).put(`/api/tasks/${task.id}/assignees`, { userIds: [beto.id] });
-      expect(await owner()).toBeNull();
+      expect(await completedBy()).toBe(ana.id);
     });
     it('por PATCH con asignados', async () => {
       await ctx.as(pm).patch(`/api/tasks/${task.id}`, { assigneeIds: [], version: 1 });
-      expect(await owner()).toBeNull();
+      expect(await completedBy()).toBe(ana.id);
     });
     it('conservándolo como asignado sigue la persona', async () => {
       await ctx.as(pm).put(`/api/tasks/${task.id}/assignees`, { userIds: [ana.id, beto.id] });
-      expect(await owner()).toBe(ana.id);
+      expect(await completedBy()).toBe(ana.id);
     });
     it('al salir del proyecto', async () => {
       await ctx.as(pm).delete(`/api/projects/${project.id}/members/${ana.id}`);
-      expect(await owner()).toBeNull();
+      expect(await completedBy()).toBe(ana.id);
     });
     it('pasar a Project Manager no le quita el paso', async () => {
       await ctx.as(pm).patch(`/api/users/${ana.id}`, { role: 'PM' });
-      expect(await owner()).toBe(ana.id);
+      expect(await completedBy()).toBe(ana.id);
     });
   });
 
@@ -187,12 +186,13 @@ describe('pasos de tarea', () => {
   });
 
   it('el detalle incluye steps en orden y las listas stepsDone y stepsTotal', async () => {
-    await ctx.as(pm).post(url(), { title: 'Primero', assigneeId: ana.id });
+    await ctx.as(pm).post(url(), { title: 'Primero' });
     const second = await ctx.as(pm).post(url(), { title: 'Segundo' });
     await ctx.as(ana).patch(stepUrl(second.json().id), { done: true });
     const body = await detail();
     expect(body.steps.map((s: { title: string }) => s.title)).toEqual(['Primero', 'Segundo']);
-    expect(body.steps[0].assignee).toEqual({ id: ana.id, name: 'Ana' });
+    expect(body.steps[0].completedBy).toBeNull();
+    expect(body.steps[1].completedBy).toEqual({ id: ana.id, name: 'Ana' });
     const [listed] = (await ctx.as(pm).get(`/api/projects/${project.id}/tasks`)).json();
     expect(listed).toMatchObject({ stepsDone: 1, stepsTotal: 2 });
   });

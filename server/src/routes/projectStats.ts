@@ -3,6 +3,7 @@ import { summarizeProject, thresholdsOf, type ProjectSummary } from '../domain/h
 import { loadEvmIndexes } from './evmLoader';
 import { leafWhere } from '../domain/wbs';
 import { loadLaborCosts } from './laborCost';
+import { groupByProject } from '../domain/groupByProject';
 
 /** Calcula el resumen de varios proyectos con una sola tanda de consultas. */
 export async function loadProjectSummaries(prisma: PrismaClient, projects: Project[], today: string): Promise<Map<string, ProjectSummary>> {
@@ -14,14 +15,18 @@ export async function loadProjectSummaries(prisma: PrismaClient, projects: Proje
     loadEvmIndexes(prisma, projects.map((p) => p.id), today),
     loadLaborCosts(prisma, projects.map((p) => p.id)),
   ]);
+  const tasksByProject = groupByProject(tasks);
+  const risksByProject = groupByProject(risks);
+  const expensesByProject = groupByProject(expenses);
+  const laborByProject = groupByProject(labor);
   return new Map(
     projects.map((project) => [
       project.id,
       summarizeProject(
         { ...project, plannedBudgetCents: Number(project.plannedBudgetCents) },
-        tasks.filter((t) => t.projectId === project.id).map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours) })),
-        risks.filter((r) => r.projectId === project.id),
-        [...expenses.filter((e) => e.projectId === project.id).map((e) => ({ amountCents: Number(e.amountCents) })), ...labor.filter((l) => l.projectId === project.id)],
+        (tasksByProject.get(project.id) ?? []).map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours) })),
+        risksByProject.get(project.id) ?? [],
+        [...(expensesByProject.get(project.id) ?? []).map((e) => ({ amountCents: Number(e.amountCents) })), ...(laborByProject.get(project.id) ?? [])],
         today,
         evm.get(project.id),
         thresholdsOf(project),

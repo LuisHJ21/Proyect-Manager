@@ -19,8 +19,8 @@ export function Modal({ title, children, onClose, wide }: { title: string; child
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:p-10">
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className={`w-full rounded-lg bg-surface p-6 shadow-xl ${wide ? 'max-w-2xl' : 'max-w-md'}`}>
+    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/60 p-3 sm:p-10">
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className={`min-w-0 w-full rounded-lg bg-surface p-4 shadow-xl sm:p-6 ${wide ? 'max-w-2xl' : 'max-w-md'}`}>
         <h2 id={titleId} className="mb-4 text-lg font-semibold text-ink">
           {title}
         </h2>

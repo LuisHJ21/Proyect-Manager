@@ -65,10 +65,10 @@ export async function loadTask(prisma: PrismaClient, id: string): Promise<Snapsh
 export async function loadStep(prisma: PrismaClient, id: string): Promise<Snapshot | null> {
   const step = await prisma.taskStep.findUnique({
     where: { id },
-    include: { task: { select: { title: true } }, assignee: { select: { name: true } } },
+    include: { task: { select: { title: true } }, completedBy: { select: { name: true } } },
   });
   if (!step) return null;
-  return { label: `${step.task.title} · ${step.title}`, values: { ...scalars(step, ['taskId']), assigneeId: nameOf(step.assignee) } };
+  return { label: `${step.task.title} · ${step.title}`, values: { ...scalars(step, ['taskId']), completedById: nameOf(step.completedBy) } };
 }
 
 export async function loadComment(prisma: PrismaClient, id: string): Promise<Snapshot | null> {

@@ -12,7 +12,7 @@ import {
   moveTaskSchema,
 } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
-import { removeAfterDelete } from '../storage/fileStore';
+import { queueFileDeletion, removeAfterDelete } from '../storage/fileStore';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { checkProgressChange, isBlocking } from '../domain/dependencies';
@@ -66,11 +66,10 @@ export async function getTaskAccess(c: Ctx, taskId: string) {
   return { task, isPm, can, isAssignee: Boolean(assignee) };
 }
 
-/** Reemplaza los responsables y suelta los pasos de quien deja de serlo. */
+/** Reemplaza los responsables de la tarea. */
 async function replaceAssignees(tx: Prisma.TransactionClient, taskId: string, userIds: string[]) {
   await tx.taskAssignee.deleteMany({ where: { taskId } });
   await tx.taskAssignee.createMany({ data: userIds.map((userId) => ({ taskId, userId })) });
-  await tx.taskStep.updateMany({ where: { taskId, assigneeId: { notIn: userIds } }, data: { assigneeId: null } });
 }
 
 export function taskRoutes(app: App) {
@@ -162,7 +161,7 @@ export function taskRoutes(app: App) {
     });
     const steps = await prisma.taskStep.findMany({
       where: { taskId: task.id },
-      include: { assignee: { select: { id: true, name: true } } },
+      include: { completedBy: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'asc' },
     });
     const tree = await loadTree(prisma, task.projectId);
@@ -174,7 +173,7 @@ export function taskRoutes(app: App) {
       ancestors: node.ancestorIds.map(ref),
       children: node.childIds.map(ref),
       ...(comments ? { comments } : {}),
-      steps: steps.map((s) => ({ id: s.id, title: s.title, done: s.done, assignee: s.assignee })),
+      steps: steps.map((s) => ({ id: s.id, title: s.title, done: s.done, completedBy: s.completedBy })),
       incidents,
     });
   });
@@ -228,8 +227,12 @@ export function taskRoutes(app: App) {
       throw new AppError(409, 'task_has_children', 'Mueve o borra primero sus subtareas');
     }
     const attachments = await prisma.attachment.findMany({ where: { taskId: task.id }, select: { storedName: true } });
-    await prisma.task.delete({ where: { id: task.id } });
-    await removeAfterDelete(c.var.deps.files, attachments.map((a) => a.storedName));
+    const storedNames = attachments.map((a) => a.storedName);
+    await prisma.$transaction(async (tx) => {
+      await queueFileDeletion(tx, storedNames);
+      await tx.task.delete({ where: { id: task.id } });
+    });
+    await removeAfterDelete(prisma, c.var.deps.files, storedNames);
     return c.json({ ok: true });
   });
 

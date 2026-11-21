@@ -175,11 +175,16 @@ describe('anexos', () => {
 
   it('si falla el borrado del archivo, el anexo se elimina igual y responde 200', async () => {
     const up = await send(pm, projectUrl());
+    const storedName = await storedNameOf(up.id);
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(ctx.files, 'remove').mockRejectedValueOnce(new Error('Storage caído'));
     expect((await pm.delete(`/api/attachments/${up.id}`)).statusCode).toBe(200);
     expect(await ctx.prisma.attachment.count()).toBe(0);
     expect(error).toHaveBeenCalled();
+    expect(stored()).toContain(storedName);
+    const { runDailyJobs } = await import('../src/jobs/daily');
+    await runDailyJobs(ctx.deps);
+    expect(stored()).not.toContain(storedName);
     error.mockRestore();
   });
 

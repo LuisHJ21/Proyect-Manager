@@ -122,6 +122,12 @@ describe('proyectos y miembros', () => {
   it('si falla el borrado de archivos, el proyecto y su tarea se borran igual y responden 200', async () => {
     const p = await ctx.makeProject({ name: 'Portal' });
     const task = await ctx.makeTask(p.id);
+    await ctx.prisma.attachment.createMany({ data: [
+      { projectId: p.id, taskId: task.id, uploadedById: pm.id, originalName: 't.pdf', storedName: 'archivo-t', mimeType: 'application/pdf', size: 1 },
+      { projectId: p.id, uploadedById: pm.id, originalName: 'p.pdf', storedName: 'archivo-p', mimeType: 'application/pdf', size: 1 },
+    ] });
+    await ctx.files.put('archivo-t', Buffer.from('t'));
+    await ctx.files.put('archivo-p', Buffer.from('p'));
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const remove = vi.spyOn(ctx.files, 'remove').mockRejectedValue(new Error('Storage caído'));
     expect((await ctx.as(pm).delete(`/api/tasks/${task.id}`)).statusCode).toBe(200);
@@ -129,6 +135,11 @@ describe('proyectos y miembros', () => {
     expect(await ctx.prisma.project.count()).toBe(0);
     expect(error).toHaveBeenCalled();
     remove.mockRestore();
+    const { runDailyJobs } = await import('../src/jobs/daily');
+    await runDailyJobs(ctx.deps);
+    expect(await ctx.prisma.fileDeletion.count()).toBe(0);
+    expect(existsSync(join(ctx.dataDir, 'uploads', 'archivo-t'))).toBe(false);
+    expect(existsSync(join(ctx.dataDir, 'uploads', 'archivo-p'))).toBe(false);
     error.mockRestore();
   });
 
@@ -137,6 +148,8 @@ describe('proyectos y miembros', () => {
     const url = `/api/projects/${p.id}/members`;
     const inactive = await ctx.makeUser({ role: 'COLLABORATOR', active: false });
     expect((await ctx.as(pm).post(url, { userId: inactive.id })).statusCode).toBe(400);
+    expect((await ctx.as(pm).post(url, { userId: member.id, projectRole: 'Diseño' })).statusCode).toBe(400);
+    await ctx.as(pm).post(`/api/projects/${p.id}/roles`, { name: 'Diseño' });
     expect((await ctx.as(pm).post(url, { userId: member.id, projectRole: 'Diseño' })).statusCode).toBe(201);
     expect((await ctx.as(pm).post(url, { userId: member.id })).statusCode).toBe(409);
     expect((await ctx.as(member).get(url)).json()[0].projectRole).toBe('Diseño');

@@ -106,8 +106,11 @@ describe('tarea diaria', () => {
     });
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(ctx.files, 'remove').mockRejectedValueOnce(new Error('Storage caído'));
-    await expect(runDailyJobs(ctx.deps)).rejects.toThrow(/anexos pendientes/);
+    await expect(runDailyJobs(ctx.deps)).rejects.toThrow(/archivos pendientes/);
     expect(await ctx.prisma.evmSnapshot.count()).toBe(1);
+    expect((await ctx.prisma.fileDeletion.findMany()).map((f) => f.storedName)).toEqual(['viejo']);
+    await runDailyJobs(ctx.deps);
+    expect(await ctx.prisma.fileDeletion.count()).toBe(0);
     error.mockRestore();
   });
 

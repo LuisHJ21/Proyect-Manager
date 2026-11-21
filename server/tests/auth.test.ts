@@ -30,6 +30,14 @@ describe('autenticación', () => {
     expect(again.json().error.code).toBe('setup_complete');
   });
 
+  it('dos configuraciones simultáneas solo crean un PM', async () => {
+    await ctx.prisma.$executeRawUnsafe(`CREATE FUNCTION pause_first_user() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`);
+    await ctx.prisma.$executeRawUnsafe(`CREATE TRIGGER pause_first_user BEFORE INSERT ON "User" FOR EACH ROW EXECUTE FUNCTION pause_first_user()`);
+    const responses = await Promise.all([setup('uno@x.com'), setup('dos@x.com')]);
+    expect(responses.map((r) => r.statusCode).sort()).toEqual([201, 409]);
+    expect(await ctx.prisma.user.count()).toBe(1);
+  });
+
   it('correo con mayúsculas y espacios es la misma cuenta', async () => {
     await setup(' Ana@X.com ');
     expect((await login('ana@x.com', PASSWORD)).statusCode).toBe(200);

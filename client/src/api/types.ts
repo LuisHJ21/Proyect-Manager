@@ -222,7 +222,7 @@ export type Task = {
 };
 export type TaskRef = { id: string; title: string; wbsCode: string };
 export type Comment = { id: string; body: string; createdAt: string; author: PersonRef };
-export type TaskStep = { id: string; title: string; done: boolean; assignee: PersonRef | null };
+export type TaskStep = { id: string; title: string; done: boolean; completedBy: PersonRef | null };
 /** `comments` no llega al observador. */
 export type TaskDetail = Task & { comments?: Comment[]; steps: TaskStep[]; incidents?: IncidentRef[]; ancestors: TaskRef[]; children: TaskRef[] };
 

@@ -2,33 +2,19 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 import { api, errorMessage } from '../../api/client';
-import type { PersonRef, TaskDetail, TaskStep } from '../../api/types';
+import type { TaskDetail, TaskStep } from '../../api/types';
 import { ConfirmDialog, Modal } from '../ConfirmDialog';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { useToast } from '../Toast';
 import { Avatar, Button, inputClass, ProgressBar } from '../ui';
 import { refreshTaskData } from './taskQueries';
 
-function PersonSelect({ people, value, onChange, label }: { people: PersonRef[]; value: string; onChange: (id: string) => void; label: string }) {
-  return (
-    <select aria-label={label} className={inputClass} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Sin persona</option>
-      {people.map((person) => (
-        <option key={person.id} value={person.id}>
-          {person.name}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 function EditStepModal({ task, step, onClose }: { task: TaskDetail; step: TaskStep; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(step.title);
-  const [assigneeId, setAssigneeId] = useState(step.assignee?.id ?? '');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const save = useMutation({
-    mutationFn: () => api(`/api/tasks/${task.id}/steps/${step.id}`, { method: 'PATCH', body: { title, assigneeId: assigneeId || null } }),
+    mutationFn: () => api(`/api/tasks/${task.id}/steps/${step.id}`, { method: 'PATCH', body: { title } }),
     onSuccess: async () => {
       await refreshTaskData(queryClient, task.projectId, task.id);
       onClose();
@@ -47,10 +33,6 @@ function EditStepModal({ task, step, onClose }: { task: TaskDetail; step: TaskSt
         <FormField label="Título" error={errors.fields.title}>
           <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} />
         </FormField>
-        <div>
-          <PersonSelect label="Persona" people={task.assignees} value={assigneeId} onChange={setAssigneeId} />
-          {errors.fields.assigneeId && <p className="mt-1 text-xs text-risk-fg">{errors.fields.assigneeId}</p>}
-        </div>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancelar
@@ -100,10 +82,10 @@ function StepRow({ task, step, canManage, canCheck }: { task: TaskDetail; step: 
         <input type="checkbox" checked={step.done} disabled={!canCheck || toggle.isPending} onChange={onToggle} className="h-[18px] w-[18px] shrink-0 cursor-pointer accent-primary disabled:cursor-not-allowed" />
         <span className={`min-w-0 [overflow-wrap:anywhere] ${step.done ? 'text-ink-soft line-through' : 'text-ink'}`}>{step.title}</span>
       </label>
-      {step.assignee && (
+      {step.done && step.completedBy && (
         <span className="flex max-w-44 min-w-0 items-center gap-1.5 text-xs text-ink-soft">
-          <Avatar name={step.assignee.name} size="sm" />
-          <span className="truncate">{step.assignee.name}</span>
+          <Avatar name={step.completedBy.name} size="sm" />
+          <span className="truncate">{step.completedBy.name}</span>
         </span>
       )}
       {canManage && (
@@ -129,16 +111,12 @@ function StepRow({ task, step, canManage, canCheck }: { task: TaskDetail; step: 
 export function StepList({ task, canManage, canCheck }: { task: TaskDetail; canManage: boolean; canCheck: boolean }) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
-  const [assigneeId, setAssigneeId] = useState('');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
-  // Si la persona elegida dejó de estar asignada, la selección vuelve a "Sin persona".
-  const selectedAssignee = task.assignees.some((person) => person.id === assigneeId) ? assigneeId : '';
 
   const add = useMutation({
-    mutationFn: () => api(`/api/tasks/${task.id}/steps`, { method: 'POST', body: { title, assigneeId: selectedAssignee || null } }),
+    mutationFn: () => api(`/api/tasks/${task.id}/steps`, { method: 'POST', body: { title } }),
     onSuccess: async () => {
       setTitle('');
-      setAssigneeId('');
       await refreshTaskData(queryClient, task.projectId, task.id);
     },
     onError: (error) => applyFieldErrors(error, setErrors),
@@ -179,17 +157,15 @@ export function StepList({ task, canManage, canCheck }: { task: TaskDetail; canM
       {canManage && (
         <form onSubmit={submit} className="mt-4 space-y-2" noValidate>
           <FormMessage message={errors.message} />
-          <div className="grid items-end gap-2 sm:grid-cols-[1fr_11rem_auto]">
+          <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
             <FormField label="Nuevo paso" error={errors.fields.title}>
               <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} />
             </FormField>
-            <PersonSelect label="Persona del nuevo paso" people={task.assignees} value={selectedAssignee} onChange={setAssigneeId} />
             <Button type="submit" variant="secondary" disabled={add.isPending || !title.trim()}>
               <Plus size={16} aria-hidden="true" />
               Añadir paso
             </Button>
           </div>
-          {errors.fields.assigneeId && <p className="text-xs text-risk-fg">{errors.fields.assigneeId}</p>}
         </form>
       )}
     </section>

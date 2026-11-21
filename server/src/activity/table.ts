@@ -51,7 +51,7 @@ function crudEntries(path: string, idParam: string, entry: Omit<ActivityEntry, '
 
 const PROJECT_FIELDS = ['status', 'startDate', 'endDate', 'plannedBudgetCents', 'contingencyReserveCents', 'managementReserveCents'] as const;
 const TASK_FIELDS = ['status', 'startDate', 'dueDate', 'progress', 'plannedCostCents', 'milestoneId', 'assignees'] as const;
-const STEP_FIELDS = ['done', 'assigneeId'] as const;
+const STEP_FIELDS = ['done', 'completedById'] as const;
 const MEMBER_FIELDS = ['projectRole'] as const;
 const DELIVERABLE_FIELDS = ['status', 'dueDate'] as const;
 const INCIDENT_FIELDS = ['status', 'ownerId', 'priority', 'dueDate', 'kind'] as const;
@@ -101,6 +101,9 @@ export const ACTIVITY_TABLE: Record<string, ActivityEntry> = {
   'POST /api/projects/:id/members': member(),
   'PATCH /api/projects/:id/members/:userId': member(),
   'DELETE /api/projects/:id/members/:userId': member(),
+  'POST /api/projects/:id/roles': project({ fields: [] }),
+  'PATCH /api/projects/:id/roles/:roleId': project({ fields: [] }),
+  'DELETE /api/projects/:id/roles/:roleId': project({ fields: [] }),
 
   'POST /api/projects/:id/tasks': task({ target: responseId }),
   'PATCH /api/tasks/:id': task(),

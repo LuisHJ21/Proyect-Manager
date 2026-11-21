@@ -97,18 +97,15 @@ describe('el observador que antes fue colaborador', () => {
     expect(body.incidents ?? []).toEqual([]);
   });
 
-  it('no se le puede asignar un paso de una tarea que ya tenía', async () => {
+  it('un observador no puede marcar un paso', async () => {
     ctx = await createTestApp();
     const pm = await ctx.makeUser({ role: 'PM' });
     const olga = await ctx.makeUser({ role: 'OBSERVER', name: 'Olga' });
     const project = await ctx.makeProject({ members: [olga] });
     const task = await ctx.makeTask(project.id, { assignees: [olga] });
     await ctx.prisma.task.update({ where: { id: task.id }, data: { status: 'DONE' } });
-    const res = await ctx.as(pm).post(`/api/tasks/${task.id}/steps`, { title: 'Revisar', assigneeId: olga.id });
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error.fields.assigneeId).toBe('Un observador no puede tener pasos asignados');
     const step = await ctx.prisma.taskStep.create({ data: { taskId: task.id, title: 'Otro' } });
-    const patched = await ctx.as(pm).patch(`/api/tasks/${task.id}/steps/${step.id}`, { assigneeId: olga.id });
-    expect(patched.statusCode).toBe(400);
+    const patched = await ctx.as(olga).patch(`/api/tasks/${task.id}/steps/${step.id}`, { done: true });
+    expect(patched.statusCode).toBe(403);
   });
 });

@@ -93,6 +93,23 @@ describe('pestañas del proyecto', () => {
     expect(side.getByRole('heading', { name: 'Equipo' })).toBeInTheDocument();
   });
 
+  it('el PM gestiona roles en un menú y los elige al añadir una persona', async () => {
+    const api = mockApi({ ...signedInAs(pmUser), ...summaryRoutes,
+      'GET /api/users': [{ id: 'u2', name: 'Ana', active: true, role: 'COLLABORATOR' }],
+      'GET /api/projects/p1/roles': [{ id: 'r1', name: 'Diseño' }],
+      'POST /api/projects/p1/members': { userId: 'u2' },
+    });
+    renderApp('/proyectos/p1/resumen');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Gestionar roles' }));
+    expect(screen.getByRole('dialog', { name: 'Gestionar roles del proyecto' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await user.selectOptions(screen.getByLabelText('Añadir persona'), 'u2');
+    await user.selectOptions(screen.getByLabelText('Rol en el proyecto'), 'Diseño');
+    await user.click(screen.getByRole('button', { name: 'Añadir al equipo' }));
+    await waitFor(() => expect(api.calls.find((call) => call.key === 'POST /api/projects/p1/members')?.body).toEqual({ userId: 'u2', projectRole: 'Diseño' }));
+  });
+
   it('la descripción del proyecto se ve con formato', async () => {
     mockApi({ ...signedInAs(collaborator), ...summaryRoutes, 'GET /api/projects/p1': { ...project, description: '<p><em>Sitio</em> nuevo</p>' } });
     renderApp('/proyectos/p1/resumen');

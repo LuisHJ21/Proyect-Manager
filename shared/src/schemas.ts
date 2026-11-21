@@ -419,11 +419,9 @@ export const calendarRangeSchema = z
 
 export const stepSchema = z.object({
   title: shortText('Escribe el paso'),
-  assigneeId: z.string().nullable().optional(),
 });
 export const updateStepSchema = z.object({
   title: shortText('Escribe el paso').optional(),
-  assigneeId: z.string().nullable().optional(),
   done: z.boolean().optional(),
 });
 export const commentSchema = z.object({ body: noteText('Escribe un comentario') });

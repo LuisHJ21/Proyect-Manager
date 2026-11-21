@@ -38,17 +38,27 @@ export async function runDailyJobs(deps: Deps): Promise<{
   // `uploadedAt IS NULL`, así que no se borra ni pierde su archivo.
   const cutoff = new Date(now.getTime() - PENDING_UPLOAD_MS);
   const claimed = await prisma.$queryRaw<{ storedName: string }[]>`
-    DELETE FROM "Attachment"
-    WHERE "uploadedAt" IS NULL AND "createdAt" <= ${utc(cutoff)}
-    RETURNING "storedName"`;
+    WITH claimed AS (
+      DELETE FROM "Attachment"
+      WHERE "uploadedAt" IS NULL AND "createdAt" <= ${utc(cutoff)}
+      RETURNING "storedName"
+    ), queued AS (
+      INSERT INTO "FileDeletion" ("storedName")
+      SELECT "storedName" FROM claimed
+      ON CONFLICT DO NOTHING
+      RETURNING "storedName"
+    )
+    SELECT "storedName" FROM claimed`;
   const pendingUploads = claimed.length;
   let storageError: unknown = null;
+  const toDelete = await prisma.fileDeletion.findMany({ select: { storedName: true } });
   try {
-    await files.remove(claimed.map((a) => a.storedName));
+    await files.remove(toDelete.map((a) => a.storedName));
+    await prisma.fileDeletion.deleteMany({ where: { storedName: { in: toDelete.map((a) => a.storedName) } } });
   } catch (error) {
     // Las fotos de valor ganado no deben depender de Storage: se sigue y se informa al final.
     storageError = error;
-    console.error(`No se pudieron borrar los archivos de ${pendingUploads} anexos pendientes: ${claimed.map((a) => a.storedName).join(', ')}`, error);
+    console.error(`No se pudieron borrar ${toDelete.length} archivos pendientes: ${toDelete.map((a) => a.storedName).join(', ')}`, error);
   }
 
   const today = deps.today();
@@ -67,7 +77,7 @@ export async function runDailyJobs(deps: Deps): Promise<{
 
   const result = { sessions, loginAttempts, pendingUploads, snapshots, forecasts, dueSoon, overdue, oldNotifications };
   if (storageError) {
-    throw new Error(`La tarea diaria terminó con errores al borrar los archivos de anexos pendientes: ${JSON.stringify(result)}`, { cause: storageError });
+    throw new Error(`La tarea diaria terminó con errores al borrar archivos pendientes: ${JSON.stringify(result)}`, { cause: storageError });
   }
   return result;
 }

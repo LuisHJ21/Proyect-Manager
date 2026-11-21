@@ -223,7 +223,7 @@ export const LABELS = {
     milestoneId: 'Hito',
     assignees: 'Asignados',
     done: 'Hecho',
-    assigneeId: 'Responsable',
+    completedById: 'Completado por',
     ownerId: 'Responsable',
     probability: 'Probabilidad',
     impact: 'Impacto',

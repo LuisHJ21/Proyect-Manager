@@ -6,6 +6,7 @@ import { requireUser } from '../auth/guards';
 import { computeEvm, plannedValueAt, type EvmInput } from '../domain/evm';
 import { AppError, fieldError } from '../errors';
 import { leafWhere } from '../domain/wbs';
+import { groupByProject } from '../domain/groupByProject';
 import { loadLaborCosts } from './laborCost';
 
 const MAX_SERIES_POINTS = 730;
@@ -17,26 +18,33 @@ const baselineInclude = {
 
 /** Datos para calcular el valor ganado de un proyecto, o null si no tiene línea base. */
 export async function loadEvmInput(prisma: PrismaClient, projectId: string): Promise<EvmInput | null> {
-  const baseline = await prisma.baseline.findFirst({ where: { projectId }, orderBy: { version: 'desc' }, include: { tasks: true } });
-  if (!baseline) return null;
-  const [project, tasks, expenses, labor] = await Promise.all([
-    prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { plannedBudgetCents: true, contingencyReserveCents: true, managementReserveCents: true } }),
-    prisma.task.findMany({ where: { projectId, ...leafWhere }, select: { id: true, title: true, progress: true, dueDate: true, plannedCostCents: true } }),
-    prisma.expense.findMany({ where: { projectId }, select: { amountCents: true, date: true, taskId: true } }),
-    loadLaborCosts(prisma, [projectId]),
+  return (await loadEvmInputs(prisma, [projectId])).get(projectId) ?? null;
+}
+
+export async function loadEvmInputs(prisma: PrismaClient, projectIds: string[]): Promise<Map<string, EvmInput>> {
+  if (!projectIds.length) return new Map();
+  const where = { projectId: { in: projectIds } };
+  const [baselines, projects, tasks, expenses, labor] = await Promise.all([
+    prisma.baseline.findMany({ where, orderBy: { version: 'desc' }, distinct: ['projectId'], include: { tasks: true } }),
+    prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, plannedBudgetCents: true, contingencyReserveCents: true, managementReserveCents: true } }),
+    prisma.task.findMany({ where: { ...where, ...leafWhere }, select: { id: true, projectId: true, title: true, progress: true, dueDate: true, plannedCostCents: true } }),
+    prisma.expense.findMany({ where, select: { projectId: true, amountCents: true, date: true, taskId: true } }),
+    loadLaborCosts(prisma, projectIds),
   ]);
-  return {
-    baseline: {
-      bacCents: Number(baseline.bacCents),
-      tasks: baseline.tasks.map((t) => ({ taskId: t.taskId, title: t.title, startDate: t.startDate, dueDate: t.dueDate, plannedCostCents: Number(t.plannedCostCents) })),
-    },
-    tasks: tasks.map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents) })),
-    // La mano de obra del equipo cuenta como costo real, ligada a su tarea.
-    expenses: [...expenses.map((e) => ({ ...e, amountCents: Number(e.amountCents) })), ...labor.map(({ taskId, date, amountCents }) => ({ taskId, date, amountCents }))],
-    plannedBudgetCents: Number(project.plannedBudgetCents),
-    contingencyCents: Number(project.contingencyReserveCents),
-    managementCents: Number(project.managementReserveCents),
-  };
+  const tasksByProject = groupByProject(tasks);
+  const expensesByProject = groupByProject(expenses);
+  const laborByProject = groupByProject(labor);
+  const projectById = new Map(projects.map((p) => [p.id, p]));
+  return new Map(baselines.flatMap((baseline) => {
+    const project = projectById.get(baseline.projectId);
+    if (!project) return [];
+    return [[baseline.projectId, {
+      baseline: { bacCents: Number(baseline.bacCents), tasks: baseline.tasks.map((t) => ({ taskId: t.taskId, title: t.title, startDate: t.startDate, dueDate: t.dueDate, plannedCostCents: Number(t.plannedCostCents) })) },
+      tasks: (tasksByProject.get(project.id) ?? []).map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents) })),
+      expenses: [...(expensesByProject.get(project.id) ?? []).map((e) => ({ amountCents: Number(e.amountCents), date: e.date, taskId: e.taskId })), ...(laborByProject.get(project.id) ?? []).map(({ taskId, date, amountCents }) => ({ taskId, date, amountCents }))],
+      plannedBudgetCents: Number(project.plannedBudgetCents), contingencyCents: Number(project.contingencyReserveCents), managementCents: Number(project.managementReserveCents),
+    } satisfies EvmInput]] as const;
+  }));
 }
 
 /**

@@ -13,9 +13,10 @@ import { Button, inputClass } from '../ui';
 export const incidentsKey = (projectId: string) => ['project', projectId, 'incidents'];
 
 /** Ventana para reportar o editar un incidente. Solo el PM ve responsable, prioridad y fecha límite. */
-export function IncidentForm({ projectId, isPm, incident, initialTaskId, onClose }: { projectId: string; isPm: boolean; incident?: Incident; initialTaskId?: string; onClose: () => void }) {
+export function IncidentForm({ projectId, isPm, incident, initialTaskId, initialTaskTitle, onClose }: { projectId: string; isPm: boolean; incident?: Incident; initialTaskId?: string; initialTaskTitle?: string; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const tasks = useQuery({ queryKey: tasksKey(projectId), queryFn: () => api<Task[]>(`/api/projects/${projectId}/tasks`) });
+  const lockedTaskId = !incident ? initialTaskId : undefined;
+  const tasks = useQuery({ queryKey: tasksKey(projectId), queryFn: () => api<Task[]>(`/api/projects/${projectId}/tasks`), enabled: !lockedTaskId });
   const members = useQuery({ queryKey: membersKey(projectId), queryFn: () => api<Member[]>(`/api/projects/${projectId}/members`), enabled: isPm });
   const [title, setTitle] = useState(incident?.title ?? '');
   const [description, setDescription] = useState(incident?.description ?? '');
@@ -36,7 +37,7 @@ export function IncidentForm({ projectId, isPm, incident, initialTaskId, onClose
     const body = {
       title,
       description,
-      taskId: taskId || null,
+      taskId: lockedTaskId || taskId || null,
       ...(isPm ? { ownerId: ownerId || null, priority, dueDate: dueDate || null, kind, deliverableId: deliverableId || null } : {}),
     };
     try {
@@ -73,15 +74,15 @@ export function IncidentForm({ projectId, isPm, incident, initialTaskId, onClose
           </FormField>
         </div>
         <div className="sm:col-span-2">
-          <FormField label="Tarea (opcional)" error={errors.fields.taskId}>
-            <select className={inputClass} value={taskId} onChange={(e) => setTaskId(e.target.value)}>
-              <option value="">Sin tarea</option>
-              {tasks.data?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                </option>
-              ))}
-            </select>
+          <FormField label={lockedTaskId ? 'Tarea' : 'Tarea (opcional)'} error={errors.fields.taskId}>
+            {lockedTaskId ? (
+              <input className={inputClass} value={initialTaskTitle ?? ''} readOnly />
+            ) : (
+              <select className={inputClass} value={taskId} onChange={(e) => setTaskId(e.target.value)}>
+                <option value="">Sin tarea</option>
+                {tasks.data?.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </select>
+            )}
           </FormField>
         </div>
         {isPm && (

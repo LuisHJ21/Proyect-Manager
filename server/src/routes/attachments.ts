@@ -7,7 +7,7 @@ import { requireUser } from '../auth/guards';
 import { AppError, forbidden, notFound } from '../errors';
 import { contentDisposition, normalizeUploadName } from '../files';
 import { readBody, type App, type Ctx } from '../http';
-import { removeAfterDelete } from '../storage/fileStore';
+import { queueFileDeletion, removeAfterDelete } from '../storage/fileStore';
 import { getTaskAccess } from './tasks';
 
 const uploadedByInclude = { uploadedBy: { select: { id: true, name: true } } };
@@ -146,8 +146,11 @@ export function attachmentRoutes(app: App) {
     const attachment = await findAttachment(c, c.req.param('id'));
     const { isPm } = await getProjectAccess(c, attachment.projectId);
     if (!isPm && attachment.uploadedById !== user.id) throw forbidden('Solo puedes eliminar los anexos que subiste');
-    await c.var.deps.prisma.attachment.delete({ where: { id: attachment.id } });
-    await removeAfterDelete(c.var.deps.files, [attachment.storedName]);
+    await c.var.deps.prisma.$transaction(async (tx) => {
+      await queueFileDeletion(tx, [attachment.storedName]);
+      await tx.attachment.delete({ where: { id: attachment.id } });
+    });
+    await removeAfterDelete(c.var.deps.prisma, c.var.deps.files, [attachment.storedName]);
     return c.json({ ok: true });
   });
 }

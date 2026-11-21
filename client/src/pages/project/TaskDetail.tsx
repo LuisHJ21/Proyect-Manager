@@ -334,7 +334,7 @@ export function TaskDetailPage() {
       </div>
 
       {editing && <TaskForm projectId={project.id} task={task} onClose={() => setEditing(false)} />}
-      {reportingIncident && <IncidentForm projectId={project.id} isPm={isPm} initialTaskId={task.id} onClose={() => setReportingIncident(false)} />}
+      {reportingIncident && <IncidentForm projectId={project.id} isPm={isPm} initialTaskId={task.id} initialTaskTitle={task.title} onClose={() => setReportingIncident(false)} />}
       {deleting && (
         <ConfirmDialog title="Eliminar tarea" danger confirmLabel="Eliminar" onCancel={() => setDeleting(false)} onConfirm={() => remove.mutate()}>
           {task.successorCount > 0 && <p className="font-medium">{task.successorCount} tarea(s) dependen de esta y dejarán de esperarla.</p>}

@@ -22,7 +22,7 @@ describe('perfil Observador en usuarios y responsables', () => {
   const giveWork = async (projectId: string, status = { task: 'TODO', risk: 'OPEN', incident: 'OPEN', stepDone: false }) => {
     const task = await ctx.makeTask(projectId, { assignees: [ana] });
     await ctx.prisma.task.update({ where: { id: task.id }, data: { status: status.task } });
-    await ctx.makeStep(task.id, { assigneeId: ana.id, done: status.stepDone });
+    await ctx.makeStep(task.id, { done: status.stepDone, completedById: status.stepDone ? ana.id : undefined });
     await ctx.prisma.risk.create({
       data: { projectId, description: 'R', type: 'THREAT', probability: 1, impact: 1, response: 'ACCEPT', ownerId: ana.id, status: status.risk },
     });
@@ -42,7 +42,7 @@ describe('perfil Observador en usuarios y responsables', () => {
     expect(res.json().error).toMatchObject({
       code: 'observer_has_work',
       message: 'Tiene trabajo abierto: reasígnalo antes de cambiar su perfil a Observador',
-      details: { tasks: 1, steps: 1, risks: 1, incidents: 1 },
+      details: { tasks: 1, steps: 0, risks: 1, incidents: 1 },
     });
     expect((await ctx.prisma.user.findUniqueOrThrow({ where: { id: ana.id } })).role).toBe('COLLABORATOR');
   });

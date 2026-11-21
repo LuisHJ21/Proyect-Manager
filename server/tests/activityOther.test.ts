@@ -46,6 +46,8 @@ describe('bitácora: entregables, RACI, miembros, dependencias, anexos y acta', 
   });
 
   it('miembros: alta, rol y baja', async () => {
+    await ctx.as(pm).post(`${p()}/roles`, { name: 'Diseño' });
+    await ctx.as(pm).post(`${p()}/roles`, { name: 'Arquitectura' });
     await ctx.as(pm).post(`${p()}/members`, { userId: luis.id, projectRole: 'Diseño' });
     expect(await last()).toMatchObject({ entity: 'member', action: 'created', entityLabel: 'Luis' });
     await ctx.as(pm).patch(`${p()}/members/${luis.id}`, { projectRole: 'Arquitectura' });

@@ -37,8 +37,8 @@ const detail = (over: Partial<TaskDetail> = {}): TaskDetail => ({
   warnings: [],
   comments: [],
   steps: [
-    { id: 's1', title: 'Estructura', done: true, assignee: carlos },
-    { id: 's2', title: 'Pruebas', done: false, assignee: null },
+    { id: 's1', title: 'Estructura', done: true, completedBy: carlos },
+    { id: 's2', title: 'Pruebas', done: false, completedBy: null },
   ],
   ...over,
 });
@@ -64,7 +64,7 @@ const open = async (extra: object = {}, task = detail(), user: object = pmUser) 
 };
 
 describe('pasos en el detalle', () => {
-  it('muestra "N de M completados", barra y personas', async () => {
+  it('muestra "N de M completados", barra y quién completó el paso', async () => {
     const { section } = await open();
     expect(section.getByText('1 de 2 completados')).toBeInTheDocument();
     expect(section.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50');
@@ -72,12 +72,11 @@ describe('pasos en el detalle', () => {
     expect(section.getByRole('list')).toHaveTextContent('Carlos');
   });
 
-  it('el PM añade, con persona entre los asignados', async () => {
+  it('el PM añade un paso sin asignarlo a una persona', async () => {
     const { api, section, user } = await open({ 'POST /api/tasks/t1/steps': { id: 's3' } });
     await user.type(section.getByLabelText('Nuevo paso'), 'Publicar');
-    await user.selectOptions(section.getByLabelText('Persona del nuevo paso'), 'c1');
     await user.click(section.getByRole('button', { name: 'Añadir paso' }));
-    await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/tasks/t1/steps')?.body).toEqual({ title: 'Publicar', assigneeId: 'c1' }));
+    await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/tasks/t1/steps')?.body).toEqual({ title: 'Publicar' }));
   });
 
   it('el PM edita y elimina', async () => {
@@ -87,7 +86,7 @@ describe('pasos en el detalle', () => {
     await user.clear(form.getByLabelText('Título'));
     await user.type(form.getByLabelText('Título'), 'Pruebas finales');
     await user.click(form.getByRole('button', { name: 'Guardar' }));
-    await waitFor(() => expect(api.calls.find((c) => c.key === 'PATCH /api/tasks/t1/steps/s2')?.body).toEqual({ title: 'Pruebas finales', assigneeId: null }));
+    await waitFor(() => expect(api.calls.find((c) => c.key === 'PATCH /api/tasks/t1/steps/s2')?.body).toEqual({ title: 'Pruebas finales' }));
     await user.click(section.getByRole('button', { name: 'Eliminar paso Pruebas' }));
     await user.click(await screen.findByRole('button', { name: 'Eliminar' }));
     await waitFor(() => expect(api.calls.some((c) => c.key === 'DELETE /api/tasks/t1/steps/s2')).toBe(true));
@@ -129,13 +128,13 @@ describe('pasos en el detalle', () => {
     await waitFor(() => expect(api.calls.find((c) => c.key === 'PATCH /api/tasks/t1/progress')?.body).toEqual({ status: 'IN_PROGRESS' }));
   });
 
-  it('muestra el error de persona al añadir un paso', async () => {
+  it('muestra el error de título al añadir un paso', async () => {
     const { section, user } = await open({
-      'POST /api/tasks/t1/steps': apiError(400, 'validation_error', { message: 'x', fields: { assigneeId: 'La persona debe estar asignada a la tarea' } }),
+      'POST /api/tasks/t1/steps': apiError(400, 'validation_error', { message: 'x', fields: { title: 'Título inválido' } }),
     });
     await user.type(section.getByLabelText('Nuevo paso'), 'Publicar');
     await user.click(section.getByRole('button', { name: 'Añadir paso' }));
-    expect(await section.findByText('La persona debe estar asignada a la tarea')).toBeInTheDocument();
+    expect(await section.findByText('Título inválido')).toBeInTheDocument();
   });
 
   it('una fila admite títulos y nombres largos en pantallas angostas', async () => {

@@ -155,8 +155,8 @@ export async function createTestApp(
         data: { projectId, title, ...rest, assignees: { create: assignees.map((a) => ({ userId: a.id })) } },
       });
     },
-    makeStep(taskId: string, input: { title?: string; done?: boolean; assigneeId?: string } = {}) {
-      return prisma.taskStep.create({ data: { taskId, title: input.title ?? 'Paso', done: input.done ?? false, assigneeId: input.assigneeId } });
+    makeStep(taskId: string, input: { title?: string; done?: boolean; completedById?: string } = {}) {
+      return prisma.taskStep.create({ data: { taskId, title: input.title ?? 'Paso', done: input.done ?? false, completedById: input.completedById } });
     },
     /** Cliente con una sesión creada directamente, sin pasar por el inicio de sesión. */
     as(user: User): HttpClient {

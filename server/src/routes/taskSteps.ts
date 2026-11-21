@@ -2,7 +2,7 @@ import { stepSchema, updateStepSchema } from '@pm/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { readBody, type App, type Ctx } from '../http';
 import { stepProgress } from '../domain/taskSteps';
-import { AppError, fieldError, forbidden, notFound } from '../errors';
+import { AppError, forbidden, notFound } from '../errors';
 import { getTaskAccess } from './tasks';
 import { assertNotSummary } from './taskTree';
 import { isBlocking } from '../domain/dependencies';
@@ -10,13 +10,13 @@ import { isBlocking } from '../domain/dependencies';
 type TaskParams = { Params: { id: string } };
 type StepParams = { Params: { id: string; stepId: string } };
 
-const stepInclude = { assignee: { select: { id: true, name: true } } };
+const stepInclude = { completedBy: { select: { id: true, name: true } } };
 
-const toStepDto = (step: { id: string; title: string; done: boolean; assignee: { id: string; name: string } | null }) => ({
+const toStepDto = (step: { id: string; title: string; done: boolean; completedBy: { id: string; name: string } | null }) => ({
   id: step.id,
   title: step.title,
   done: step.done,
-  assignee: step.assignee,
+  completedBy: step.completedBy,
 });
 
 /** Recalcula el avance. Sin pasos, la tarea conserva el último valor. */
@@ -31,17 +31,6 @@ async function syncProgress(tx: Prisma.TransactionClient, taskId: string, status
 
 export function taskStepRoutes(app: App) {
 
-  const assertAssigned = async (prisma: PrismaClient, taskId: string, assigneeId?: string | null) => {
-    if (!assigneeId) return;
-    const assigned = await prisma.taskAssignee.findUnique({
-      where: { taskId_userId: { taskId, userId: assigneeId } },
-      include: { user: { select: { role: true } } },
-    });
-    if (!assigned) throw fieldError('assigneeId', 'La persona debe estar asignada a la tarea');
-    // Quien pasó a Observador puede seguir en una tarea antigua, pero no recibe trabajo nuevo.
-    if (assigned.user.role === 'OBSERVER') throw fieldError('assigneeId', 'Un observador no puede tener pasos asignados');
-  };
-
   const findStep = async (prisma: PrismaClient, taskId: string, stepId: string) => {
     const step = await prisma.taskStep.findFirst({ where: { id: stepId, taskId } });
     if (!step) throw notFound('Paso no encontrado');
@@ -54,9 +43,8 @@ export function taskStepRoutes(app: App) {
     if (!isPm) throw forbidden();
     await assertNotSummary(prisma, task.id);
     const input = stepSchema.parse(await readBody(c));
-    await assertAssigned(c.var.deps.prisma, task.id, input.assigneeId);
     const step = await prisma.$transaction(async (tx) => {
-      const created = await tx.taskStep.create({ data: { taskId: task.id, title: input.title, assigneeId: input.assigneeId ?? null }, include: stepInclude });
+      const created = await tx.taskStep.create({ data: { taskId: task.id, title: input.title }, include: stepInclude });
       await syncProgress(tx, task.id, task.status === 'DONE' ? 'IN_PROGRESS' : undefined);
       return created;
     });
@@ -67,11 +55,10 @@ export function taskStepRoutes(app: App) {
     const { prisma } = c.var.deps;
     const { task, isPm, isAssignee } = await getTaskAccess(c, c.req.param('id'));
     const input = updateStepSchema.parse(await readBody(c));
-    const editsContent = input.title !== undefined || input.assigneeId !== undefined;
+    const editsContent = input.title !== undefined;
     if (editsContent && !isPm) throw forbidden();
     if (input.done !== undefined && !isPm && !isAssignee) throw forbidden('Solo puedes marcar los pasos de las tareas que tienes asignadas');
     const current = await findStep(c.var.deps.prisma, task.id, c.req.param('stepId'));
-    await assertAssigned(c.var.deps.prisma, task.id, input.assigneeId);
 
     const step = await prisma.$transaction(async (tx) => {
       const marking = input.done === true && !current.done;
@@ -90,7 +77,7 @@ export function taskStepRoutes(app: App) {
           });
         }
       }
-      const updated = await tx.taskStep.update({ where: { id: current.id }, data: input, include: stepInclude });
+      const updated = await tx.taskStep.update({ where: { id: current.id }, data: { ...input, ...(marking ? { completedById: c.var.user!.id } : unmarking ? { completedById: null } : {}) }, include: stepInclude });
       const fresh = await tx.task.findUniqueOrThrow({ where: { id: task.id }, select: { status: true } });
       const status = marking && fresh.status === 'TODO' ? 'IN_PROGRESS' : unmarking && fresh.status === 'DONE' ? 'IN_PROGRESS' : undefined;
       await syncProgress(tx, task.id, status);

@@ -52,14 +52,14 @@ describe('las tareas se asignan a miembros activos, PM incluidos', () => {
     expect(res.statusCode).toBe(200);
   });
 
-  it('ascender a PM conserva sus tareas y pasos', async () => {
+  it('ascender a PM conserva sus tareas y el registro de pasos completados', async () => {
     const task = await ctx.makeTask(project.id, { assignees: [collaborator] });
-    const step = await ctx.prisma.taskStep.create({ data: { taskId: task.id, title: 'Paso', assigneeId: collaborator.id } });
+    const step = await ctx.prisma.taskStep.create({ data: { taskId: task.id, title: 'Paso', done: true, completedById: collaborator.id } });
     const res = await ctx.as(pm).patch(`/api/users/${collaborator.id}`, { role: 'PM' });
     expect(res.statusCode).toBe(200);
     expect(res.json().role).toBe('PM');
     expect(await ctx.prisma.taskAssignee.count({ where: { taskId: task.id, userId: collaborator.id } })).toBe(1);
-    expect((await ctx.prisma.taskStep.findUniqueOrThrow({ where: { id: step.id } })).assigneeId).toBe(collaborator.id);
+    expect((await ctx.prisma.taskStep.findUniqueOrThrow({ where: { id: step.id } })).completedById).toBe(collaborator.id);
   });
 
   it('pasar de PM a Colaborador conserva sus tareas', async () => {

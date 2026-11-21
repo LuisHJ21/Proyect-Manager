@@ -9,6 +9,7 @@ import { ErrorState, Loading } from '../ErrorState';
 import { applyFieldErrors, FormField, FormMessage, NO_ERRORS, type FormErrors } from '../FormField';
 import { useToast } from '../Toast';
 import { Button, Card, EmptyState, inputClass } from '../ui';
+import { MemberRoleDialog, ProjectRolesDialog, rolesKey, type ProjectRole } from './ProjectRolesDialog';
 
 export const membersKey = (projectId: string) => ['project', projectId, 'members'];
 
@@ -100,11 +101,14 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
   const queryClient = useQueryClient();
   const members = useQuery({ queryKey: membersKey(projectId), queryFn: () => api<Member[]>(`/api/projects/${projectId}/members`) });
   const users = useQuery({ queryKey: ['users'], queryFn: () => api<User[]>('/api/users'), enabled: canEdit });
+  const roles = useQuery({ queryKey: rolesKey(projectId), queryFn: () => api<ProjectRole[]>(`/api/projects/${projectId}/roles`), enabled: canEdit });
   const [userId, setUserId] = useState('');
   const [projectRole, setProjectRole] = useState('');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [removing, setRemoving] = useState<Member | null>(null);
   const [rating, setRating] = useState<Member | null>(null);
+  const [editingRole, setEditingRole] = useState<Member | null>(null);
+  const [managingRoles, setManagingRoles] = useState(false);
 
   const add = useMutation({
     mutationFn: () => api(`/api/projects/${projectId}/members`, { method: 'POST', body: { userId, projectRole } }),
@@ -126,7 +130,7 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
   const candidates = users.data?.filter((u) => u.active && !memberIds.has(u.id)) ?? [];
 
   return (
-    <Card title="Equipo">
+    <Card title="Equipo" actions={canEdit && <Button variant="ghost" onClick={() => setManagingRoles(true)}>Gestionar roles</Button>}>
       {members.isPending ? (
         <Loading />
       ) : members.isError ? (
@@ -136,13 +140,14 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
       ) : (
         <ul className="divide-y divide-line">
           {members.data.map((member) => (
-            <li key={member.userId} className="flex items-center justify-between gap-3 py-2 text-sm">
-              <span>
+            <li key={member.userId} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <span className="min-w-0 [overflow-wrap:anywhere]">
                 <span className="font-medium text-ink">{member.active === false ? `${member.name} (inactivo)` : member.name}</span>
                 <span className="text-ink-soft"> · {member.projectRole || LABELS.role[member.role]}</span>
               </span>
               {canEdit && (
-                <span className="flex items-center gap-1">
+                <span className="flex flex-wrap items-center gap-1">
+                  <Button variant="ghost" aria-label={`Cambiar rol de ${member.name}`} onClick={() => setEditingRole(member)}>Rol</Button>
                   {member.hourlyRateCents !== undefined && (
                     <Button variant="ghost" aria-label={`Tarifa y capacidad de ${member.name}`} onClick={() => setRating(member)}>
                       Tarifa
@@ -158,7 +163,7 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
         </ul>
       )}
       {canEdit && (
-        <form onSubmit={submit} className="mt-4 grid items-end gap-3 border-t border-line pt-4 sm:grid-cols-[1fr_1fr_auto]" noValidate>
+        <form onSubmit={submit} className="mt-4 grid items-end gap-3 border-t border-line pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" noValidate>
           <FormField label="Añadir persona" error={errors.fields.userId}>
             <select className={inputClass} value={userId} onChange={(e) => setUserId(e.target.value)}>
               <option value="">Selecciona…</option>
@@ -170,17 +175,22 @@ export function MembersPanel({ projectId, canEdit }: { projectId: string; canEdi
             </select>
           </FormField>
           <FormField label="Rol en el proyecto" error={errors.fields.projectRole}>
-            <input className={inputClass} value={projectRole} onChange={(e) => setProjectRole(e.target.value)} />
+            <select className={inputClass} value={projectRole} onChange={(e) => setProjectRole(e.target.value)}>
+              <option value="">Sin rol</option>
+              {roles.data?.map((role) => <option key={role.id} value={role.name}>{role.name}</option>)}
+            </select>
           </FormField>
-          <Button type="submit" variant="secondary" disabled={add.isPending}>
+          <Button type="submit" variant="secondary" disabled={add.isPending} className="sm:col-span-2 sm:justify-self-end">
             Añadir al equipo
           </Button>
-          <div className="sm:col-span-3">
+          <div className="sm:col-span-2">
             <FormMessage message={errors.message} />
           </div>
         </form>
       )}
       {rating && <RateDialog projectId={projectId} member={rating} onClose={() => setRating(null)} />}
+      {editingRole && <MemberRoleDialog projectId={projectId} member={editingRole} roles={roles.data ?? []} onClose={() => setEditingRole(null)} />}
+      {managingRoles && <ProjectRolesDialog projectId={projectId} roles={roles.data ?? []} onClose={() => setManagingRoles(false)} />}
       {removing && <RemoveMemberDialog projectId={projectId} member={removing} onClose={() => setRemoving(null)} />}
     </Card>
   );

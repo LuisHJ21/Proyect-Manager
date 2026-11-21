@@ -7,9 +7,10 @@ import { weightedProgress } from '../domain/indicators';
 import { countTasksOutside, isWithinProject, type ProjectRange } from '../domain/projectDates';
 import { fieldError } from '../errors';
 import { sanitizeFields } from '../richText';
-import { removeAfterDelete } from '../storage/fileStore';
+import { queueFileDeletion, removeAfterDelete } from '../storage/fileStore';
 import { activePauseOf } from './projectPause';
 import { loadProjectSummaries } from './projectStats';
+import { groupByProject } from '../domain/groupByProject';
 import { leafWhere } from '../domain/wbs';
 
 export function projectRoutes(app: App) {
@@ -27,8 +28,9 @@ export function projectRoutes(app: App) {
       where: { projectId: { in: projects.map((p) => p.id) }, ...leafWhere },
       select: { projectId: true, progress: true, plannedCostCents: true, startDate: true, dueDate: true, estimatedHours: true },
     });
+    const tasksByProject = groupByProject(tasks);
     const progressOf = (projectId: string) =>
-      weightedProgress(tasks.filter((t) => t.projectId === projectId).map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours) })));
+      weightedProgress((tasksByProject.get(projectId) ?? []).map((t) => ({ ...t, plannedCostCents: Number(t.plannedCostCents), estimatedHours: t.estimatedHours === null ? null : Number(t.estimatedHours) })));
     const summaries = isPm ? await loadProjectSummaries(prisma, projects, c.var.deps.today()) : null;
     return c.json(projects.map(({ members, ...project }) => {
       const summary = summaries?.get(project.id);
@@ -49,7 +51,7 @@ export function projectRoutes(app: App) {
     const input = createProjectSchema.parse(sanitizeFields(await readBody(c), ['description']));
     // Quien crea el proyecto queda como miembro para poder asignarse tareas.
     const project = await prisma.project.create({
-      data: { ...input, charter: { create: {} }, members: { create: { userId: user.id, projectRole: 'Project Manager' } } },
+      data: { ...input, charter: { create: {} }, roles: { create: { name: 'Project Manager' } }, members: { create: { userId: user.id, projectRole: 'Project Manager' } } },
     });
     return c.json(toProjectDto(project, true), 201);
   });
@@ -81,8 +83,12 @@ export function projectRoutes(app: App) {
       throw fieldError('confirmName', 'Escribe el nombre exacto del proyecto para confirmar');
     }
     const attachments = await prisma.attachment.findMany({ where: { projectId: project.id }, select: { storedName: true } });
-    await prisma.project.delete({ where: { id: project.id } });
-    await removeAfterDelete(c.var.deps.files, attachments.map((a) => a.storedName));
+    const storedNames = attachments.map((a) => a.storedName);
+    await prisma.$transaction(async (tx) => {
+      await queueFileDeletion(tx, storedNames);
+      await tx.project.delete({ where: { id: project.id } });
+    });
+    await removeAfterDelete(prisma, c.var.deps.files, storedNames);
     return c.json({ ok: true });
   });
 }

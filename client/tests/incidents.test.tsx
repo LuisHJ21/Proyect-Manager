@@ -213,7 +213,9 @@ describe('reportar desde una tarea', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Reportar incidente' }));
     const dialog = within(screen.getByRole('dialog'));
-    expect(dialog.getByLabelText('Tarea (opcional)')).toHaveValue('t1');
+    expect(dialog.getByLabelText('Tarea')).toHaveValue('Construcción');
+    expect(dialog.getByLabelText('Tarea')).toHaveAttribute('readonly');
+    expect(dialog.queryByRole('combobox', { name: 'Tarea' })).not.toBeInTheDocument();
     await user.type(dialog.getByLabelText('Título'), 'Falla');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
     await waitFor(() => expect(api.calls.find((c) => c.key === `POST ${url}`)?.body).toMatchObject({ taskId: 't1' }));

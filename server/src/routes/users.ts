@@ -11,13 +11,12 @@ import { readBody, type App, type Ctx } from '../http';
 /** Trabajo sin terminar de una persona en proyectos activos: lo que impide pasarla a Observador. */
 async function countOpenWork(prisma: PrismaClient, userId: string) {
   const activeProject = { status: { in: [...ACTIVE_PROJECT_STATUS] } };
-  const [tasks, steps, risks, incidents] = await Promise.all([
+  const [tasks, risks, incidents] = await Promise.all([
     prisma.taskAssignee.count({ where: { userId, task: { status: { not: 'DONE' }, project: activeProject } } }),
-    prisma.taskStep.count({ where: { assigneeId: userId, done: false, task: { project: activeProject } } }),
     prisma.risk.count({ where: { ownerId: userId, status: { not: 'CLOSED' }, project: activeProject } }),
     prisma.incident.count({ where: { ownerId: userId, status: { in: ['OPEN', 'IN_PROGRESS'] }, project: activeProject } }),
   ]);
-  return { tasks, steps, risks, incidents };
+  return { tasks, steps: 0, risks, incidents };
 }
 
 export function userRoutes(app: App) {

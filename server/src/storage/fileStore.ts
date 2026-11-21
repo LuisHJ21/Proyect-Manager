@@ -1,4 +1,5 @@
 import type { Readable } from 'node:stream';
+import type { Prisma, PrismaClient } from '@prisma/client';
 
 /** Dirección a la que el navegador envía el archivo, sin pasar por la API. */
 export type UploadTarget = { url: string; method: 'PUT'; headers: Record<string, string> };
@@ -20,9 +21,15 @@ export interface FileStore {
  * Borra los archivos de registros que ya se eliminaron. Si el almacén falla, lo anota en el registro
  * y sigue: el borrado en la base ya ocurrió y la petición no debe responder como fallida.
  */
-export async function removeAfterDelete(files: FileStore, storedNames: string[]): Promise<void> {
+export async function queueFileDeletion(tx: Prisma.TransactionClient, storedNames: string[]): Promise<void> {
+  if (storedNames.length) await tx.fileDeletion.createMany({ data: storedNames.map((storedName) => ({ storedName })), skipDuplicates: true });
+}
+
+export async function removeAfterDelete(prisma: PrismaClient, files: FileStore, storedNames: string[]): Promise<void> {
+  if (!storedNames.length) return;
   try {
     await files.remove(storedNames);
+    await prisma.fileDeletion.deleteMany({ where: { storedName: { in: storedNames } } });
   } catch (error) {
     console.error(`No se pudieron borrar ${storedNames.length} archivos del almacén: ${storedNames.join(', ')}`, error);
   }

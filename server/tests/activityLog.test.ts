@@ -58,7 +58,7 @@ describe('bitácora: registro automático de escrituras', () => {
   });
 
   it('borrar una tarea con pasos y comentarios deja un solo registro', async () => {
-    await ctx.makeStep(task.id, { assigneeId: ana.id });
+    await ctx.makeStep(task.id);
     await ctx.prisma.taskComment.create({ data: { taskId: task.id, authorId: ana.id, body: 'Hola' } });
     const before = (await logs()).length;
     expect((await ctx.as(pm).delete(`/api/tasks/${task.id}`)).statusCode).toBe(200);
@@ -68,11 +68,12 @@ describe('bitácora: registro automático de escrituras', () => {
   });
 
   it('pasos y comentarios', async () => {
-    const created = await ctx.as(pm).post(`/api/tasks/${task.id}/steps`, { title: 'Base', assigneeId: ana.id });
+    const created = await ctx.as(pm).post(`/api/tasks/${task.id}/steps`, { title: 'Base' });
     expect(created.statusCode).toBe(201);
     expect(await last()).toMatchObject({ entity: 'step', action: 'created', entityLabel: 'Construcción · Base' });
     await ctx.as(ana).patch(`/api/tasks/${task.id}/steps/${created.json().id}`, { done: true });
     expect((await last()).changes).toContainEqual({ field: 'done', from: false, to: true });
+    expect((await last()).changes).toContainEqual({ field: 'completedById', from: null, to: 'Ana' });
     await ctx.as(ana).post(`/api/tasks/${task.id}/comments`, { body: 'Avance listo' });
     expect(await last()).toMatchObject({ entity: 'comment', action: 'commented', entityLabel: 'Construcción', userId: ana.id });
   });

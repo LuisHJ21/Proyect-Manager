@@ -104,7 +104,7 @@ export function MilestonesPanel({
       emptyText="Aún no hay hitos."
       itemLabel={(item) => item.name}
       defaults={{ name: "", dueDate: "", status: "PENDING" }}
-      nameSuggestions={[]}
+      //nameSuggestions={[]}
       columns={[
         { header: "Hito", cell: (item) => item.name },
         { header: "Fecha límite", cell: (item) => item.dueDate },

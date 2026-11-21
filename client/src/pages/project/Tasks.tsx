@@ -13,6 +13,7 @@ import { taskPath } from '../../components/tasks/TaskCard';
 import { TaskList } from '../../components/tasks/TaskList';
 import { tasksKey } from '../../components/tasks/taskQueries';
 import { Timeline } from '../../components/tasks/Timeline';
+import { WbsGraph } from '../../components/tasks/WbsGraph';
 import { Button, EmptyState, Skeleton } from '../../components/ui';
 import { applyQuickFilter, type QuickFilter } from '../../lib/taskFilters';
 import { useProject } from './ProjectLayout';
@@ -22,6 +23,7 @@ import { csvFilename, csvMoney, downloadCsv, toCsv } from '../../lib/csv';
 const VIEWS = [
   { id: 'tablero', label: 'Tablero' },
   { id: 'lista', label: 'Lista' },
+  { id: 'edt', label: 'EDT' },
   { id: 'cronograma', label: 'Cronograma' },
 ] as const;
 
@@ -137,6 +139,8 @@ export function TasksPage() {
             Limpiar filtro
           </Button>
         </EmptyState>
+      ) : view === 'edt' ? (
+        <WbsGraph tasks={tasks.data ?? []} />
       ) : view === 'tablero' ? (
         <KanbanBoard tasks={visible} canMove={canMove} onMove={moveTask} />
       ) : view === 'cronograma' ? (

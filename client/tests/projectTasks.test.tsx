@@ -96,11 +96,24 @@ describe('pestaña de tareas', () => {
     expect(main.queryByRole('button', { name: 'Nueva tarea' })).not.toBeInTheDocument();
   });
 
-  it('las vistas son Tablero, Lista y Cronograma', async () => {
+  it('las vistas incluyen la EDT gráfica', async () => {
     mockApi(routes(pmUser));
     renderApp('/proyectos/p1/tareas');
     const group = within(await screen.findByRole('group', { name: 'Vista de tareas' }));
-    for (const name of ['Tablero', 'Lista', 'Cronograma']) expect(group.getByRole('button', { name })).toBeInTheDocument();
+    for (const name of ['Tablero', 'Lista', 'EDT', 'Cronograma']) expect(group.getByRole('button', { name })).toBeInTheDocument();
+  });
+
+  it('la EDT gráfica muestra padres, subtareas y enlaces al detalle', async () => {
+    mockApi(routes(pmUser, [
+      task({ id: 'parent', title: 'Diseño', wbsCode: '1', isSummary: true, childCount: 1 }),
+      task({ id: 'child', title: 'Maquetas', wbsCode: '1.1', parentId: 'parent' }),
+    ]));
+    renderApp('/proyectos/p1/tareas?vista=edt');
+    const graph = within(await screen.findByRole('region', { name: 'Gráfico de la EDT' }));
+    expect(graph.getByText('1')).toBeInTheDocument();
+    expect(graph.getByText('1.1')).toBeInTheDocument();
+    expect(graph.getByRole('link', { name: 'Diseño' })).toHaveAttribute('href', '/proyectos/p1/tareas/parent');
+    expect(graph.getByRole('link', { name: 'Maquetas' })).toHaveAttribute('href', '/proyectos/p1/tareas/child');
   });
 
   it('?vista=kanban abre el Tablero', async () => {

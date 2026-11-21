@@ -23,6 +23,7 @@ import { PerformancePage } from './pages/project/Performance';
 import { AttachmentsPage, BudgetPage, RisksPage, StakeholdersPage } from './pages/project/Registers';
 import { SummaryPage } from './pages/project/Summary';
 import { TaskDetailPage } from './pages/project/TaskDetail';
+import { MilestonesPage } from './components/project/PlanningPanels';
 import { TasksPage } from './pages/project/Tasks';
 
 export function AppRoutes() {
@@ -41,6 +42,7 @@ export function AppRoutes() {
             <Route path="resumen" element={<SummaryPage />} />
             <Route path="acta" element={<CharterPage />} />
             <Route path="tareas" element={<TasksPage />} />
+            <Route path="hitos" element={<MilestonesPage />} />
             <Route path="tareas/:taskId" element={<TaskDetailPage />} />
             <Route path="anexos" element={<AttachmentsPage />} />
             <Route path="lecciones" element={<LessonsPage />} />

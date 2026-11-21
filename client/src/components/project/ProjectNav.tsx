@@ -39,6 +39,7 @@ export const PROJECT_GROUPS: { title: string; items: Item[] }[] = [
       { to: 'acta', label: 'Acta', section: 'planning', Icon: ScrollText },
       { to: 'requisitos', label: 'Requisitos', section: 'requirements', Icon: ListChecks },
       { to: 'tareas', label: 'Tareas', section: 'tasks', Icon: SquareCheckBig },
+      { to: 'hitos', label: 'Hitos', section: 'planning', Icon: Flag },
       { to: 'entregables', label: 'Entregables', section: 'deliverables', Icon: Package },
     ],
   },

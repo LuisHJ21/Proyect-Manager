@@ -3,6 +3,7 @@ import type { Milestone, Objective } from '../../api/types';
 import { DetailList, RegisterTable, type Option } from '../RegisterTable';
 import { RichTextClamp, RichTextView } from '../richText/RichTextView';
 import { Badge } from '../ui';
+import { useProject } from '../../pages/project/ProjectLayout';
 
 const options = <T extends string>(values: readonly T[], labels: Record<T, string>): Option[] =>
   values.map((value) => ({ value, label: labels[value] }));
@@ -65,6 +66,13 @@ export function MilestonesPanel({ projectId, canEdit }: { projectId: string; can
       emptyText="Aún no hay hitos."
       itemLabel={(item) => item.name}
       defaults={{ name: '', dueDate: '', status: 'PENDING' }}
+      nameSuggestions={[
+        'Acta y objetivos aprobados',
+        'Plan de entrega acordado',
+        'Primer resultado validado',
+        'Entrega final aceptada',
+        'Cierre y transferencia completados',
+      ]}
       columns={[
         { header: 'Hito', cell: (item) => item.name },
         { header: 'Fecha límite', cell: (item) => item.dueDate },
@@ -85,4 +93,9 @@ export function MilestonesPanel({ projectId, canEdit }: { projectId: string; can
       ]}
     />
   );
+}
+
+export function MilestonesPage() {
+  const { project, isPm, readOnly } = useProject();
+  return <MilestonesPanel projectId={project.id} canEdit={isPm && !readOnly} />;
 }

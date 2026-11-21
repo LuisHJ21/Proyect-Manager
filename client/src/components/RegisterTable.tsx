@@ -62,6 +62,7 @@ type Props<T extends { id: string }> = {
   detail?: { title: (item: T) => string; render: (item: T) => ReactNode };
   /** Botón «Exportar CSV» con las filas que la página ya tiene. */
   csv?: { filename: () => string; columns: CsvColumn<T>[] };
+  nameSuggestions?: readonly string[];
 };
 
 export const registerKey = (projectId: string, path: string) => ['project', projectId, path];
@@ -165,13 +166,14 @@ function RegisterForm({
 
 /** Lista con alta, edición y baja para los registros de un proyecto. */
 export function RegisterTable<T extends { id: string }>(props: Props<T>) {
-  const { projectId, path, title, singular, canEdit, columns, fields, defaults, emptyText, normalize, itemLabel, onChanged, detail, csv } = props;
+  const { projectId, path, title, singular, canEdit, columns, fields, defaults, emptyText, normalize, itemLabel, onChanged, detail, csv, nameSuggestions } = props;
   const queryClient = useQueryClient();
   const toast = useToast();
   const key = registerKey(projectId, path);
   const base = `/api/projects/${projectId}/${path}`;
   const list = useQuery({ queryKey: key, queryFn: () => api<T[]>(base) });
   const [editing, setEditing] = useState<T | 'new' | null>(null);
+  const [suggestedName, setSuggestedName] = useState('');
   // Tras un choque se vuelve a montar el formulario con la versión guardada y el aviso.
   const [conflict, setConflict] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -217,7 +219,7 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
     await refresh();
   };
 
-  const newButton = canEdit ? <Button variant="secondary" onClick={() => setEditing('new')}>{`Añadir ${singular}`}</Button> : undefined;
+  const newButton = canEdit ? <Button variant="secondary" onClick={() => { setSuggestedName(''); setEditing('new'); }}>{`Añadir ${singular}`}</Button> : undefined;
   const csvButton =
     csv && list.data && list.data.length > 0 ? (
       <Button variant="ghost" onClick={() => downloadCsv(csv.filename(), toCsv(csv.columns, list.data!))}>
@@ -233,6 +235,14 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
 
   return (
     <Card title={title} actions={actions}>
+      {canEdit && nameSuggestions && (
+        <div className="mb-4 rounded-lg bg-raised p-3 text-sm">
+          <p className="mb-2 text-ink-soft">Puntos de control sugeridos: adapta el nombre y elige la fecha de cada hito.</p>
+          <div className="flex flex-wrap gap-2">
+            {nameSuggestions.map((name) => <Button key={name} variant="ghost" aria-label={`Usar ${name}`} onClick={() => { setSuggestedName(name); setEditing('new'); }}>{name}</Button>)}
+          </div>
+        </div>
+      )}
       {list.isPending ? (
         <Loading />
       ) : list.isError ? (
@@ -295,11 +305,12 @@ export function RegisterTable<T extends { id: string }>(props: Props<T>) {
           notice={conflict ? EDIT_CONFLICT_NOTICE : undefined}
           title={editing === 'new' ? `Añadir ${singular}` : `Editar ${singular}`}
           fields={fields}
-          initial={editing === 'new' ? defaults : (editing as Values)}
+          initial={editing === 'new' ? { ...defaults, name: suggestedName } : (editing as Values)}
           normalize={normalize}
           onSubmit={save}
           onClose={() => {
             setEditing(null);
+            setSuggestedName('');
             setConflict(false);
           }}
         />

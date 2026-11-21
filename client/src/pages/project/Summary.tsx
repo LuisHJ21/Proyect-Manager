@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { CalendarDays, Flag, Network, SquareCheckBig } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '../../api/client';
 import type { Indicators, Project, ProjectPauseEntry } from '../../api/types';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -86,20 +85,6 @@ export function SummaryPage() {
 
   return (
     <div className="space-y-6">
-      <section aria-label="Accesos del proyecto" className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div><p className="text-xs font-semibold tracking-wide text-link uppercase">Espacio del proyecto</p><h2 className="mt-1 text-2xl font-semibold text-ink">Planifica y sigue el trabajo</h2><p className="mt-1 text-sm text-ink-soft">Abre la estructura, revisa el calendario o continúa con las tareas.</p></div>
-          {indicators.data && <div className="rounded-xl border border-line bg-raised px-4 py-3 text-right"><span className="text-xs text-ink-soft">Avance general</span><p className="text-2xl font-bold text-ink">{indicators.data.progress} %</p></div>}
-        </div>
-        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { to: 'edt', title: 'EDT', note: 'Estructura del trabajo', Icon: Network },
-            { to: 'cronograma', title: 'Cronograma', note: 'Fechas y dependencias', Icon: CalendarDays },
-            { to: 'tareas', title: 'Tareas', note: 'Avance del equipo', Icon: SquareCheckBig },
-            { to: 'hitos', title: 'Hitos', note: 'Puntos de control', Icon: Flag },
-          ].map(({ to, title, note, Icon }) => <Link key={to} to={`/proyectos/${project.id}/${to}`} className="group flex min-w-0 items-center gap-3 rounded-xl border border-line bg-raised p-3 text-ink transition-colors hover:border-link hover:bg-active"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-active text-link"><Icon size={20} aria-hidden="true" /></span><span className="min-w-0"><span className="block font-semibold">{title}</span><span className="block text-xs text-ink-soft">{note}</span></span></Link>)}
-        </div>
-      </section>
       <IndicatorCards query={indicators} currency={project.currency} />
       {/* Pantallas anchas: dos columnas; angostas, una sola. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]">

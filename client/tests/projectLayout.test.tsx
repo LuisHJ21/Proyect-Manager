@@ -91,9 +91,6 @@ describe('pestañas del proyecto', () => {
     renderApp('/proyectos/p1/resumen');
     expect(await screen.findByTestId('indicator-progress')).toHaveTextContent('50 %');
     expect(screen.queryByText('Presupuesto gastado')).not.toBeInTheDocument();
-    const shortcuts = within(screen.getByRole('region', { name: 'Accesos del proyecto' }));
-    expect(shortcuts.getByRole('link', { name: /EDT/ })).toHaveAttribute('href', '/proyectos/p1/edt');
-    expect(shortcuts.getByRole('link', { name: /Cronograma/ })).toHaveAttribute('href', '/proyectos/p1/cronograma');
   });
 
   it('el resumen reparte los bloques en una columna principal y una lateral', async () => {

@@ -6,12 +6,10 @@ import { Link, NavLink, Outlet, useMatch, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Project, Task } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
-import { useAccess } from '../auth/useAccess';
 import { projectColor } from '../lib/display';
 import { useIsMobile } from '../lib/useIsMobile';
 import { NotificationBell } from './NotificationBell';
 import { ProjectForm } from './project/ProjectForm';
-import { ProjectNav } from './project/ProjectNav';
 import { Avatar, Button } from './ui';
 
 type Destination = { to: string; label: string; Icon: ComponentType<{ size?: number; 'aria-hidden'?: boolean | 'true' }> };
@@ -76,17 +74,15 @@ function AccountActions() {
   );
 }
 
-function Sidebar({ links, openTasks, projects, showBell, projectId, overdueTasks }: { links: Destination[]; openTasks: number; projects: Project[]; showBell: boolean; projectId?: string; overdueTasks: number }) {
+function Sidebar({ links, openTasks, projects, showBell }: { links: Destination[]; openTasks: number; projects: Project[]; showBell: boolean }) {
   const { user } = useAuth();
-  const { canRead } = useAccess();
-  const currentProject = projects.find((project) => project.id === projectId);
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-5 border-r border-line bg-sidebar px-4 py-5">
+    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-6 border-r border-line bg-sidebar px-4 py-5">
       <div className="flex items-center justify-between gap-2">
         <Brand />
         {showBell && <NotificationBell />}
       </div>
-      <nav aria-label="Principal" className="shrink-0">
+      <nav aria-label="Principal" className="flex min-h-0 flex-1 flex-col gap-6">
         <div className="space-y-0.5">
           {links.map(({ to, label, Icon }) => {
             const isMyTasks = to === '/mis-tareas';
@@ -99,18 +95,7 @@ function Sidebar({ links, openTasks, projects, showBell, projectId, overdueTasks
             );
           })}
         </div>
-      </nav>
-      {projectId ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-3 border-t border-line pt-4">
-          <p className="px-2 text-[11px] font-semibold tracking-wide text-ink-soft uppercase">Proyecto</p>
-          <Link to={`/proyectos/${projectId}/resumen`} className="flex min-h-10 items-center gap-2 rounded-lg border border-control bg-surface px-3 text-sm font-semibold text-ink hover:bg-raised">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: projectColor(projectId) }} aria-hidden="true" />
-            <span className="truncate">{currentProject?.name ?? 'Proyecto actual'}</span>
-          </Link>
-          <ProjectNav canRead={canRead} overdueTasks={overdueTasks} compact={false} basePath={`/proyectos/${projectId}`} />
-        </div>
-      ) : (
-        <nav aria-label="Proyectos activos" className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           <p className="px-3 pb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">Proyectos activos</p>
           <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
             {projects.map((project) => (
@@ -120,8 +105,8 @@ function Sidebar({ links, openTasks, projects, showBell, projectId, overdueTasks
               </NavLink>
             ))}
           </div>
-        </nav>
-      )}
+        </div>
+      </nav>
       <div className="rounded-xl bg-surface p-3">
         <div className="mb-2 flex items-center gap-2.5">
           {user && <Avatar name={user.name} size="lg" />}
@@ -131,6 +116,44 @@ function Sidebar({ links, openTasks, projects, showBell, projectId, overdueTasks
           </div>
         </div>
         <AccountActions />
+      </div>
+    </aside>
+  );
+}
+
+/** Dentro de un proyecto: solo iconos, para dejar sitio al menú del proyecto. */
+function CompactSidebar({ links, openTasks, showBell }: { links: Destination[]; openTasks: number; showBell: boolean }) {
+  const { logout } = useAuth();
+  const railLink = ({ isActive }: { isActive: boolean }) =>
+    `relative flex h-11 w-11 items-center justify-center rounded-lg transition-colors duration-150 ${isActive ? 'bg-active text-link' : 'text-ink-nav hover:bg-raised'}`;
+  return (
+    <aside className="sticky top-0 flex h-screen w-16 shrink-0 flex-col items-center gap-4 border-r border-line bg-sidebar py-5">
+      <Link to="/" aria-label="Gestor PMBOK" title="Gestor PMBOK" className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
+        <LayoutDashboard size={18} aria-hidden="true" />
+      </Link>
+      <nav aria-label="Principal" className="flex flex-1 flex-col items-center gap-1">
+        {links.map(({ to, label, Icon }) => {
+          const name = to === '/mis-tareas' ? `${label}, ${openTasks} abiertas` : label;
+          return (
+            <NavLink key={to} to={to} className={railLink} aria-label={name} title={name}>
+              <Icon size={20} aria-hidden="true" />
+              {to === '/mis-tareas' && openTasks > 0 && (
+                <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 font-semibold text-white">
+                  {openTasks}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
+      </nav>
+      <div className="flex flex-col items-center gap-1">
+        {showBell && <NotificationBell />}
+        <NavLink to="/cambiar-contrasena" aria-label="Cambiar mi contraseña" title="Cambiar mi contraseña" className={railLink}>
+          <KeyRound size={18} aria-hidden="true" />
+        </NavLink>
+        <button type="button" aria-label="Cerrar sesión" title="Cerrar sesión" onClick={() => void logout()} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-ink-nav hover:bg-raised">
+          <LogOut size={18} aria-hidden="true" />
+        </button>
       </div>
     </aside>
   );
@@ -175,12 +198,9 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   // Dentro de un proyecto el menú general se compacta y la franja de «Nuevo proyecto» se oculta.
-  const projectMatch = useMatch('/proyectos/:id/*');
-  const inProject = projectMatch !== null;
-  const projectId = projectMatch?.params.id;
+  const inProject = useMatch('/proyectos/:id/*') !== null;
 
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<Project[]>('/api/projects') });
-  const projectIndicators = useQuery({ queryKey: ['project', projectId, 'indicators'], queryFn: () => api<{ overdueTasks: number }>(`/api/projects/${projectId}/indicators`), enabled: !!projectId && !isMobile });
   const openTasks = useOpenTaskCount();
   const links = isPm ? PM_LINKS : user?.role === 'OBSERVER' ? OBSERVER_LINKS : COLLABORATOR_LINKS;
   const activeProjects = projects.data?.filter((p) => ACTIVE.has(p.status)) ?? [];
@@ -189,7 +209,12 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-page">
-      {!isMobile && <Sidebar links={links} openTasks={openTasks} projects={activeProjects} showBell={showBell} projectId={projectId} overdueTasks={projectIndicators.data?.overdueTasks ?? 0} />}
+      {!isMobile &&
+        (inProject ? (
+          <CompactSidebar links={links} openTasks={openTasks} showBell={showBell} />
+        ) : (
+          <Sidebar links={links} openTasks={openTasks} projects={activeProjects} showBell={showBell} />
+        ))}
       <div className="flex min-w-0 flex-1 flex-col">
         {isMobile && (
           <header className="flex min-w-0 items-center justify-between gap-2 border-b border-line bg-sidebar px-3 py-3 sm:px-4">

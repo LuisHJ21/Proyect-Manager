@@ -36,9 +36,9 @@ describe('navegación por rol', () => {
   it('la barra lista solo proyectos activos, con enlace a su resumen', async () => {
     mockApi({ ...signedInAs(pmUser), 'GET /api/projects': [project('a', 'Activo'), project('c', 'Cerrado', 'CLOSED')] });
     renderApp('/usuarios');
-    const links = await nav();
-    expect(await links.findByRole('link', { name: 'Activo' })).toHaveAttribute('href', '/proyectos/a/resumen');
-    expect(links.queryByRole('link', { name: 'Cerrado' })).not.toBeInTheDocument();
+    const projects = within(await screen.findByRole('navigation', { name: 'Proyectos activos' }));
+    expect(await projects.findByRole('link', { name: 'Activo' })).toHaveAttribute('href', '/proyectos/a/resumen');
+    expect(projects.queryByRole('link', { name: 'Cerrado' })).not.toBeInTheDocument();
   });
 
   it('solo el PM tiene el botón de nuevo proyecto en la barra superior', async () => {
@@ -48,7 +48,7 @@ describe('navegación por rol', () => {
     expect(screen.queryByRole('button', { name: 'Nuevo proyecto' })).not.toBeInTheDocument();
   });
 
-  it('dentro de un proyecto el menú general se compacta: mismos enlaces, sin proyectos activos ni nuevo proyecto', async () => {
+  it('dentro de un proyecto hay un solo menú lateral con enlaces generales y secciones', async () => {
     mockApi({
       ...signedInAs(pmUser),
       'GET /api/projects': [project('p1', 'Portal')],
@@ -63,6 +63,7 @@ describe('navegación por rol', () => {
       expect(links.getByRole('link', { name })).toBeInTheDocument();
     }
     await screen.findByRole('navigation', { name: 'Secciones del proyecto' });
+    expect(screen.getAllByRole('complementary')).toHaveLength(1);
     expect(screen.queryByText('Proyectos activos')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Nuevo proyecto' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();

@@ -74,10 +74,10 @@ export const PROJECT_GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
-type Props = { canRead: (section: Section) => boolean; overdueTasks: number; compact: boolean };
+type Props = { canRead: (section: Section) => boolean; overdueTasks: number; compact: boolean; basePath?: string };
 
 /** Escritorio: grupos; móvil: selector de sección que cabe en el ancho disponible. */
-export function ProjectNav({ canRead, overdueTasks, compact }: Props) {
+export function ProjectNav({ canRead, overdueTasks, compact, basePath = '' }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const groups = PROJECT_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => canRead(i.section)) })).filter((g) => g.items.length > 0);
@@ -94,7 +94,7 @@ export function ProjectNav({ canRead, overdueTasks, compact }: Props) {
     return (
       <nav aria-label="Secciones del proyecto" data-print-hide className="mb-5">
         <label htmlFor="project-section" className="mb-1.5 block text-xs font-semibold text-ink-soft">Sección del proyecto</label>
-        <select id="project-section" className="min-h-11 w-full rounded-lg border border-control bg-surface px-3 text-sm font-semibold text-ink" value={selected} onChange={(event) => navigate(event.target.value)}>
+        <select id="project-section" className="min-h-11 w-full rounded-lg border border-control bg-surface px-3 text-sm font-semibold text-ink" value={selected} onChange={(event) => navigate(basePath ? `${basePath}/${event.target.value}` : event.target.value)}>
           {groups.map((group) => <optgroup key={group.title} label={group.title}>
             {group.items.map((item) => <option key={item.to} value={item.to}>{item.label}</option>)}
           </optgroup>)}
@@ -104,14 +104,14 @@ export function ProjectNav({ canRead, overdueTasks, compact }: Props) {
   }
 
   return (
-    <nav aria-label="Secciones del proyecto" data-print-hide className="sticky top-4 flex max-h-[calc(100vh-2rem)] flex-col gap-5 overflow-y-auto pb-2">
+    <nav aria-label="Secciones del proyecto" data-print-hide className="flex min-h-0 flex-col gap-5 overflow-y-auto pb-2">
       {groups.map((group) => (
         <div key={group.title} className="flex flex-col gap-0.5">
           <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-ink-soft uppercase">{group.title}</p>
           {group.items.map(({ Icon, ...item }) => (
             <NavLink
               key={item.to}
-              to={item.to}
+              to={basePath ? `${basePath}/${item.to}` : item.to}
               className={({ isActive }) =>
                 `flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-sm transition-colors duration-150 ${isActive ? 'bg-active font-semibold text-ink shadow-[inset_3px_0_0_var(--color-link)]' : 'text-ink-nav hover:bg-raised'}`
               }

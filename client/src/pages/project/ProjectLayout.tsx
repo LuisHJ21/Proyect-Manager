@@ -59,13 +59,8 @@ export function ProjectLayout() {
   const sectionLabel = PROJECT_GROUPS.flatMap((group) => group.items).find((item) => item.to === section)?.label ?? (location.pathname.includes('/tareas/') ? 'Tarea' : null);
 
   return (
-    <div className="flex flex-col gap-8 md:flex-row md:items-start">
-      {!isMobile && (
-        <aside aria-label="Menú del proyecto" className="w-56 shrink-0 self-stretch border-r border-line pr-4">
-          <ProjectNav canRead={canRead} overdueTasks={indicators.data?.overdueTasks ?? 0} compact={false} />
-        </aside>
-      )}
-      <div className="min-w-0 flex-1">
+    <div className="min-w-0">
+      <div className="min-w-0">
         <header className="mb-6 flex flex-wrap items-end gap-x-4 gap-y-3 border-b border-line pb-5">
           <div className="min-w-0">
             <p className="text-[13px] text-ink-soft [overflow-wrap:anywhere]">

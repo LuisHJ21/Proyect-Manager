@@ -1,4 +1,4 @@
-import { LABELS, PRIORITY, type Priority } from '@pm/shared';
+import { addDays, LABELS, PRIORITY, type Priority } from '@pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api, EDIT_CONFLICT_NOTICE, isEditConflict } from '../../api/client';
@@ -25,19 +25,19 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const project = useQuery({ queryKey: ['project', projectId, 'detail'], queryFn: () => api<Project>(`/api/projects/${projectId}`) });
   const allTasks = useQuery({ queryKey: tasksKey(projectId), queryFn: () => api<Task[]>(`/api/projects/${projectId}/tasks`) });
   const deliverables = useQuery({ queryKey: deliverablesKey(projectId), queryFn: () => api<DeliverableRow[]>(`/api/projects/${projectId}/deliverables`) });
-  // Una tarea padre no tiene trabajo propio: fechas, costo y responsables salen de sus subtareas.
+  // Las fechas de una tarea padre son límites fijos para sus subtareas.
   const isSummary = task?.isSummary ?? false;
-  const limits = { min: project.data?.startDate ?? undefined, max: project.data?.endDate ?? undefined };
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
   const [priority, setPriority] = useState<Priority>(task?.priority ?? 'MEDIUM');
-  const [startDate, setStartDate] = useState(task?.startDate ?? '');
-  const [dueDate, setDueDate] = useState(task?.dueDate ?? '');
+  const [startDate, setStartDate] = useState((isSummary ? task?.windowStartDate : task?.startDate) ?? '');
+  const [dueDate, setDueDate] = useState((isSummary ? task?.windowEndDate : task?.dueDate) ?? '');
   const [milestoneId, setMilestoneId] = useState(task?.milestoneId ?? '');
   const [plannedCostCents, setPlannedCostCents] = useState<number | null>(task?.plannedCostCents ?? 0);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(task?.assignees.map((a) => a.id) ?? []);
   const [hours, setHours] = useState(task?.estimatedHours != null ? String(task.estimatedHours).replace('.', ',') : '');
   const [parentId, setParentId] = useState(task?.parentId ?? '');
+  const [predecessorIds, setPredecessorIds] = useState<string[]>([]);
   const [deliverableId, setDeliverableId] = useState(task?.deliverableId ?? '');
   const [version, setVersion] = useState(task?.version);
 
@@ -45,6 +45,14 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   const descendants = new Set<string>(task ? [task.id] : []);
   for (const t of allTasks.data ?? []) if (t.parentId && descendants.has(t.parentId)) descendants.add(t.id);
   const parentOptions = (allTasks.data ?? []).filter((t) => !descendants.has(t.id));
+  const parent = parentOptions.find((t) => t.id === parentId);
+  const parentStart = parent?.isSummary ? parent.windowStartDate : parent?.startDate;
+  const parentEnd = parent?.isSummary ? parent.windowEndDate : parent?.dueDate;
+  const predecessors = (allTasks.data ?? []).filter((t) => !t.isSummary && t.id !== task?.id);
+  const predecessorMin = predecessors.filter((t) => predecessorIds.includes(t.id) && t.dueDate).map((t) => addDays(t.dueDate!, 1)).sort().at(-1);
+  const min = [project.data?.startDate, parentStart, predecessorMin].filter(Boolean).sort().at(-1);
+  const max = [project.data?.endDate, parentEnd].filter(Boolean).sort()[0];
+  const limits = { min: min || undefined, max: max || undefined };
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
 
@@ -61,8 +69,8 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
     setTitle(fresh.title);
     setDescription(fresh.description);
     setPriority(fresh.priority);
-    setStartDate(fresh.startDate ?? '');
-    setDueDate(fresh.dueDate ?? '');
+    setStartDate((fresh.isSummary ? fresh.windowStartDate : fresh.startDate) ?? '');
+    setDueDate((fresh.isSummary ? fresh.windowEndDate : fresh.dueDate) ?? '');
     setMilestoneId(fresh.milestoneId ?? '');
     setPlannedCostCents(fresh.plannedCostCents ?? 0);
     setAssigneeIds(fresh.assignees.map((a) => a.id));
@@ -87,7 +95,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
       setErrors({ fields: { estimatedHours: 'Escribe las horas, por ejemplo 12,5' } });
       return;
     }
-    const own = isSummary ? {} : { startDate: startDate || null, dueDate: dueDate || null, plannedCostCents, assigneeIds, estimatedHours };
+    const own = isSummary ? { startDate: startDate || null, dueDate: dueDate || null } : { startDate: startDate || null, dueDate: dueDate || null, plannedCostCents, assigneeIds, estimatedHours };
     // Padre y entregable solo viajan si cambiaron.
     const tree = {
       ...((parentId || null) !== (task?.parentId ?? null) ? { parentId: parentId || null } : {}),
@@ -98,7 +106,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
       if (task) {
         await api(`/api/tasks/${task.id}`, { method: 'PATCH', body: { ...fields, version } });
       } else {
-        await api(`/api/projects/${projectId}/tasks`, { method: 'POST', body: fields });
+        await api(`/api/projects/${projectId}/tasks`, { method: 'POST', body: { ...fields, predecessorIds } });
       }
       await refreshTaskData(queryClient, projectId, task?.id);
       onClose();
@@ -140,6 +148,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
             ))}
           </select>
         </FormField>
+        {parentId && <p className="text-sm text-ink-soft sm:col-span-2">Intervalo permitido para subtareas: {parentStart ?? project.data?.startDate ?? 'sin inicio'} a {parentEnd ?? project.data?.endDate ?? 'sin fin'}.</p>}
         <FormField label="Entregable" error={errors.fields.deliverableId}>
           <select className={inputClass} value={deliverableId} onChange={(e) => setDeliverableId(e.target.value)}>
             <option value="">Sin entregable</option>
@@ -150,12 +159,13 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
             ))}
           </select>
         </FormField>
-        <FormField label="Fecha de inicio" error={errors.fields.startDate} hint={isSummary ? SUMMARY_NOTE : undefined}>
-          <input className={inputClass} type="date" {...limits} value={startDate} disabled={isSummary} onChange={(e) => setStartDate(e.target.value)} />
+        <FormField label="Fecha de inicio" error={errors.fields.startDate} hint={isSummary ? 'Límite inicial para subtareas' : predecessorMin ? `Después de las predecesoras: desde ${predecessorMin}` : undefined}>
+          <input className={inputClass} type="date" {...limits} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </FormField>
-        <FormField label="Fecha límite" error={errors.fields.dueDate} hint={isSummary ? SUMMARY_NOTE : undefined}>
-          <input className={inputClass} type="date" {...limits} value={dueDate} disabled={isSummary} onChange={(e) => setDueDate(e.target.value)} />
+        <FormField label="Fecha límite" error={errors.fields.dueDate} hint={isSummary ? 'Límite final para subtareas' : undefined}>
+          <input className={inputClass} type="date" {...limits} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </FormField>
+        {!task && <fieldset className="sm:col-span-2"><legend className="mb-1 text-sm font-medium text-ink-nav">Predecesoras</legend><p className="mb-2 text-sm text-ink-soft">Esta tarea podrá empezar después de que terminen las seleccionadas.</p><div className="max-h-36 space-y-1 overflow-y-auto">{predecessors.map((item) => <label key={item.id} className="flex items-center gap-2 text-sm text-ink-nav"><input type="checkbox" checked={predecessorIds.includes(item.id)} onChange={() => setPredecessorIds((ids) => ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id])} />{item.wbsCode} {item.title}</label>)}</div>{predecessors.length === 0 && <p className="text-sm text-ink-soft">No hay tareas disponibles.</p>}{errors.fields.predecessorIds && <p className="mt-1 text-xs text-risk-fg">{errors.fields.predecessorIds}</p>}</fieldset>}
         <FormField label="Prioridad" error={errors.fields.priority}>
           <select className={inputClass} value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
             {PRIORITY.map((value) => (

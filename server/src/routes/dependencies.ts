@@ -1,7 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
-import { dependencySchema, updateDependencySchema } from '@pm/shared';
+import { dependencySchema, updateDependencySchema, type DependencyType } from '@pm/shared';
 import { readBody, type App, type Ctx } from '../http';
 import { findDependencyCycle } from '../domain/dependencies';
+import { assertDependencyDate } from '../domain/dependencyDates';
 import { AppError, fieldError, forbidden, notFound } from '../errors';
 import { taskInclude, toTaskDto } from './taskDto';
 import { getTaskAccess } from './tasks';
@@ -28,7 +29,7 @@ export function dependencyRoutes(app: App) {
     await assertNotSummary(prisma, successor.id);
     await assertNotSummary(prisma, predecessorId);
 
-    const tasks = await prisma.task.findMany({ where: { projectId: successor.projectId }, select: { id: true, title: true } });
+    const tasks = await prisma.task.findMany({ where: { projectId: successor.projectId }, select: { id: true, title: true, startDate: true, dueDate: true } });
     const titles = new Map(tasks.map((t) => [t.id, t.title]));
     if (!titles.has(predecessorId)) throw fieldError('predecessorId', 'La predecesora debe pertenecer al mismo proyecto');
 
@@ -48,6 +49,9 @@ export function dependencyRoutes(app: App) {
       );
     }
 
+    const predecessor = tasks.find((task) => task.id === predecessorId)!;
+    assertDependencyDate(type, lagDays, predecessor, successor, predecessor.title);
+
     await prisma.taskDependency.create({ data: { predecessorId, successorId: successor.id, type, lagDays } });
     return c.json(await loadDto(c.var.deps.prisma, successor.id), 201);
   });
@@ -56,8 +60,10 @@ export function dependencyRoutes(app: App) {
     const { prisma } = c.var.deps;
     const successor = await requireTaskPm(c, c.req.param('id'));
     const where = { predecessorId_successorId: { predecessorId: c.req.param('predecessorId'), successorId: successor.id } };
-    if (!(await prisma.taskDependency.findUnique({ where }))) throw notFound('Dependencia no encontrada');
+    const existing = await prisma.taskDependency.findUnique({ where, include: { predecessor: { select: { title: true, startDate: true, dueDate: true } } } });
+    if (!existing) throw notFound('Dependencia no encontrada');
     const input = updateDependencySchema.parse(await readBody(c));
+    assertDependencyDate((input.type ?? existing.type) as DependencyType, input.lagDays ?? existing.lagDays, existing.predecessor, successor, existing.predecessor.title);
     await prisma.taskDependency.update({ where, data: input });
     return c.json(await loadDto(c.var.deps.prisma, successor.id));
   });

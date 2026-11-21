@@ -16,12 +16,13 @@ import { queueFileDeletion, removeAfterDelete } from '../storage/fileStore';
 import { getProjectAccess, requireProjectAccess } from '../auth/access';
 import { requireUser } from '../auth/guards';
 import { checkProgressChange, isBlocking } from '../domain/dependencies';
+import { assertDependencyDate, assertTaskDependencyDates } from '../domain/dependencyDates';
 import { isWithinProject, outsideProjectMessage, type ProjectRange } from '../domain/projectDates';
 import { AppError, editConflict, fieldError, forbidden, notFound } from '../errors';
 import { incidentAccess } from '../domain/incidents';
 import { notify } from '../notifications';
 import { taskInclude, toTaskDto } from './taskDto';
-import { assertDeliverable, assertNotSummary, assertParent, becomeSummary, inWbsOrder, isSummaryTask, loadTree, loadTrees, moveTask, nextPosition, SUMMARY_FIELD_MESSAGE } from './taskTree';
+import { assertChildrenWithinWindow, assertDeliverable, assertNotSummary, assertParent, assertParentDates, becomeSummary, inWbsOrder, isSummaryTask, loadTree, loadTrees, moveTask, nextPosition, SUMMARY_FIELD_MESSAGE } from './taskTree';
 import { leafWhere } from '../domain/wbs';
 
 type TaskParams = { Params: { id: string } };
@@ -106,23 +107,32 @@ export function taskRoutes(app: App) {
   app.post('/api/projects/:id/tasks', async (c) => {
     const { prisma } = c.var.deps;
     const project = await requireProjectAccess(c, c.req.param('id'), 'tasks', 'write');
-    const { assigneeIds, ...input } = createTaskSchema.parse(await readBody(c));
+    const { assigneeIds, predecessorIds, ...input } = createTaskSchema.parse(await readBody(c));
     assertDatesWithinProject(project, input);
     await assertMilestone(c.var.deps.prisma, project.id, input.milestoneId);
     const userIds = await assertAssignable(c.var.deps.prisma, project.id, assigneeIds, 'assigneeIds');
     await assertParent(prisma, { projectId: project.id }, input.parentId);
+    await assertParentDates(prisma, input.parentId, { startDate: input.startDate ?? null, dueDate: input.dueDate ?? null });
     await assertDeliverable(prisma, project.id, input.deliverableId);
+    const uniquePredecessors = [...new Set(predecessorIds)];
+    const predecessors = await prisma.task.findMany({ where: { id: { in: uniquePredecessors }, projectId: project.id }, select: { id: true, title: true, startDate: true, dueDate: true } });
+    if (predecessors.length !== uniquePredecessors.length) throw fieldError('predecessorIds', 'Selecciona tareas del mismo proyecto');
+    for (const predecessor of predecessors) {
+      await assertNotSummary(prisma, predecessor.id);
+      assertDependencyDate('FS', 0, predecessor, { startDate: input.startDate ?? null, dueDate: input.dueDate ?? null }, predecessor.title, 'startDate');
+    }
     const task = await prisma.$transaction(async (tx) => {
       const position = await nextPosition(tx, project.id, input.parentId ?? null);
       const created = await tx.task.create({
         data: { ...input, position, projectId: project.id, assignees: { create: userIds.map((userId) => ({ userId })) } },
         include: taskInclude,
       });
+      if (uniquePredecessors.length) await tx.taskDependency.createMany({ data: uniquePredecessors.map((predecessorId) => ({ predecessorId, successorId: created.id })) });
       await becomeSummary(tx, input.parentId);
       return created;
     });
     await notifyNewAssignees(c, task, [], userIds);
-    return c.json(toTaskDto(task, true, await loadTree(prisma, project.id)), 201);
+    return c.json(await loadDto(prisma, task.id, true), 201);
   });
 
   app.get('/api/me/tasks', async (c) => {
@@ -182,13 +192,12 @@ export function taskRoutes(app: App) {
     const { prisma } = c.var.deps;
     const task = await requireTaskPm(c, c.req.param('id'));
     const { status: _status, progress: _progress, assigneeIds, version, ...input } = updateTaskSchema.parse(await readBody(c));
-    if (await isSummaryTask(prisma, task.id)) {
+    const isSummary = await isSummaryTask(prisma, task.id);
+    if (isSummary) {
       // Una padre no tiene trabajo propio: estos campos salen de sus subtareas.
       const own: [string, boolean][] = [
         ['assigneeIds', (assigneeIds?.length ?? 0) > 0],
         ['plannedCostCents', (input.plannedCostCents ?? 0) > 0],
-        ['startDate', Boolean(input.startDate)],
-        ['dueDate', Boolean(input.dueDate)],
         ['estimatedHours', (input.estimatedHours ?? 0) > 0],
       ];
       const field = own.find(([, present]) => present)?.[0];
@@ -202,11 +211,25 @@ export function taskRoutes(app: App) {
       startDate: input.startDate === task.startDate ? undefined : input.startDate,
       dueDate: input.dueDate === task.dueDate ? undefined : input.dueDate,
     });
+    if (startDate !== task.startDate || dueDate !== task.dueDate) await assertTaskDependencyDates(prisma, task.id, { startDate, dueDate });
     await assertMilestone(c.var.deps.prisma, task.projectId, input.milestoneId);
     const userIds = assigneeIds && (await assertAssignable(c.var.deps.prisma, task.projectId, assigneeIds, 'assigneeIds', task.id));
     const before = userIds ? await assigneeIdsOf(prisma, task.id) : [];
     const parentChanged = input.parentId !== undefined && input.parentId !== task.parentId;
     if (parentChanged) await assertParent(prisma, task, input.parentId);
+    if (parentChanged || startDate !== task.startDate || dueDate !== task.dueDate) {
+      const nextParentId = input.parentId === undefined ? task.parentId : input.parentId;
+      await assertParentDates(prisma, nextParentId, { startDate, dueDate });
+      if (isSummary) await assertChildrenWithinWindow(prisma, task.id, { startDate, dueDate });
+      if (isSummary && parentChanged) {
+        const tree = await loadTree(prisma, task.projectId);
+        for (const [id, node] of tree.nodes) {
+          if (!node.ancestorIds.includes(task.id)) continue;
+          const descendant = tree.byId.get(id)!;
+          await assertParentDates(prisma, nextParentId, { startDate: descendant.startDate, dueDate: descendant.dueDate });
+        }
+      }
+    }
     await assertDeliverable(prisma, task.projectId, input.deliverableId);
     await prisma.$transaction(async (tx) => {
       // Al cambiar de padre, la tarea queda al final de sus nuevas hermanas.

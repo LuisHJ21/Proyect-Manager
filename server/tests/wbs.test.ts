@@ -39,6 +39,19 @@ describe('EDT: jerarquía de tareas', () => {
     expect(await codes()).toEqual({ Diseño: '1', Maquetas: '1.1', Guía: '1.2' });
   });
 
+  it('las fechas de hijas y nietas respetan los límites fijos de la padre', async () => {
+    const parent = await ctx.makeTask(project.id, { title: 'Fase', startDate: '2026-03-01', dueDate: '2026-03-31' });
+    const child = await create('Hija', parent.id);
+    const early = await ctx.as(pm).post(tasksUrl(), { title: 'Temprana', parentId: parent.id, startDate: '2026-02-28' });
+    expect(early.statusCode).toBe(400);
+    expect(early.json().error.fields.startDate).toBeTruthy();
+    expect((await patch(child.id, { dueDate: '2026-04-01' })).statusCode).toBe(400);
+    const grandchild = await create('Nieta', child.id);
+    expect((await patch(grandchild.id, { startDate: '2026-03-10', dueDate: '2026-03-20' })).statusCode).toBe(200);
+    expect((await patch(parent.id, { dueDate: '2026-03-15' })).statusCode).toBe(400);
+    expect((await ctx.as(pm).get(`/api/tasks/${parent.id}`)).json()).toMatchObject({ windowStartDate: '2026-03-01', windowEndDate: '2026-03-31' });
+  });
+
   it('la padre debe ser del mismo proyecto', async () => {
     const other = await ctx.makeProject();
     const foreign = await ctx.makeTask(other.id, { title: 'Ajena' });
@@ -143,17 +156,16 @@ describe('EDT: jerarquía de tareas', () => {
     });
     const SUMMARY = 'Una tarea con subtareas se actualiza a través de ellas';
 
-    it('rechaza responsables, costo y fechas en el formulario', async () => {
+    it('rechaza responsables y costo, pero permite fijar el intervalo', async () => {
       for (const [field, body] of [
         ['assigneeIds', { assigneeIds: [ana.id] }],
         ['plannedCostCents', { plannedCostCents: 100 }],
-        ['startDate', { startDate: '2026-12-01' }],
-        ['dueDate', { dueDate: '2026-12-02' }],
       ] as const) {
         const res = await patch(parent.id, body);
         expect(res.statusCode).toBe(400);
         expect(res.json().error.fields[field]).toBe('Se calcula con sus subtareas');
       }
+      expect((await patch(parent.id, { startDate: '2026-12-01', dueDate: '2026-12-02' })).statusCode).toBe(200);
       expect((await patch(parent.id, { title: 'Fase 1', priority: 'HIGH', milestoneId: null, deliverableId: null })).statusCode).toBe(200);
     });
 
@@ -240,24 +252,22 @@ describe('EDT: jerarquía de tareas', () => {
   });
 
   describe('hallazgos de la revisión final', () => {
-    it('al recibir su primera subtarea, la padre pierde sus fechas, avance y estado propios', async () => {
+    it('al recibir su primera subtarea, la padre conserva sus límites y pierde avance propio', async () => {
       await ctx.prisma.project.update({ where: { id: project.id }, data: { startDate: '2026-01-01', endDate: '2026-12-31' } });
       const t = await ctx.makeTask(project.id, { title: 'Fase', startDate: '2026-03-01', dueDate: '2026-03-31', progress: 40, status: 'IN_PROGRESS' });
       const child = await create('Hija', t.id);
-      expect(await ctx.prisma.task.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({ startDate: null, dueDate: null, progress: 0, status: 'TODO' });
-      // Las fechas guardadas ya no impiden mover el inicio del proyecto.
-      expect((await ctx.as(pm).patch(`/api/projects/${project.id}`, { startDate: '2026-03-15' })).statusCode).toBe(200);
-      // Si la última subtarea se va, la ex padre no recupera valores viejos.
+      expect(await ctx.prisma.task.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({ startDate: '2026-03-01', dueDate: '2026-03-31', progress: 0, status: 'TODO' });
+      expect((await ctx.as(pm).patch(`/api/projects/${project.id}`, { startDate: '2026-03-15' })).statusCode).toBe(400);
       expect((await ctx.as(pm).delete(`/api/tasks/${child.id}`)).statusCode).toBe(200);
       const back = (await ctx.as(pm).get(`/api/tasks/${t.id}`)).json();
-      expect(back).toMatchObject({ isSummary: false, startDate: null, dueDate: null, progress: 0 });
+      expect(back).toMatchObject({ isSummary: false, startDate: '2026-03-01', dueDate: '2026-03-31', progress: 0 });
     });
 
     it('también al mover una tarea bajo una hoja con fechas', async () => {
       const t = await ctx.makeTask(project.id, { title: 'Fase', startDate: '2026-03-01', dueDate: '2026-03-31' });
       const loose = await create('Suelta');
       expect((await patch(loose.id, { parentId: t.id })).statusCode).toBe(200);
-      expect(await ctx.prisma.task.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({ startDate: null, dueDate: null });
+      expect(await ctx.prisma.task.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({ startDate: '2026-03-01', dueDate: '2026-03-31' });
     });
 
     it('un hito ligado a una padre está listo cuando sus hojas están hechas', async () => {

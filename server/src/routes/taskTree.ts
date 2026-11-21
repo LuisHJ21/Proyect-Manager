@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { buildWbs, MAX_WBS_DEPTH, subtreeHeight, type WbsNode, type WbsTask } from '../domain/wbs';
 import { AppError, fieldError } from '../errors';
+import { isWithinProject } from '../domain/projectDates';
 import type { TaskTree } from './taskDto';
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -66,6 +67,34 @@ export async function assertParent(db: Db, task: { id?: string; projectId: strin
   }
 }
 
+/** Las fechas de una subtarea deben caber en las ventanas fijas de todas sus antecesoras. */
+export async function assertParentDates(db: Db, parentId: string | null | undefined, dates: { startDate: string | null; dueDate: string | null }) {
+  for (let id = parentId; id;) {
+    const parent = await db.task.findUniqueOrThrow({ where: { id }, select: { title: true, parentId: true, startDate: true, dueDate: true } });
+    for (const field of ['startDate', 'dueDate'] as const) {
+      const date = dates[field];
+      if (date && !isWithinProject(date, { startDate: parent.startDate, endDate: parent.dueDate })) {
+        throw fieldError(field, `La fecha debe estar dentro del intervalo de «${parent.title}» (${parent.startDate ?? 'sin inicio'} a ${parent.dueDate ?? 'sin fin'})`);
+      }
+    }
+    id = parent.parentId;
+  }
+}
+
+/** Impide estrechar la ventana de una padre dejando alguna subtarea fuera. */
+export async function assertChildrenWithinWindow(db: Db, taskId: string, dates: { startDate: string | null; dueDate: string | null }) {
+  const descendants = await db.task.findMany({ where: { parentId: taskId }, select: { id: true, title: true, startDate: true, dueDate: true } });
+  const stack = [...descendants];
+  while (stack.length) {
+    const child = stack.pop()!;
+    for (const field of ['startDate', 'dueDate'] as const) {
+      const date = child[field];
+      if (date && !isWithinProject(date, { startDate: dates.startDate, endDate: dates.dueDate })) throw fieldError(field, `El intervalo deja fuera a «${child.title}»`);
+    }
+    stack.push(...await db.task.findMany({ where: { parentId: child.id }, select: { id: true, title: true, startDate: true, dueDate: true } }));
+  }
+}
+
 /** Posición para una tarea que llega al final de sus hermanas. */
 export async function nextPosition(db: Db, projectId: string, parentId: string | null): Promise<number> {
   const last = await db.task.aggregate({ where: { projectId, parentId }, _max: { position: true } });
@@ -120,11 +149,11 @@ export async function assertDeliverable(db: Db, projectId: string, deliverableId
 }
 
 /**
- * Al recibir una subtarea, la padre deja de tener valores propios: fechas, avance y estado salen de
- * sus hojas. Se borran los guardados para que no bloqueen cambios ni vuelvan si se queda sin hijas.
+ * Al recibir una subtarea, la padre conserva sus fechas como intervalo fijo; avance y estado salen de
+ * sus hojas. Se borran los demás valores propios para que no reaparezcan si se queda sin hijas.
  * Sube la versión porque cambia lo que muestra su formulario.
  */
 export async function becomeSummary(db: Db, parentId: string | null | undefined): Promise<void> {
   if (!parentId) return;
-  await db.task.update({ where: { id: parentId }, data: { startDate: null, dueDate: null, progress: 0, status: 'TODO', estimatedHours: null, version: { increment: 1 } } });
+  await db.task.update({ where: { id: parentId }, data: { progress: 0, status: 'TODO', estimatedHours: null, version: { increment: 1 } } });
 }

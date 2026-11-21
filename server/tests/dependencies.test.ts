@@ -105,20 +105,42 @@ describe('dependencias', () => {
     expect(current.warnings).toContain('predecessor_not_done');
   });
 
-  it('una fecha de inicio anterior a la límite de la predecesora guarda y advierte', async () => {
+  it('rechaza una fecha de inicio anterior a la límite de la predecesora', async () => {
     const a = await ctx.makeTask(project.id, { dueDate: '2026-12-10' });
     const b = await ctx.makeTask(project.id, { startDate: '2026-12-05' });
     const res = await link(a, b);
-    expect(res.statusCode).toBe(201);
-    expect(res.json().warnings).toContain('date_conflict');
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.fields.startDate).toBeTruthy();
   });
 
-  it('fin a inicio: empezar el mismo día del fin advierte; al día siguiente no', async () => {
+  it('fin a inicio: empezar el mismo día del fin se rechaza; al día siguiente se admite', async () => {
     const a = await ctx.makeTask(project.id, { dueDate: '2026-12-10' });
     const b = await ctx.makeTask(project.id, { startDate: '2026-12-10' });
-    expect((await link(a, b)).json().warnings).toContain('date_conflict');
+    expect((await link(a, b)).statusCode).toBe(400);
     const c2 = await ctx.makeTask(project.id, { startDate: '2026-12-11' });
     expect((await link(a, c2)).json().warnings).toEqual([]);
+  });
+
+  it('crear una tarea con varias predecesoras valida la fecha y guarda los enlaces', async () => {
+    const a = await ctx.makeTask(project.id, { dueDate: '2026-12-10' });
+    const b = await ctx.makeTask(project.id, { dueDate: '2026-12-15' });
+    const url = `/api/projects/${project.id}/tasks`;
+    const bad = await ctx.as(pm).post(url, { title: 'Nueva', startDate: '2026-12-14', predecessorIds: [a.id, b.id] });
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().error.fields.startDate).toBeTruthy();
+    const good = await ctx.as(pm).post(url, { title: 'Nueva', startDate: '2026-12-16', predecessorIds: [a.id, b.id] });
+    expect(good.statusCode).toBe(201);
+    expect(good.json().predecessorIds).toEqual(expect.arrayContaining([a.id, b.id]));
+  });
+
+  it('no permite mover fechas de tareas enlazadas a un orden inválido', async () => {
+    const a = await ctx.makeTask(project.id, { dueDate: '2026-12-10' });
+    const b = await ctx.makeTask(project.id, { startDate: '2026-12-11' });
+    expect((await link(a, b)).statusCode).toBe(201);
+    const version = (await dto(b)).version;
+    expect((await ctx.as(pm).patch(`/api/tasks/${b.id}`, { version, startDate: '2026-12-10' })).statusCode).toBe(400);
+    const predecessorVersion = (await dto(a)).version;
+    expect((await ctx.as(pm).patch(`/api/tasks/${a.id}`, { version: predecessorVersion, dueDate: '2026-12-11' })).statusCode).toBe(400);
   });
 
   it('tipo y desfase: se guardan, se editan y se validan', async () => {

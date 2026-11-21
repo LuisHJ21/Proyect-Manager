@@ -6,7 +6,7 @@ import { apiError, mockApi, pmUser, renderApp, signedInAs } from './helpers';
 import { wbsTask } from './wbsFixtures';
 
 const project = { id: 'p1', name: 'Portal', description: '', status: 'EXECUTING', approach: 'AGILE', startDate: null, endDate: null, plannedBudgetCents: 0, currency: 'USD' };
-const P = wbsTask({ id: 'p', title: 'Diseño', wbsCode: '1', childCount: 2, isSummary: true, plannedCostCents: 400, startDate: '2026-03-01', dueDate: '2026-03-20' });
+const P = wbsTask({ id: 'p', title: 'Diseño', wbsCode: '1', childCount: 2, isSummary: true, plannedCostCents: 400, startDate: '2026-03-01', dueDate: '2026-03-20', windowStartDate: '2026-02-01', windowEndDate: '2026-03-31' });
 const A = wbsTask({ id: 'a', title: 'Maquetas', wbsCode: '1.1', parentId: 'p' });
 const B = wbsTask({ id: 'b', title: 'Guía', wbsCode: '1.2', parentId: 'p', position: 2 });
 const Q = wbsTask({ id: 'q', title: 'Construcción', wbsCode: '2', position: 2 });
@@ -34,6 +34,23 @@ const openForm = async (id: string) => {
 const optionNames = (select: HTMLElement) => within(select).getAllByRole('option').map((o) => o.textContent);
 
 describe('formulario de tarea con EDT', () => {
+  it('muestra el intervalo del padre y selecciona predecesoras al crear', async () => {
+    const created = wbsTask({ id: 'new', title: 'Nueva', parentId: 'p' });
+    const api = mockApi(routes(detail(A), { 'POST /api/projects/p1/tasks': created }));
+    renderApp('/proyectos/p1/tareas');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Nueva tarea' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.type(dialog.getByLabelText('Título'), 'Nueva');
+    await user.selectOptions(dialog.getByLabelText('Tarea padre'), 'p');
+    expect(dialog.getByText('Intervalo permitido para subtareas: 2026-02-01 a 2026-03-31.')).toBeInTheDocument();
+    expect(dialog.getByLabelText('Fecha de inicio')).toHaveAttribute('min', '2026-02-01');
+    expect(dialog.getByLabelText('Fecha límite')).toHaveAttribute('max', '2026-03-31');
+    await user.click(dialog.getByRole('checkbox', { name: '2 Construcción' }));
+    await user.click(dialog.getByRole('button', { name: 'Guardar tarea' }));
+    await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/projects/p1/tasks')?.body).toMatchObject({ parentId: 'p', predecessorIds: ['q'] }));
+  });
+
   it('la tarea padre excluye la propia tarea y sus descendientes', async () => {
     mockApi(routes(detail(P, { children: [{ id: 'a', title: 'Maquetas', wbsCode: '1.1' }, { id: 'b', title: 'Guía', wbsCode: '1.2' }] })));
     const { dialog } = await openForm('p');
@@ -63,17 +80,18 @@ describe('formulario de tarea con EDT', () => {
     expect(body).not.toHaveProperty('deliverableId');
   });
 
-  it('en una padre fechas, costo y responsables son de solo lectura y no se envían', async () => {
+  it('en una padre se editan los límites; costo y responsables no se envían', async () => {
     const api = mockApi(routes(detail(P), { 'PATCH /api/tasks/p': P }));
     const { user, dialog } = await openForm('p');
-    expect(dialog.getByLabelText('Fecha de inicio')).toBeDisabled();
-    expect(dialog.getByLabelText('Fecha límite')).toBeDisabled();
+    expect(dialog.getByLabelText('Fecha de inicio')).toHaveValue('2026-02-01');
+    expect(dialog.getByLabelText('Fecha límite')).toHaveValue('2026-03-31');
     expect(dialog.getByLabelText('Costo planeado')).toBeDisabled();
     expect(dialog.getAllByText('Se calcula con sus subtareas').length).toBeGreaterThan(0);
     await user.click(dialog.getByRole('button', { name: 'Guardar tarea' }));
     await waitFor(() => expect(api.calls.find((c) => c.key === 'PATCH /api/tasks/p')).toBeTruthy());
     const body = api.calls.find((c) => c.key === 'PATCH /api/tasks/p')!.body as object;
-    for (const key of ['startDate', 'dueDate', 'plannedCostCents', 'assigneeIds']) expect(body).not.toHaveProperty(key);
+    expect(body).toMatchObject({ startDate: '2026-02-01', dueDate: '2026-03-31' });
+    for (const key of ['plannedCostCents', 'assigneeIds']) expect(body).not.toHaveProperty(key);
   });
 
   it('el 409 por trabajo propio se muestra sin cerrar el formulario', async () => {

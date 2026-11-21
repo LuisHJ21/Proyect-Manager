@@ -41,6 +41,8 @@ export function toTaskDto(task: TaskWithRelations, includeCost: boolean, tree: T
 
   return {
     ...fields,
+    windowStartDate: task.startDate,
+    windowEndDate: task.dueDate,
     estimatedHours: summary ? summary.estimatedHours : estimatedHours === null ? null : Number(estimatedHours),
     ...(summary ? { startDate: summary.startDate, dueDate: summary.dueDate, progress: summary.progress, status: summary.status } : {}),
     ...(includeCost ? { plannedCostCents: cost } : {}),

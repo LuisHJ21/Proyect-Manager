@@ -196,6 +196,9 @@ export type Task = {
   priority: Priority;
   startDate: string | null;
   dueDate: string | null;
+  /** Fechas fijas de la tarea padre; el resumen visible puede venir de sus subtareas. */
+  windowStartDate?: string | null;
+  windowEndDate?: string | null;
   progress: number;
   assignees: PersonRef[];
   predecessorIds: string[];

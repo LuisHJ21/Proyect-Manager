@@ -379,6 +379,7 @@ export const createTaskSchema = z
   .object({
     title: shortText('Escribe el título'),
     assigneeIds: z.array(z.string()).default([]),
+    predecessorIds: z.array(z.string()).max(100, 'Demasiadas predecesoras').default([]),
     ...taskCommonFields,
   })
   .superRefine((value, ctx) => {

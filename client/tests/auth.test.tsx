@@ -10,6 +10,21 @@ describe('acceso', () => {
     mockApi(noSession);
     renderApp('/proyectos');
     expect(await screen.findByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Presentación' })).toBeInTheDocument();
+  });
+
+  it('permite mostrar y volver a ocultar la contraseña sin enviarla', async () => {
+    const api = mockApi(noSession);
+    renderApp('/login');
+    const user = userEvent.setup();
+    const password = await screen.findByLabelText('Contraseña');
+    await user.type(password, 'clave-privada');
+    expect(password).toHaveAttribute('type', 'password');
+    await user.click(screen.getByRole('button', { name: 'Mostrar contraseña' }));
+    expect(password).toHaveAttribute('type', 'text');
+    await user.click(screen.getByRole('button', { name: 'Ocultar contraseña' }));
+    expect(password).toHaveAttribute('type', 'password');
+    expect(api.calls.some((call) => call.key === 'POST /api/auth/login')).toBe(false);
   });
 
   it('con needsSetup muestra la configuración inicial', async () => {

@@ -10,7 +10,8 @@ describe('acceso', () => {
     mockApi(noSession);
     renderApp('/proyectos');
     expect(await screen.findByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Presentación' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Presentación' })).not.toBeInTheDocument();
   });
 
   it('permite mostrar y volver a ocultar la contraseña sin enviarla', async () => {

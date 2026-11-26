@@ -148,7 +148,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
             ))}
           </select>
         </FormField>
-        {parentId && <p className="text-sm text-ink-soft sm:col-span-2">Intervalo permitido para subtareas: {parentStart ?? project.data?.startDate ?? 'sin inicio'} a {parentEnd ?? project.data?.endDate ?? 'sin fin'}.</p>}
+        {parentId && <p className="text-sm text-ink-soft sm:col-span-2">{parentEnd ? `Intervalo permitido: ${parentStart ?? project.data?.startDate ?? 'sin inicio'} a ${max ?? parentEnd}.` : `La tarea padre no tiene fecha fin: desde ${min ?? 'cualquier fecha'} sus subtareas pueden terminar${project.data?.endDate ? ` hasta el límite del proyecto (${project.data.endDate})` : ' sin límite superior'}.`}</p>}
         <FormField label="Entregable" error={errors.fields.deliverableId}>
           <select className={inputClass} value={deliverableId} onChange={(e) => setDeliverableId(e.target.value)}>
             <option value="">Sin entregable</option>
@@ -162,7 +162,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
         <FormField label="Fecha de inicio" error={errors.fields.startDate} hint={isSummary ? 'Límite inicial para subtareas' : predecessorMin ? `Después de las predecesoras: desde ${predecessorMin}` : undefined}>
           <input className={inputClass} type="date" {...limits} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </FormField>
-        <FormField label="Fecha límite" error={errors.fields.dueDate} hint={isSummary ? 'Límite final para subtareas' : undefined}>
+        <FormField label="Fecha límite" error={errors.fields.dueDate} hint="Si esta tarea tendrá subtareas, deja la fecha vacía para no limitar cuándo terminan">
           <input className={inputClass} type="date" {...limits} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </FormField>
         {!task && <fieldset className="sm:col-span-2"><legend className="mb-1 text-sm font-medium text-ink-nav">Predecesoras</legend><p className="mb-2 text-sm text-ink-soft">Esta tarea podrá empezar después de que terminen las seleccionadas.</p><div className="max-h-36 space-y-1 overflow-y-auto">{predecessors.map((item) => <label key={item.id} className="flex items-center gap-2 text-sm text-ink-nav"><input type="checkbox" checked={predecessorIds.includes(item.id)} onChange={() => setPredecessorIds((ids) => ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id])} />{item.wbsCode} {item.title}</label>)}</div>{predecessors.length === 0 && <p className="text-sm text-ink-soft">No hay tareas disponibles.</p>}{errors.fields.predecessorIds && <p className="mt-1 text-xs text-risk-fg">{errors.fields.predecessorIds}</p>}</fieldset>}

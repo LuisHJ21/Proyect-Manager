@@ -52,6 +52,19 @@ describe('EDT: jerarquía de tareas', () => {
     expect((await ctx.as(pm).get(`/api/tasks/${parent.id}`)).json()).toMatchObject({ windowStartDate: '2026-03-01', windowEndDate: '2026-03-31' });
   });
 
+  it('una padre sin fecha fin permite hijas posteriores; al fijarla vuelve a limitar', async () => {
+    const parent = await ctx.makeTask(project.id, { title: 'Fase abierta', startDate: '2026-03-01' });
+    const child = await ctx.as(pm).post(tasksUrl(), { title: 'Hija', parentId: parent.id, startDate: '2026-04-01', dueDate: '2026-08-20' });
+    expect(child.statusCode).toBe(201);
+    expect((await ctx.as(pm).get(`/api/tasks/${parent.id}`)).json()).toMatchObject({ windowStartDate: '2026-03-01', windowEndDate: null, dueDate: '2026-08-20' });
+    expect((await patch(parent.id, { dueDate: '2026-05-01' })).statusCode).toBe(400);
+    expect((await patch(parent.id, { dueDate: '2026-09-01' })).statusCode).toBe(200);
+    expect((await patch(child.json().id, { dueDate: '2026-10-01' })).statusCode).toBe(400);
+    expect((await patch(parent.id, { dueDate: null })).statusCode).toBe(200);
+    expect((await patch(child.json().id, { dueDate: '2026-10-01' })).statusCode).toBe(200);
+    expect((await patch(child.json().id, { startDate: '2026-02-28' })).statusCode).toBe(400);
+  });
+
   it('la padre debe ser del mismo proyecto', async () => {
     const other = await ctx.makeProject();
     const foreign = await ctx.makeTask(other.id, { title: 'Ajena' });

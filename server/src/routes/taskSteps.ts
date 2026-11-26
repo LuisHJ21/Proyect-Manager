@@ -39,8 +39,8 @@ export function taskStepRoutes(app: App) {
 
   app.post('/api/tasks/:id/steps', async (c) => {
     const { prisma } = c.var.deps;
-    const { task, isPm } = await getTaskAccess(c, c.req.param('id'));
-    if (!isPm) throw forbidden();
+    const { task, isPm, isAssignee } = await getTaskAccess(c, c.req.param('id'));
+    if (!isPm && !isAssignee) throw forbidden('Solo puedes añadir pasos a las tareas que tienes asignadas');
     await assertNotSummary(prisma, task.id);
     const input = stepSchema.parse(await readBody(c));
     const step = await prisma.$transaction(async (tx) => {

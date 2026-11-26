@@ -100,8 +100,9 @@ export function taskRoutes(app: App) {
 
   app.get('/api/projects/:id/tasks', async (c) => {
     const { prisma } = c.var.deps;
-    const { project, isPm } = await getProjectAccess(c, c.req.param('id'));
-    return c.json(await listDtos(prisma, project.id, isPm));
+    const { project, isPm, role } = await getProjectAccess(c, c.req.param('id'));
+    const list = await listDtos(prisma, project.id, isPm);
+    return c.json(role === 'COLLABORATOR' ? list.filter((task) => task.assignees.some((person) => person.id === requireUser(c).id)) : list);
   });
 
   app.post('/api/projects/:id/tasks', async (c) => {
@@ -151,7 +152,8 @@ export function taskRoutes(app: App) {
 
   app.get('/api/tasks/:id', async (c) => {
     const { prisma } = c.var.deps;
-    const { task, isPm, can } = await getTaskAccess(c, c.req.param('id'));
+    const { task, isPm, can, isAssignee } = await getTaskAccess(c, c.req.param('id'));
+    if (requireUser(c).role === 'COLLABORATOR' && !isAssignee) throw notFound('Tarea no encontrada');
     const viewer = { userId: requireUser(c).id, isPm };
     // Sin permiso de incidentes (observador) no se envía ninguno, aunque la persona los haya reportado antes.
     const incidents = !can.read('incidents') ? [] : (
@@ -263,8 +265,8 @@ export function taskRoutes(app: App) {
   app.post('/api/tasks/:id/move', async (c) => {
     const { prisma } = c.var.deps;
     const task = await requireTaskPm(c, c.req.param('id'));
-    const { direction } = moveTaskSchema.parse(await readBody(c));
-    await prisma.$transaction((tx) => moveTask(tx, task.id, direction));
+    const move = moveTaskSchema.parse(await readBody(c));
+    await prisma.$transaction((tx) => moveTask(tx, task.id, 'direction' in move ? move.direction : { targetId: move.targetId }));
     return c.json(await listDtos(prisma, task.projectId, true));
   });
 

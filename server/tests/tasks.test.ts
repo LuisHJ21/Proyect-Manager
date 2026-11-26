@@ -104,9 +104,9 @@ describe('tareas', () => {
     expect((await ctx.as(outsider).get(`/api/projects/${project.id}/tasks`)).statusCode).toBe(404);
   });
 
-  it('colaborador miembro lee todas las tareas del proyecto', async () => {
+  it('colaborador miembro solo recibe las tareas asignadas', async () => {
     await ctx.makeTask(project.id, { assignees: [beto] });
-    expect((await ctx.as(ana).get(`/api/projects/${project.id}/tasks`)).json()).toHaveLength(1);
+    expect((await ctx.as(ana).get(`/api/projects/${project.id}/tasks`)).json()).toHaveLength(0);
   });
 
   it('marcar DONE fija progress=100', async () => {

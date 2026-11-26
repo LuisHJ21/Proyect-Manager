@@ -11,15 +11,17 @@ import { refreshTaskData } from './taskQueries';
 
 function EditStepModal({ task, step, onClose }: { task: TaskDetail; step: TaskStep; onClose: () => void }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [title, setTitle] = useState(step.title);
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const save = useMutation({
     mutationFn: () => api(`/api/tasks/${task.id}/steps/${step.id}`, { method: 'PATCH', body: { title } }),
     onSuccess: async () => {
       await refreshTaskData(queryClient, task.projectId, task.id);
+      toast.success('Paso actualizado');
       onClose();
     },
-    onError: (error) => applyFieldErrors(error, setErrors),
+    onError: (error) => { applyFieldErrors(error, setErrors); toast.error(errorMessage(error)); },
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -58,7 +60,7 @@ function StepRow({ task, step, canManage, canCheck }: { task: TaskDetail; step: 
 
   const toggle = useMutation({
     mutationFn: () => api(url, { method: 'PATCH', body: { done: !step.done } }),
-    onSuccess: refresh,
+    onSuccess: async () => { await refresh(); toast.success(step.done ? 'Paso pendiente' : 'Paso completado'); },
     onError: (error) => toast.error(errorMessage(error)),
     onSettled: () => {
       inFlight.current = false;
@@ -66,7 +68,7 @@ function StepRow({ task, step, canManage, canCheck }: { task: TaskDetail; step: 
   });
   const remove = useMutation({
     mutationFn: () => api(url, { method: 'DELETE' }),
-    onSuccess: refresh,
+    onSuccess: async () => { await refresh(); toast.success('Paso eliminado'); },
     onError: (error) => toast.error(errorMessage(error)),
     onSettled: () => setDeleting(false),
   });
@@ -108,8 +110,9 @@ function StepRow({ task, step, canManage, canCheck }: { task: TaskDetail; step: 
   );
 }
 
-export function StepList({ task, canManage, canCheck }: { task: TaskDetail; canManage: boolean; canCheck: boolean }) {
+export function StepList({ task, canManage, canAdd, canCheck }: { task: TaskDetail; canManage: boolean; canAdd: boolean; canCheck: boolean }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [title, setTitle] = useState('');
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
 
@@ -118,8 +121,9 @@ export function StepList({ task, canManage, canCheck }: { task: TaskDetail; canM
     onSuccess: async () => {
       setTitle('');
       await refreshTaskData(queryClient, task.projectId, task.id);
+      toast.success('Paso añadido');
     },
-    onError: (error) => applyFieldErrors(error, setErrors),
+    onError: (error) => { applyFieldErrors(error, setErrors); toast.error(errorMessage(error)); },
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -154,7 +158,7 @@ export function StepList({ task, canManage, canCheck }: { task: TaskDetail; canM
           ))}
         </ul>
       )}
-      {canManage && (
+      {canAdd && (
         <form onSubmit={submit} className="mt-4 space-y-2" noValidate>
           <FormMessage message={errors.message} />
           <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">

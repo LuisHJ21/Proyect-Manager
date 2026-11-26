@@ -244,7 +244,7 @@ export function TaskDetailPage() {
               </ul>
             </section>
           ) : (
-            <StepList task={task} canManage={isPm} canCheck={canUpdate} />
+            <StepList task={task} canManage={isPm} canAdd={canUpdate} canCheck={canUpdate} />
           )}
           {canRead('comments') && (
             <TimeEntriesSection

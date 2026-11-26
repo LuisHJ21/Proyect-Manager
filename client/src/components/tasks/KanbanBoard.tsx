@@ -24,6 +24,7 @@ export function useMoveTask(projectId: string) {
       try {
         await api(`/api/tasks/${task.id}/progress`, { method: 'PATCH', body: { status } });
         await refreshTaskData(queryClient, projectId, task.id);
+        toast.success('Estado de la tarea actualizado');
       } catch (error) {
         queryClient.setQueryData(key, previous);
         toast.error(errorMessage(error));

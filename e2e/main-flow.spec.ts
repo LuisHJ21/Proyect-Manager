@@ -213,7 +213,7 @@ test('flujo principal', async ({ browser }) => {
   await carlos.getByRole('button', { name: 'Guardar avance' }).click();
   await expect(carlos.getByRole('alert')).toContainText('Antes deben terminar: Diseño');
 
-  // 4. Carlos no ve las secciones del PM, ni entrando por la dirección.
+  //                                                                                   n.
   await carlos.goto(`${projectUrl}/resumen`);
   await expect(carlos.getByTestId('indicator-progress')).toBeVisible();
   const tabs = carlos.getByRole('navigation', { name: 'Secciones del proyecto' });

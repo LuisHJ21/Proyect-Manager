@@ -1,5 +1,5 @@
 import { LABELS } from '@pm/shared';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Task } from '../../api/types';
@@ -17,11 +17,14 @@ type Props = {
   emptyText: string;
   canMove?: boolean;
   onMove?: (task: Task, direction: 'up' | 'down') => void;
+  onReorder?: (task: Task, target: Task) => void;
 };
 
 /** Lista de tareas como EDT: código, sangría por nivel, plegar ramas y, para el PM, subir y bajar. */
-export function TaskList({ tasks, matches, emptyText, canMove = false, onMove }: Props) {
+export function TaskList({ tasks, matches, emptyText, canMove = false, onMove, onReorder }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [targetId, setTargetId] = useState<string | null>(null);
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const ancestorsOf = (task: Task) => {
     const list: string[] = [];
@@ -73,8 +76,21 @@ export function TaskList({ tasks, matches, emptyText, canMove = false, onMove }:
               <tr
                 key={task.id}
                 data-depth={depth}
+                onDragOver={(event) => {
+                  if (canMove && draggedId !== task.id && byId.get(draggedId ?? '')?.parentId === task.parentId) {
+                    event.preventDefault();
+                    setTargetId(task.id);
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const source = byId.get(draggedId ?? '');
+                  if (source && source.id !== task.id && source.parentId === task.parentId) onReorder?.(source, task);
+                  setDraggedId(null);
+                  setTargetId(null);
+                }}
                 {...(context.has(task.id) ? { 'data-context': '' } : {})}
-                className={`border-t border-line transition-colors duration-150 hover:bg-raised ${context.has(task.id) ? 'opacity-60' : ''}`}
+                className={`border-t border-line transition-colors duration-150 hover:bg-raised ${context.has(task.id) ? 'opacity-60' : ''} ${targetId === task.id ? 'bg-active' : ''}`}
               >
                 <td className="px-5 py-3 align-top">
                   <div className="flex items-start gap-1.5" style={{ paddingLeft: `${(depth - 1) * 1.25}rem` }}>
@@ -118,6 +134,7 @@ export function TaskList({ tasks, matches, emptyText, canMove = false, onMove }:
                 </td>
                 {canMove && (
                   <td className="px-3 py-2 text-right align-top whitespace-nowrap">
+                    <span draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; setDraggedId(task.id); }} onDragEnd={() => { setDraggedId(null); setTargetId(null); }} role="img" aria-label={`Arrastrar ${task.title}`} title="Arrastra para ordenar entre tareas del mismo nivel" className="inline-flex cursor-grab align-middle text-ink-soft"><GripVertical size={18} /></span>
                     <Button variant="ghost" aria-label={`Subir ${task.title}`} disabled={index <= 0} onClick={() => onMove?.(task, 'up')}>
                       Subir
                     </Button>

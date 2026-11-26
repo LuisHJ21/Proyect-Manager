@@ -51,8 +51,8 @@ export function TasksPage({ forcedView }: { forcedView?: 'edt' | 'cronograma' })
   const queryClient = useQueryClient();
   const toast = useToast();
   const reorder = useMutation({
-    mutationFn: ({ task, direction }: { task: Task; direction: 'up' | 'down' }) => api<Task[]>(`/api/tasks/${task.id}/move`, { method: 'POST', body: { direction } }),
-    onSuccess: (list) => queryClient.setQueryData(tasksKey(project.id), list),
+    mutationFn: ({ task, direction, targetId }: { task: Task; direction?: 'up' | 'down'; targetId?: string }) => api<Task[]>(`/api/tasks/${task.id}/move`, { method: 'POST', body: targetId ? { targetId } : { direction } }),
+    onSuccess: (list) => { queryClient.setQueryData(tasksKey(project.id), list); toast.success('Orden de tareas actualizado'); },
     onError: (error) => toast.error(errorMessage(error)),
   });
   const canMove = (task: Task) => !readOnly && (isPm || task.assignees.some((a) => a.id === user?.id));
@@ -154,6 +154,7 @@ export function TasksPage({ forcedView }: { forcedView?: 'edt' | 'cronograma' })
           matches={filter === 'all' ? undefined : new Set(visible.map((t) => t.id))}
           canMove={isPm && !readOnly}
           onMove={(task, direction) => reorder.mutate({ task, direction })}
+          onReorder={(task, target) => reorder.mutate({ task, targetId: target.id })}
           emptyText={isPm ? 'Aún no hay tareas. Crea la primera con «Nueva tarea».' : 'Aún no hay tareas en este proyecto.'}
         />
       )}

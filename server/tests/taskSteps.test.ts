@@ -25,11 +25,12 @@ describe('pasos de tarea', () => {
   });
   afterEach(() => ctx.close());
 
-  it('solo el PM crea, edita y elimina', async () => {
+  it('el asignado puede crear; solo el PM edita y elimina', async () => {
     const created = await ctx.as(pm).post(url(), { title: 'Paso' });
     expect(created.statusCode).toBe(201);
     const id = created.json().id;
-    expect((await ctx.as(ana).post(url(), { title: 'X' })).statusCode).toBe(403);
+    expect((await ctx.as(ana).post(url(), { title: 'X' })).statusCode).toBe(201);
+    expect((await ctx.as(beto).post(url(), { title: 'X' })).statusCode).toBe(403);
     expect((await ctx.as(ana).patch(stepUrl(id), { title: 'X' })).statusCode).toBe(403);
     expect((await ctx.as(ana).delete(stepUrl(id))).statusCode).toBe(403);
     expect((await ctx.as(pm).patch(stepUrl(id), { title: 'Otro' })).json().title).toBe('Otro');

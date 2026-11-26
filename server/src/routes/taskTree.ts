@@ -102,7 +102,7 @@ export async function nextPosition(db: Db, projectId: string, parentId: string |
 }
 
 /** Intercambia la tarea con su hermana vecina; en un extremo no hace nada. Renumera las hermanas de 1 en adelante. */
-export async function moveTask(db: Db, taskId: string, direction: 'up' | 'down'): Promise<void> {
+export async function moveTask(db: Db, taskId: string, move: 'up' | 'down' | { targetId: string }): Promise<void> {
   const task = await db.task.findUniqueOrThrow({ where: { id: taskId }, select: { projectId: true, parentId: true } });
   const siblings = await db.task.findMany({
     where: { projectId: task.projectId, parentId: task.parentId },
@@ -111,9 +111,10 @@ export async function moveTask(db: Db, taskId: string, direction: 'up' | 'down')
   });
   const ids = siblings.map((s) => s.id);
   const index = ids.indexOf(taskId);
-  const target = direction === 'up' ? index - 1 : index + 1;
+  const target = typeof move === 'string' ? (move === 'up' ? index - 1 : index + 1) : ids.indexOf(move.targetId);
   if (target < 0 || target >= ids.length) return;
-  [ids[index], ids[target]] = [ids[target]!, ids[index]!];
+  if (typeof move === 'string') [ids[index], ids[target]] = [ids[target]!, ids[index]!];
+  else ids.splice(target, 0, ids.splice(index, 1)[0]!);
   for (const [position, id] of ids.entries()) await db.task.update({ where: { id }, data: { position: position + 1 } });
 }
 

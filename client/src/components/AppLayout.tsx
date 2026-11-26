@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
   CheckSquare,
+  ChevronDown,
   FolderKanban,
   House,
   KeyRound,
@@ -114,15 +115,17 @@ function Sidebar({
   showBell: boolean;
 }) {
   const { user } = useAuth();
+  const [projectSearch, setProjectSearch] = useState("");
+  const visibleProjects = projects.filter((project) => project.name.toLocaleLowerCase().includes(projectSearch.trim().toLocaleLowerCase()));
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-6 border-r border-line bg-sidebar px-4 py-5">
+    <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col gap-4 border-r border-line bg-sidebar px-4 py-4">
       <div className="flex items-center justify-between gap-2">
         <Brand />
         {showBell && <NotificationBell />}
       </div>
       <nav
         aria-label="Principal"
-        className="flex min-h-0 flex-1 flex-col gap-6"
+        className="flex min-h-0 flex-1 flex-col gap-4"
       >
         <div className="space-y-0.5">
           {links.map(({ to, label, Icon }) => {
@@ -148,11 +151,12 @@ function Sidebar({
           })}
         </div>
         <div className="flex min-h-0 flex-1 flex-col">
-          <p className="px-3 pb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
-            Proyectos activos
-          </p>
-          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-            {projects.map((project) => (
+          <div className="flex items-center justify-between px-3 pb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
+            <span>Proyectos activos</span><span aria-label={`${projects.length} proyectos activos`}>{projects.length}</span>
+          </div>
+          {projects.length > 8 && <input type="search" aria-label="Buscar proyecto activo" placeholder="Buscar proyecto…" value={projectSearch} onChange={(event) => setProjectSearch(event.target.value)} className="mb-2 w-full rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary" />}
+          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pr-1" role="group" aria-label="Lista de proyectos activos">
+            {visibleProjects.map((project) => (
               <NavLink
                 key={project.id}
                 to={`/proyectos/${project.id}/resumen`}
@@ -168,13 +172,14 @@ function Sidebar({
                 <span className="truncate">{project.name}</span>
               </NavLink>
             ))}
+            {visibleProjects.length === 0 && <p className="px-3 py-2 text-sm text-ink-soft">No hay proyectos coincidentes.</p>}
           </div>
         </div>
       </nav>
-      <div className="rounded-xl bg-surface p-3">
-        <div className="mb-2 flex items-center gap-2.5">
+      <details className="group relative shrink-0 border-t border-line pt-3">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 rounded-lg px-2 hover:bg-raised focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
           {user && <Avatar name={user.name} size="lg" />}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-ink">
               {user?.name}
             </p>
@@ -182,9 +187,12 @@ function Sidebar({
               {user && LABELS.role[user.role]}
             </p>
           </div>
+          <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-ink-soft transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="absolute inset-x-0 bottom-full z-20 mb-2 rounded-xl border border-line bg-surface p-3 shadow-lg">
+          <AccountActions />
         </div>
-        <AccountActions />
-      </div>
+      </details>
     </aside>
   );
 }

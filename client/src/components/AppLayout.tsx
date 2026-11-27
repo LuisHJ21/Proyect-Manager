@@ -71,7 +71,7 @@ function Brand() {
         <span className="text-[#75ddc9]">.</span>
       </span>
 
-      <span>|</span>
+      <span className="text-ink text-lg">|</span>
       {/* <MonitorActivity size={50} aria-hidden="true" />
       <span className="max-[380px]:hidden font-display text-lg font-bold">
         PM-JL

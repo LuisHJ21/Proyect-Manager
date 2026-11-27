@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   LogOut,
+  MonitorActivity,
   MoreHorizontal,
   Plus,
   Users,
@@ -62,11 +63,21 @@ const sideLink = ({ isActive }: { isActive: boolean }) =>
 function Brand() {
   return (
     <Link to="/" className="flex items-center gap-2.5 px-1.5 text-ink">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+      {/* <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
         <LayoutDashboard size={18} aria-hidden="true" />
+      </span> */}
+      <span className="font-bold text-2xl tracking-tighter">
+        JL
+        <span className="text-[#75ddc9]">.</span>
       </span>
+
+      <span>|</span>
+      {/* <MonitorActivity size={50} aria-hidden="true" />
       <span className="max-[380px]:hidden font-display text-lg font-bold">
-        Proyect Manager
+        PM-JL
+      </span> */}
+      <span className="max-[380px]:hidden font-display text-lg font-bold">
+        PMCORE
       </span>
     </Link>
   );
@@ -116,7 +127,11 @@ function Sidebar({
 }) {
   const { user } = useAuth();
   const [projectSearch, setProjectSearch] = useState("");
-  const visibleProjects = projects.filter((project) => project.name.toLocaleLowerCase().includes(projectSearch.trim().toLocaleLowerCase()));
+  const visibleProjects = projects.filter((project) =>
+    project.name
+      .toLocaleLowerCase()
+      .includes(projectSearch.trim().toLocaleLowerCase()),
+  );
   return (
     <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col gap-4 border-r border-line bg-sidebar px-4 py-4">
       <div className="flex items-center justify-between gap-2">
@@ -152,10 +167,26 @@ function Sidebar({
         </div>
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex items-center justify-between px-3 pb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
-            <span>Proyectos activos</span><span aria-label={`${projects.length} proyectos activos`}>{projects.length}</span>
+            <span>Proyectos activos</span>
+            <span aria-label={`${projects.length} proyectos activos`}>
+              {projects.length}
+            </span>
           </div>
-          {projects.length > 8 && <input type="search" aria-label="Buscar proyecto activo" placeholder="Buscar proyecto…" value={projectSearch} onChange={(event) => setProjectSearch(event.target.value)} className="mb-2 w-full rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary" />}
-          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pr-1" role="group" aria-label="Lista de proyectos activos">
+          {projects.length > 8 && (
+            <input
+              type="search"
+              aria-label="Buscar proyecto activo"
+              placeholder="Buscar proyecto…"
+              value={projectSearch}
+              onChange={(event) => setProjectSearch(event.target.value)}
+              className="mb-2 w-full rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+            />
+          )}
+          <div
+            className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pr-1"
+            role="group"
+            aria-label="Lista de proyectos activos"
+          >
             {visibleProjects.map((project) => (
               <NavLink
                 key={project.id}
@@ -172,7 +203,11 @@ function Sidebar({
                 <span className="truncate">{project.name}</span>
               </NavLink>
             ))}
-            {visibleProjects.length === 0 && <p className="px-3 py-2 text-sm text-ink-soft">No hay proyectos coincidentes.</p>}
+            {visibleProjects.length === 0 && (
+              <p className="px-3 py-2 text-sm text-ink-soft">
+                No hay proyectos coincidentes.
+              </p>
+            )}
           </div>
         </div>
       </nav>
@@ -187,7 +222,11 @@ function Sidebar({
               {user && LABELS.role[user.role]}
             </p>
           </div>
-          <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-ink-soft transition-transform group-open:rotate-180" />
+          <ChevronDown
+            size={16}
+            aria-hidden="true"
+            className="shrink-0 text-ink-soft transition-transform group-open:rotate-180"
+          />
         </summary>
         <div className="absolute inset-x-0 bottom-full z-20 mb-2 rounded-xl border border-line bg-surface p-3 shadow-lg">
           <AccountActions />

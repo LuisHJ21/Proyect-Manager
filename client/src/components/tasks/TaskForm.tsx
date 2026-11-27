@@ -46,12 +46,18 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
   for (const t of allTasks.data ?? []) if (t.parentId && descendants.has(t.parentId)) descendants.add(t.id);
   const parentOptions = (allTasks.data ?? []).filter((t) => !descendants.has(t.id));
   const parent = parentOptions.find((t) => t.id === parentId);
-  const parentStart = parent?.isSummary ? parent.windowStartDate : parent?.startDate;
+  const ancestors: Task[] = [];
+  for (let current = parent, seen = new Set<string>(); current && !seen.has(current.id); current = (allTasks.data ?? []).find((t) => t.id === current?.parentId)) {
+    ancestors.push(current);
+    seen.add(current.id);
+  }
   const parentEnd = parent?.isSummary ? parent.windowEndDate : parent?.dueDate;
+  const ancestorStarts = ancestors.map((t) => t.isSummary ? t.windowStartDate : t.startDate);
+  const ancestorEnds = ancestors.map((t) => t.isSummary ? t.windowEndDate : t.dueDate);
   const predecessors = (allTasks.data ?? []).filter((t) => !t.isSummary && t.id !== task?.id);
   const predecessorMin = predecessors.filter((t) => predecessorIds.includes(t.id) && t.dueDate).map((t) => addDays(t.dueDate!, 1)).sort().at(-1);
-  const min = [project.data?.startDate, parentStart, predecessorMin].filter(Boolean).sort().at(-1);
-  const max = [project.data?.endDate, parentEnd].filter(Boolean).sort()[0];
+  const min = [project.data?.startDate, ...ancestorStarts, predecessorMin].filter(Boolean).sort().at(-1);
+  const max = [project.data?.endDate, ...ancestorEnds].filter(Boolean).sort()[0];
   const limits = { min: min || undefined, max: max || undefined };
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS);
   const [busy, setBusy] = useState(false);
@@ -148,7 +154,7 @@ export function TaskForm({ projectId, task, onClose }: { projectId: string; task
             ))}
           </select>
         </FormField>
-        {parentId && <p className="text-sm text-ink-soft sm:col-span-2">{parentEnd ? `Intervalo permitido: ${parentStart ?? project.data?.startDate ?? 'sin inicio'} a ${max ?? parentEnd}.` : `La tarea padre no tiene fecha fin: desde ${min ?? 'cualquier fecha'} sus subtareas pueden terminar${project.data?.endDate ? ` hasta el límite del proyecto (${project.data.endDate})` : ' sin límite superior'}.`}</p>}
+        {parentId && <p className="text-sm text-ink-soft sm:col-span-2">{parentEnd ? `Intervalo permitido: ${min ?? 'sin inicio'} a ${max ?? 'sin fin'}.` : `La tarea padre no tiene fecha fin propia. Inicio desde ${min ?? 'cualquier fecha'}; fin ${max ? `hasta ${max} por el proyecto u otra tarea antecesora` : 'sin límite superior'}.`}</p>}
         <FormField label="Entregable" error={errors.fields.deliverableId}>
           <select className={inputClass} value={deliverableId} onChange={(e) => setDeliverableId(e.target.value)}>
             <option value="">Sin entregable</option>

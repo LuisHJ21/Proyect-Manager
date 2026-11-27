@@ -43,12 +43,34 @@ describe('formulario de tarea con EDT', () => {
     const dialog = within(await screen.findByRole('dialog'));
     await user.type(dialog.getByLabelText('Título'), 'Nueva');
     await user.selectOptions(dialog.getByLabelText('Tarea padre'), 'p');
-    expect(dialog.getByText('Intervalo permitido para subtareas: 2026-02-01 a 2026-03-31.')).toBeInTheDocument();
+    expect(dialog.getByText('Intervalo permitido: 2026-02-01 a 2026-03-31.')).toBeInTheDocument();
     expect(dialog.getByLabelText('Fecha de inicio')).toHaveAttribute('min', '2026-02-01');
     expect(dialog.getByLabelText('Fecha límite')).toHaveAttribute('max', '2026-03-31');
     await user.click(dialog.getByRole('checkbox', { name: '2 Construcción' }));
     await user.click(dialog.getByRole('button', { name: 'Guardar tarea' }));
     await waitFor(() => expect(api.calls.find((c) => c.key === 'POST /api/projects/p1/tasks')?.body).toMatchObject({ parentId: 'p', predecessorIds: ['q'] }));
+  });
+
+  it('una padre sin fin permite fechas posteriores pero respeta el límite de la antecesora', async () => {
+    const grandparent = wbsTask({ id: 'g', title: 'Programa', wbsCode: '1', isSummary: true, childCount: 1, windowStartDate: '2026-01-01', windowEndDate: '2026-10-31' });
+    const openParent = wbsTask({ ...P, parentId: 'g', wbsCode: '1.1', windowEndDate: null });
+    mockApi(routes(detail(A), { 'GET /api/projects/p1/tasks': [grandparent, openParent, A, B, Q] }));
+    renderApp('/proyectos/p1/tareas');
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Nueva tarea' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await userEvent.setup().selectOptions(dialog.getByLabelText('Tarea padre'), 'p');
+    expect(dialog.getByText(/La tarea padre no tiene fecha fin propia/)).toHaveTextContent('fin hasta 2026-10-31');
+    expect(dialog.getByLabelText('Fecha límite')).toHaveAttribute('max', '2026-10-31');
+  });
+
+  it('una padre sin fin ni antecesora con fin no limita la fecha final', async () => {
+    mockApi(routes(detail(A), { 'GET /api/projects/p1/tasks': [{ ...P, windowEndDate: null }, A, B, Q] }));
+    renderApp('/proyectos/p1/tareas');
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Nueva tarea' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await userEvent.setup().selectOptions(dialog.getByLabelText('Tarea padre'), 'p');
+    expect(dialog.getByText(/La tarea padre no tiene fecha fin propia/)).toHaveTextContent('sin límite superior');
+    expect(dialog.getByLabelText('Fecha límite')).not.toHaveAttribute('max');
   });
 
   it('la tarea padre excluye la propia tarea y sus descendientes', async () => {
@@ -119,6 +141,9 @@ describe('detalle de tarea con EDT', () => {
     renderApp('/proyectos/p1/tareas/p');
     const section = await screen.findByRole('region', { name: 'Subtareas' });
     expect(within(section).getByRole('link', { name: '1.1 Maquetas' })).toHaveAttribute('href', '/proyectos/p1/tareas/a');
+    expect(screen.getByText('Inicio calculado')).toBeInTheDocument();
+    expect(screen.getByText('Fin calculado')).toBeInTheDocument();
+    expect(screen.getByText('Límite para subtareas')).toBeInTheDocument();
     expect(screen.queryByLabelText('Añadir predecesora')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Añadir paso' })).not.toBeInTheDocument();
   });

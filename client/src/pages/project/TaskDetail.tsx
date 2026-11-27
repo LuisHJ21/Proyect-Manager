@@ -316,8 +316,9 @@ export function TaskDetailPage() {
               <Property label="Prioridad">
                 <Badge tone={PRIORITY_TONE[task.priority]}>{LABELS.priority[task.priority]}</Badge>
               </Property>
-              <Property label="Inicio">{shortDate(task.startDate)}</Property>
-              <Property label="Fecha límite">{shortDate(task.dueDate)}</Property>
+              <Property label={task.isSummary ? 'Inicio calculado' : 'Inicio'}>{shortDate(task.startDate)}</Property>
+              <Property label={task.isSummary ? 'Fin calculado' : 'Fecha límite'}>{shortDate(task.dueDate)}</Property>
+              {task.isSummary && <Property label="Límite para subtareas">{task.windowEndDate ? shortDate(task.windowEndDate) : 'Sin límite propio'}</Property>}
               <Property label="Hito">{milestone?.name ?? '—'}</Property>
             </dl>
           </Panel>

@@ -116,6 +116,21 @@ describe('pestaña de tareas', () => {
     expect(graph.getByRole('link', { name: 'Maquetas' })).toHaveAttribute('href', '/proyectos/p1/tareas/child');
   });
 
+  it('la EDT gráfica pliega fases y busca tareas dentro de ellas', async () => {
+    mockApi(routes(pmUser, [
+      task({ id: 'parent', title: 'Diseño', wbsCode: '1', isSummary: true, childCount: 1 }),
+      task({ id: 'child', title: 'Maquetas', wbsCode: '1.1', parentId: 'parent' }),
+    ]));
+    renderApp('/proyectos/p1/tareas?vista=edt');
+    const graph = within(await screen.findByRole('region', { name: 'Gráfico de la EDT' }));
+    await graph.findByRole('link', { name: 'Maquetas' });
+    await userEvent.setup().click(graph.getByRole('button', { name: 'Plegar Diseño' }));
+    expect(graph.queryByRole('link', { name: 'Maquetas' })).not.toBeInTheDocument();
+    await userEvent.setup().type(graph.getByRole('searchbox', { name: 'Buscar en la EDT' }), 'maquetas');
+    expect(graph.getByRole('link', { name: 'Maquetas' })).toBeInTheDocument();
+    expect(graph.getByRole('link', { name: 'Diseño' })).toBeInTheDocument();
+  });
+
   it('?vista=kanban abre el Tablero', async () => {
     mockApi(routes(pmUser));
     renderApp('/proyectos/p1/tareas?vista=kanban');

@@ -255,9 +255,13 @@ function CompactSidebar({
         to="/"
         aria-label="Gestor PMBOK"
         title="Gestor PMBOK"
-        className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white"
+        className="flex h-9 w-9 items-center justify-center "
       >
-        <LayoutDashboard size={18} aria-hidden="true" />
+        {/* <LayoutDashboard size={18} aria-hidden="true" /> */}
+        <span className="font-bold text-2xl tracking-tighter">
+          JL
+          <span className="text-[#75ddc9]">.</span>
+        </span>
       </Link>
       <nav
         aria-label="Principal"
